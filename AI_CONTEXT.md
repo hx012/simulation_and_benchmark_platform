@@ -1,111 +1,177 @@
-# AI Chip Simulation and Benchmark Platform - AI_CONTEXT
+# AI芯片仿真与Benchmark平台 - AI_CONTEXT
 
-## 1. Project Overview
+## 1. 项目定位
 
-This project builds a unified AI chip simulation and Benchmark platform.
+本项目用于构建统一的 AI 芯片仿真与 Benchmark 平台。
 
-Main goals:
+核心目标：
 
-- Provide a web platform for AI chip simulator management.
-- Support simulation task creation, execution, result collection and visualization.
-- Support Benchmark data management and future performance comparison.
-- Provide Trace based micro-architecture analysis capability.
+- 提供 Web 化仿真任务管理能力。
+- 支持不同 Simulator Version、Chip Variant、Simulation Mode 的统一配置与运行。
+- 管理仿真任务生命周期，包括创建、执行、结果收集和展示。
+- 支持 Benchmark 数据管理以及后续性能分析和 Trace 对比。
 
-## 2. System Architecture
+## 2. 当前仓库结构
 
-### Frontend
-
-Responsible for:
-
-- User interaction.
-- Simulation configuration.
-- Task management UI.
-- Result visualization.
-- Benchmark presentation.
-
-### Backend
-
-Responsible for:
-
-- Simulation task management.
-- Simulator adapter.
-- Runtime directory management.
-- Result collection.
-- Configuration management.
-
-### Runtime
-
-Each simulation task uses an independent runtime directory:
+当前仓库主要包含前端和后端两部分：
 
 ```
-runtime/<job_id>/
-    result/
-    trace/
-    logs/
+simulation_and_benchmark_platform/
+├── backend/
+├── frontend/
+└── README.md
 ```
 
-This avoids conflicts between concurrent simulation tasks.
+## 3. 后端架构
 
-## 3. Simulation Capability
+后端位于：
 
-The platform supports:
+```
+backend/
+```
 
-- Multiple simulator versions.
-- Multiple chip variants.
-- Multiple simulation modes.
-- Simulator profile based configuration.
-- Workload and hardware configuration management.
+主要目录：
 
-Configuration entry:
+|目录|职责|
+|-|-|
+|app|后端应用核心代码|
+|config|平台配置文件|
+|worker|后台任务执行相关逻辑|
+|scripts|辅助脚本|
+
+当前后端主要负责：
+
+- Simulation 任务管理。
+- Simulator 配置解析。
+- 仿真任务执行调度。
+- Runtime 环境管理。
+- 结果和日志收集。
+
+## 4. 前端架构
+
+前端位于：
+
+```
+frontend/
+```
+
+技术栈：
+
+- TypeScript
+- Vite
+- Web 前端组件化开发
+
+主要职责：
+
+- 用户登录和身份标识。
+- Simulation 配置页面。
+- 任务列表和任务详情展示。
+- 仿真结果展示。
+- Benchmark 展示。
+
+## 5. Simulation 功能
+
+Simulation 模块目标是支持统一管理多种芯片仿真能力。
+
+当前设计支持：
+
+```
+Simulator Version
+        |
+        Chip Variant
+                |
+                Simulation Mode
+```
+
+配置入口：
 
 ```
 backend/config/simulator_profiles.yml
 ```
 
-## 4. Trace Visualization
+配置用于描述：
 
-Trace follows Chrome Trace Format.
+- Simulator 启动信息。
+- 芯片版本。
+- 仿真模式。
+- 运行参数。
 
-Current direction:
+## 6. 仿真运行流程
 
-- Generate trace.json from simulation.
-- Use Chromium Catapult trace viewer.
-- Reuse mature trace visualization instead of implementing a custom viewer.
+基本流程：
 
-Future support:
+```
+用户提交任务
+      ↓
+Backend创建Job
+      ↓
+准备Runtime环境
+      ↓
+启动Simulator
+      ↓
+收集日志和结果
+      ↓
+Result页面展示
+```
 
-- Multiple trace comparison.
-- Benchmark trace analysis.
-- Timeline alignment.
+每个任务应保持独立运行环境，避免不同任务之间文件冲突。
 
-## 5. Development Status
+## 7. Trace能力
 
-Completed:
+Trace 用于展示芯片微架构执行过程。
 
-- Basic simulation task workflow.
-- Frontend/backend separation.
-- Runtime isolation.
-- Simulator profile design.
-- Simulation version/chip variant/simulation mode selection.
-- Trace generation verification.
+当前方向：
 
-In progress:
+- 使用 Chrome Trace Format。
+- 使用 Catapult trace viewer 进行展示。
+- 避免重复开发自定义时间线组件。
 
-- Simulation result page enhancement.
-- Trace viewer integration.
-- Benchmark framework.
+未来支持：
 
-## 6. Development Principles
+- 多 Trace 对比。
+- Benchmark Trace 分析。
+- 性能瓶颈定位。
 
-1. Keep simulator implementation independent from platform code.
-2. Use adapters between platform and simulator engines.
-3. Keep configurations externalized.
-4. Prefer open-source mature visualization tools when possible.
-5. Maintain documents together with implementation.
+## 8. Benchmark功能规划
 
-## 7. Future Roadmap
+Benchmark 模块用于管理芯片性能数据。
 
-- Benchmark comparison.
-- Multi-trace analysis.
-- Performance regression analysis.
-- AI-assisted development workflow.
+规划支持：
+
+- Macro 指标展示。
+- Micro 指标展示。
+- Trace 对比分析。
+- 不同芯片和版本之间的性能比较。
+
+## 9. 当前开发状态
+
+已完成：
+
+- 基础 Web 平台框架。
+- 前后端分离架构。
+- Simulation任务管理基础能力。
+- Simulator Profile 配置框架。
+- 多级 Simulator 配置选择。
+- Trace生成和Catapult验证。
+
+进行中：
+
+- 仿真结果页面完善。
+- Trace Viewer 集成。
+- Benchmark 数据链建设。
+
+## 10. 开发规范
+
+1. 文档统一使用中文 Markdown。
+2. 大功能使用 feature 分支开发，通过 PR 合入 main。
+3. 代码修改需要同步更新相关文档。
+4. Simulator 核心代码与平台代码保持解耦。
+5. 优先复用成熟开源工具。
+
+## 11. 后续规划
+
+- 完善 Trace Viewer。
+- Benchmark Compare。
+- 性能回归分析。
+- AI Agent辅助开发流程。
+- 建立持续维护的项目知识库。
