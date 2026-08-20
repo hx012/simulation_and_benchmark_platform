@@ -1,0 +1,220 @@
+import { useCallback, useEffect, useState } from 'react';
+import {
+  Alert,
+  Button,
+  Card,
+  Collapse,
+  Descriptions,
+  message,
+  Modal,
+  Space,
+  Spin,
+} from 'antd';
+import { InboxOutlined, ArrowLeftOutlined, RedoOutlined } from '@ant-design/icons';
+import { useNavigate, useParams } from 'react-router-dom';
+import { simulationApi } from '../../api/simulation';
+import { MetricCard } from '../../components/MetricCard';
+import { PageHeading } from '../../components/PageHeading';
+import { TaskStatusTag, TraceStatusTag } from '../../components/StatusTag';
+import { TraceViewer } from '../../components/TraceViewer';
+import type {
+  SimulationResultResponse,
+  SimulationTask,
+  SimulationTraceResponse,
+} from '../../types/simulation';
+import {
+  formatDateTime,
+  formatDuration,
+  formatNumber,
+  formatSimulatedTime,
+  isTerminalStatus,
+} from '../../utils/format';
+
+export function TaskResultPage() {
+  const { taskId } = useParams();
+  const navigate = useNavigate();
+  const [task, setTask] = useState<SimulationTask | null>(null);
+  const [result, setResult] = useState<SimulationResultResponse | null>(null);
+  const [trace, setTrace] = useState<SimulationTraceResponse | null>(null);
+  const [traceLoading, setTraceLoading] = useState(false);
+  const [traceError, setTraceError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!taskId) return;
+    setLoading(true);
+    try {
+      const [taskData, resultData] = await Promise.all([
+        simulationApi.getTask(taskId),
+        simulationApi.getResult(taskId),
+      ]);
+      setTask(taskData);
+      setResult(resultData);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [taskId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    if (!taskId || !result?.trace_available || result.trace_status !== 'READY') {
+      setTrace(null);
+      return;
+    }
+    let cancelled = false;
+    setTraceLoading(true);
+    setTraceError(null);
+    simulationApi.getTrace(taskId)
+      .then((data) => {
+        if (!cancelled) setTrace(data);
+      })
+      .catch((err) => {
+        if (!cancelled) setTraceError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        if (!cancelled) setTraceLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [taskId, result?.trace_available, result?.trace_status]);
+
+  async function archiveToggle() {
+    if (!task) return;
+    try {
+      if (task.archived) await simulationApi.unarchiveTask(task.task_id);
+      else await simulationApi.archiveTask(task.task_id);
+      message.success(task.archived ? '已取消归档' : '已归档');
+      await load();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function rerun() {
+    if (!task) return;
+    try {
+      const response = await simulationApi.rerunTask(task.task_id);
+      message.success('已复用原输入创建新任务');
+      navigate(`/simulation/tasks/${response.task.task_id}`);
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  if (loading) return <div className="center-state"><Spin size="large" /></div>;
+  if (error || !task || !result) {
+    return <div className="page-container"><Alert type="error" showIcon message="结果读取失败" description={error || 'Result unavailable'} /></div>;
+  }
+
+  if (!isTerminalStatus(task.status)) {
+    return (
+      <div className="page-container">
+        <Alert
+          type="info"
+          showIcon
+          message="任务尚未结束"
+          description="运行中的任务请进入任务详情页查看 Cycle 和日志。"
+          action={<Button type="primary" onClick={() => navigate(`/simulation/tasks/${task.task_id}`)}>查看任务详情</Button>}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="page-container result-page">
+      <PageHeading
+        title={<Space>{task.task_name}<TaskStatusTag status={task.status} /></Space>}
+        subtitle={`${task.task_id} · ${task.simulator_label || task.simulator_version.toUpperCase()} · Chip Variant ${task.chip_variant_label || task.chip_variant || '默认'}`}
+        actions={
+          <Space>
+            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/simulation/tasks/${task.task_id}`)}>返回任务详情</Button>
+            <Button icon={<InboxOutlined />} onClick={() => void archiveToggle()}>{task.archived ? '取消归档' : '归档'}</Button>
+            <Button type="primary" icon={<RedoOutlined />} onClick={() => Modal.confirm({ title: '重新运行此任务？', content: '将复用原任务 input 创建新的 FIFO 任务。', onOk: rerun })}>重新运行</Button>
+          </Space>
+        }
+      />
+
+      {task.status !== 'COMPLETED' ? (
+        <Alert
+          className="result-alert"
+          type="error"
+          showIcon
+          message={`任务${task.status === 'FAILED' ? '失败' : '未正常完成'}`}
+          description={task.error_message || task.error_code || '没有更多错误信息'}
+        />
+      ) : null}
+
+      <div className="metrics-grid metrics-grid-4 result-metrics">
+        <MetricCard label="Total Cycle" value={formatNumber(result.total_cycle)} accent />
+        <MetricCard label="Simulated Time" value={formatSimulatedTime(result.simulated_time_seconds)} hint="芯片模型模拟时间" />
+        <MetricCard label="Runtime" value={formatDuration(result.runtime_seconds)} hint="服务器实际仿真耗时" />
+        <MetricCard label="Exit Code" value={result.exit_code ?? '—'} />
+      </div>
+
+      <Card
+        title="结果摘要"
+        className="section-card clean-card result-summary-card"
+        extra={<TaskStatusTag status={result.status} />}
+      >
+        <Descriptions column={{ xs: 1, sm: 2, lg: 3 }} size="small">
+          <Descriptions.Item label="Simulator">{task.simulator_label || task.simulator_version.toUpperCase()}</Descriptions.Item>
+          <Descriptions.Item label="Chip Variant">{task.chip_variant_label || task.chip_variant || '默认'}</Descriptions.Item>
+          <Descriptions.Item label="Simulation Mode">{task.simulation_mode_label || task.simulation_mode}</Descriptions.Item>
+          <Descriptions.Item label="提交时间">{formatDateTime(result.submit_time)}</Descriptions.Item>
+          <Descriptions.Item label="开始时间">{formatDateTime(result.start_time)}</Descriptions.Item>
+          <Descriptions.Item label="完成时间">{formatDateTime(result.end_time)}</Descriptions.Item>
+          <Descriptions.Item label="Current Cycle">{formatNumber(result.current_cycle)}</Descriptions.Item>
+          <Descriptions.Item label="Total Cycle">{formatNumber(result.total_cycle)}</Descriptions.Item>
+          <Descriptions.Item label="Trace"><TraceStatusTag status={result.trace_status} /></Descriptions.Item>
+        </Descriptions>
+      </Card>
+
+      <Card
+        title="Trace"
+        className="section-card clean-card trace-card"
+        extra={<TraceStatusTag status={result.trace_status} />}
+      >
+        {traceLoading ? (
+          <div className="trace-loading"><Spin /><span>正在加载 Trace…</span></div>
+        ) : traceError ? (
+          <Alert type="error" showIcon message="Trace 加载失败" description={traceError} />
+        ) : result.trace_available && trace ? (
+          <TraceViewer events={trace.events} eventCount={trace.event_count} />
+        ) : (
+          <Alert
+            type={result.trace_status === 'FAILED' ? 'error' : 'info'}
+            showIcon
+            message={result.trace_status === 'FAILED' ? 'Trace 生成失败' : 'Trace 暂不可用'}
+            description="Trace 只在仿真结果页展示；生成成功后会直接加载到此卡片。"
+          />
+        )}
+      </Card>
+
+      <Collapse
+        className="summary-collapse raw-result-collapse"
+        items={[
+          {
+            key: 'summary',
+            label: (
+              <div className="raw-result-label">
+                <strong>原始结果 · summary.json</strong>
+                <span>{result.summary_available ? '可用于调试、归档和字段核对' : '当前不可用'}</span>
+              </div>
+            ),
+            children: result.summary_available && result.summary ? (
+              <pre className="json-viewer">{JSON.stringify(result.summary, null, 2)}</pre>
+            ) : (
+              <Alert type="warning" showIcon message="summary.json 不可用" description={result.summary_error || 'No summary'} />
+            ),
+          },
+        ]}
+      />
+    </div>
+  );
+}

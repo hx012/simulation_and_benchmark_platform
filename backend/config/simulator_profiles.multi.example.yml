@@ -1,0 +1,38 @@
+# Example only. Keep using config/simulator_profiles.yml as the runtime source of truth.
+# Labels are optional; when omitted the backend provides sensible fallbacks.
+profiles:
+  - simulator_version: v310
+    simulator_label: V310
+    chip_variant: default
+    chip_variant_label: 默认
+    simulation_mode: SINGLE_CHIP
+    simulation_mode_label: 单芯片
+    entry_script: v310_deployment/test/system_test/single_chip_test.py
+    sst_args: []
+
+  - simulator_version: v320
+    simulator_label: V320
+    chip_variant: default
+    chip_variant_label: 默认
+    simulation_mode: SINGLE_CHIP
+    simulation_mode_label: 单芯片
+    entry_script: path/to/v320/single_chip_test.py
+    sst_args: []
+
+  - simulator_version: v320
+    simulator_label: V320
+    chip_variant: default
+    chip_variant_label: 默认
+    simulation_mode: MULTI_CHIP
+    simulation_mode_label: 多芯片
+    entry_script: path/to/v320/multi_chip_test.py
+    sst_args: []
+
+  - simulator_version: v320
+    simulator_label: V320
+    chip_variant: high_perf
+    chip_variant_label: 高性能版
+    simulation_mode: MULTI_CHIP
+    simulation_mode_label: 多芯片
+    entry_script: path/to/v320/high_perf_multi_chip_test.py
+    sst_args: []

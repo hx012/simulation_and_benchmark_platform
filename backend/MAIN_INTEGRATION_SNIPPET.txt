@@ -1,0 +1,20 @@
+Add the Benchmark router to the existing backend/app/main.py.
+Do not replace your existing Simulation router setup.
+
+1) Add import:
+
+from app.api.benchmark import router as benchmark_router
+
+2) After the FastAPI app is created, add:
+
+app.include_router(benchmark_router)
+
+Example only:
+
+from fastapi import FastAPI
+from app.api.simulation import router as simulation_router
+from app.api.benchmark import router as benchmark_router
+
+app = FastAPI(...)
+app.include_router(simulation_router)
+app.include_router(benchmark_router)

@@ -1,0 +1,42 @@
+from enum import Enum
+
+
+class SimulationMode(str, Enum):
+    SINGLE_CHIP = "SINGLE_CHIP"
+    MULTI_CHIP = "MULTI_CHIP"
+
+
+class TaskStatus(str, Enum):
+    QUEUED = "QUEUED"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+    TERMINATED = "TERMINATED"
+
+
+class ExecutionPhase(str, Enum):
+    WAITING = "WAITING"
+    PREPARING = "PREPARING"
+    STARTING = "STARTING"
+    EXECUTING = "EXECUTING"
+    COLLECTING = "COLLECTING"
+    FINISHED = "FINISHED"
+
+
+class TraceStatus(str, Enum):
+    NOT_REQUESTED = "NOT_REQUESTED"
+    PENDING = "PENDING"
+    GENERATING = "GENERATING"
+    READY = "READY"
+    FAILED = "FAILED"
+
+
+class UploadSessionStatus(str, Enum):
+    UPLOADING = "UPLOADING"
+    READY = "READY"
+    VALIDATING = "VALIDATING"
+    INVALID = "INVALID"
+    COMMITTING = "COMMITTING"
+    SUBMITTED = "SUBMITTED"
+    EXPIRED = "EXPIRED"
