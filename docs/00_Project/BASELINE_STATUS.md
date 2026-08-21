@@ -16,7 +16,8 @@
 
 - React、TypeScript、Vite、Ant Design 基础应用。
 - 开发态工号登录，身份保存在浏览器 `localStorage`。
-- Simulation 新建任务、我的任务、任务详情、运行日志、结果和 Trace 页面。
+- Simulation 新建任务、我的任务、任务详情、运行日志、结果和 Catapult Trace 页面。
+- Trace Viewer 支持浏览器全屏、`Esc` 退出、新窗口打开、导入弹窗隐藏和存量任务 React Viewer 回退。
 - Chip Config / Workload 文件树、上传、YAML/JSON 在线编辑和样例载入。
 - Benchmark Vendor / Chip / Benchmark 只读浏览页面。
 - `/api` 通过 Vite 代理访问 FastAPI。
@@ -29,7 +30,8 @@
 - Upload Session 创建、上传、样例复制、校验、提交和过期清理。
 - Simulation Task 查询、FIFO、取消、终止、归档、删除和 Rerun。
 - 独立 Simulation Worker、进程组管理、Cycle 解析、结果收集和恢复处理。
-- 日志分块读取、`summary.json` 读取和 Chrome Trace Format 事件读取。
+- 日志分块读取、`summary.json`、Chrome Trace Format 和 Catapult Viewer 产物读取。
+- Worker 调用 Catapult `trace2html` 生成独立 `trace.html`，Trace 转换失败不影响 Simulation 终态。
 - Simulator Profile / Capabilities 配置。
 - Benchmark Registry 只读适配。
 
@@ -52,7 +54,9 @@ runtime/<task_id>/
 ├── logs/davinci_sim.log
 └── result/
     ├── summary.json
-    └── trace/dumps/trace.json
+    └── trace/
+        ├── trace.html
+        └── dumps/trace.json
 ```
 
 默认本地配置从 `backend` 目录解析：
@@ -69,7 +73,7 @@ DATABASE_URL=postgresql+psycopg://ascend_platform:12345678@127.0.0.1:15432/ascen
 - 成功任务可在“我的任务”列表显示。
 - 任务详情可以增量读取 10,000 行日志。
 - 结果接口可以读取 summary 和 Trace。
-- Trace 样例可以被当前前端 Viewer 展示。
+- Trace 样例可以转换为 Catapult Viewer 并在前端 iframe 展示。
 - V310 样例可以复制到 Upload Session 并通过静态 YAML 校验。
 
 本地演示任务默认信息：
@@ -91,7 +95,7 @@ Trace Status: READY
 - 登录是前端开发态身份，后端尚无正式 SSO、用户表和权限校验。
 - 当前任务日志和原始 Trace 可由前端读取，尚未实现 PRD 中的敏感资产权限策略。
 - Compare、Analysis Report、Admin、Audit 尚未形成完整实现。
-- Trace Viewer 最终采用当前 React Viewer 还是 Catapult/trace2html，仍需后续决策。
+- Catapult 工具目录不进入 Git，离线部署包必须携带固定 commit `1d18f6e11082de030c45fd55b556d15e3aa628a8`，并通过 `CATAPULT_HOME` 指向该目录；继续验证大 Trace 的资源上限。
 
 ## 6. 基线变更规则
 

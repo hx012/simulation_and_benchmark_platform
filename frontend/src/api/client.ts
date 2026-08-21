@@ -32,6 +32,13 @@ function makeUrl(path: string, query?: Record<string, string | number | boolean 
   return queryString ? `${url}?${queryString}` : url;
 }
 
+export function apiResourceUrl(
+  path: string,
+  query?: Record<string, string | number | boolean | undefined | null>,
+) {
+  return makeUrl(path, query);
+}
+
 function detailToMessage(detail: unknown, fallback: string): string {
   if (typeof detail === 'string') {
     return detail;

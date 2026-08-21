@@ -23,6 +23,7 @@ class ResultWriter:
             / "dumps"
             / "trace.json"
         )
+        trace_viewer_path = workspace / "result" / "trace" / "trace.html"
 
         summary = {
             "schema_version": "1.0",
@@ -51,6 +52,11 @@ class ResultWriter:
                         task.trace_status == TraceStatus.READY
                         and trace_path.is_file()
                     )
+                    else None
+                ),
+                "trace_viewer_path": (
+                    str(trace_viewer_path.relative_to(workspace))
+                    if trace_viewer_path.is_file()
                     else None
                 ),
                 "error_code": task.error_code,

@@ -9,6 +9,7 @@ from fastapi import (
     Query,
     UploadFile,
 )
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.common.config import get_settings
@@ -505,6 +506,8 @@ def get_simulation_result(
         exit_code=task.exit_code,
         trace_status=task.trace_status,
         trace_available=artifacts.trace_available,
+        trace_source_available=artifacts.trace_source_available,
+        trace_viewer_available=artifacts.trace_viewer_available,
         summary_available=artifacts.summary_available,
         summary=artifacts.summary,
         summary_error=artifacts.summary_error,
@@ -540,6 +543,51 @@ def get_simulation_trace(
         task_id=task_id,
         event_count=len(events),
         events=events,
+    )
+
+
+@router.get(
+    "/tasks/{task_id}/trace/viewer",
+    response_class=FileResponse,
+)
+def get_simulation_trace_viewer(
+    task_id: str,
+    db: Session = Depends(get_db),
+) -> FileResponse:
+    try:
+        task = task_service.get_task(db, task_id)
+        viewer_path = task_io_service.get_trace_viewer_path(task)
+    except TaskIOError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        _raise_task_http_error(exc)
+        raise
+
+    return FileResponse(
+        viewer_path,
+        media_type="text/html",
+        headers={
+            "Cache-Control": "private, no-cache",
+            "Content-Disposition": (
+                f'inline; filename="{task_id}-trace.html"'
+            ),
+            "Content-Security-Policy": (
+                "default-src 'none'; "
+                "script-src 'unsafe-inline' 'unsafe-eval' blob:; "
+                "style-src 'unsafe-inline'; "
+                "img-src data: blob:; "
+                "font-src data:; "
+                "connect-src 'none'; "
+                "worker-src blob:; "
+                "frame-ancestors 'self'; "
+                "base-uri 'none'"
+            ),
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "SAMEORIGIN",
+        },
     )
 
 
