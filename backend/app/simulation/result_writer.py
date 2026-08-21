@@ -16,13 +16,8 @@ class ResultWriter:
         result_dir.mkdir(parents=True, exist_ok=True)
 
         summary_path = result_dir / "summary.json"
-        trace_path = (
-            workspace
-            / "result"
-            / "trace"
-            / "dumps"
-            / "trace.json"
-        )
+        trace_path = workspace / "result" / "trace" / "dumps" / "trace.json"
+        trace_viewer_path = workspace / "result" / "trace" / "trace.html"
 
         summary = {
             "schema_version": "1.0",
@@ -47,51 +42,28 @@ class ResultWriter:
                 "trace_status": task.trace_status.value,
                 "trace_path": (
                     str(trace_path.relative_to(workspace))
-                    if (
-                        task.trace_status == TraceStatus.READY
-                        and trace_path.is_file()
-                    )
+                    if task.trace_status == TraceStatus.READY and trace_path.is_file()
+                    else None
+                ),
+                "trace_viewer_path": (
+                    str(trace_viewer_path.relative_to(workspace))
+                    if task.trace_status == TraceStatus.READY and trace_viewer_path.is_file()
                     else None
                 ),
                 "error_code": task.error_code,
                 "error_message": task.error_message,
             },
             "time": {
-                "submit_time": (
-                    task.submit_time.isoformat()
-                    if task.submit_time
-                    else None
-                ),
-                "start_time": (
-                    task.start_time.isoformat()
-                    if task.start_time
-                    else None
-                ),
-                "end_time": (
-                    task.end_time.isoformat()
-                    if task.end_time
-                    else None
-                ),
-                "generated_at": datetime.now(
-                    timezone.utc
-                ).isoformat(),
+                "submit_time": task.submit_time.isoformat() if task.submit_time else None,
+                "start_time": task.start_time.isoformat() if task.start_time else None,
+                "end_time": task.end_time.isoformat() if task.end_time else None,
+                "generated_at": datetime.now(timezone.utc).isoformat(),
             },
         }
 
-        temp_path = summary_path.with_suffix(
-            ".json.tmp"
-        )
-
-        with temp_path.open(
-            "w",
-            encoding="utf-8",
-        ) as file:
-            json.dump(
-                summary,
-                file,
-                ensure_ascii=False,
-                indent=2,
-            )
+        temp_path = summary_path.with_suffix(".json.tmp")
+        with temp_path.open("w", encoding="utf-8") as file:
+            json.dump(summary, file, ensure_ascii=False, indent=2)
 
         temp_path.replace(summary_path)
         return summary_path
