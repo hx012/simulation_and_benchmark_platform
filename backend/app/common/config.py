@@ -16,6 +16,7 @@ class Settings(BaseSettings):
 
     simulator_home: Path | None = None
     sst_executable: Path | None = None
+    trace2html_path: Path | None = None
     database_url: str | None = None
 
     sim_worker_id: str = "simulation-worker-01"
