@@ -8,7 +8,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Install a validated simulation input as a read-only sample template."
+        description="Install a validated simulation input as a read-only default template."
     )
     parser.add_argument("--source", required=True, help="Directory containing chip_config/ and workload/")
     parser.add_argument("--simulator-version", default="v310")
@@ -29,9 +29,9 @@ def main() -> None:
     target = (
         Path(args.target_root).resolve()
         / args.simulator_version
-        / "sample"
+        / "default"
     )
-    staging = target.parent / ".sample.installing"
+    staging = target.parent / ".default.installing"
     shutil.rmtree(staging, ignore_errors=True)
     staging.mkdir(parents=True, exist_ok=True)
     shutil.copytree(chip, staging / "chip_config")
@@ -39,7 +39,7 @@ def main() -> None:
     shutil.rmtree(target, ignore_errors=True)
     staging.replace(target)
 
-    print(f"sample installed: {target}")
+    print(f"default installed: {target}")
     print(f"chip_config files: {sum(1 for p in (target / 'chip_config').rglob('*') if p.is_file())}")
     print(f"workload files: {sum(1 for p in (target / 'workload').rglob('*') if p.is_file())}")
 
