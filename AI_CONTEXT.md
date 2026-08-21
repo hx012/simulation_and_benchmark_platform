@@ -1,177 +1,415 @@
-# AI芯片仿真与Benchmark平台 - AI_CONTEXT
+# AI 芯片仿真与 Benchmark 平台 - AI_CONTEXT
+
+本文档用于给 AI Agent 和新开发者快速建立项目上下文。内容以当前代码为准，同时保留近期规划方向；如果代码和规划不一致，以“当前开发状态”为准。
 
 ## 1. 项目定位
 
-本项目用于构建统一的 AI 芯片仿真与 Benchmark 平台。
+本项目是一个面向 AI 芯片仿真任务管理和 Benchmark 数据分析的平台，目标是把以下能力整合为统一工作流：
 
-核心目标：
+- 仿真任务创建、排队、执行和生命周期管理。
+- Simulator Version、Chip Variant、Simulation Mode 的统一配置选择。
+- 仿真运行日志、summary 结果和 Trace 文件展示。
+- Benchmark registry 浏览，以及后续 Benchmark 结果、对比和 Trace 分析。
 
-- 提供 Web 化仿真任务管理能力。
-- 支持不同 Simulator Version、Chip Variant、Simulation Mode 的统一配置与运行。
-- 管理仿真任务生命周期，包括创建、执行、结果收集和展示。
-- 支持 Benchmark 数据管理以及后续性能分析和 Trace 对比。
+平台分为两条主线：
 
-## 2. 当前仓库结构
+- Simulation Platform：负责仿真任务上传、校验、提交、Worker 调度、结果收集和展示。
+- Benchmark Platform：负责芯片、Benchmark 定义和未来结果数据的管理展示。
 
-当前仓库主要包含前端和后端两部分：
+## 2. 仓库结构
 
-```
+```text
 simulation_and_benchmark_platform/
+├── AI_CONTEXT.md
+├── README.md
 ├── backend/
+│   ├── app/
+│   │   ├── api/
+│   │   ├── benchmark/
+│   │   ├── common/
+│   │   └── simulation/
+│   ├── config/
+│   ├── scripts/
+│   ├── worker/
+│   └── pyproject.toml
 ├── frontend/
-└── README.md
+│   ├── src/
+│   │   ├── api/
+│   │   ├── auth/
+│   │   ├── components/
+│   │   ├── hooks/
+│   │   ├── pages/
+│   │   ├── styles/
+│   │   ├── types/
+│   │   └── utils/
+│   └── package.json
+├── runtime/
+└── tools/
 ```
 
-## 3. 后端架构
+说明：
 
-后端位于：
+- `backend/app/main.py` 是当前 FastAPI 应用入口。
+- `backend/app/api/health.py` 提供健康检查接口。
+- `tools/` 当前包含 Catapult 相关工具代码，文件量很大，提交前需要确认是否应纳入仓库。
 
-```
-backend/
-```
+## 3. 技术栈
 
-主要目录：
+前端：
 
-|目录|职责|
-|-|-|
-|app|后端应用核心代码|
-|config|平台配置文件|
-|worker|后台任务执行相关逻辑|
-|scripts|辅助脚本|
-
-当前后端主要负责：
-
-- Simulation 任务管理。
-- Simulator 配置解析。
-- 仿真任务执行调度。
-- Runtime 环境管理。
-- 结果和日志收集。
-
-## 4. 前端架构
-
-前端位于：
-
-```
-frontend/
-```
-
-技术栈：
-
+- React
 - TypeScript
 - Vite
-- Web 前端组件化开发
+- Ant Design
+- React Router
 
-主要职责：
+后端：
 
-- 用户登录和身份标识。
-- Simulation 配置页面。
-- 任务列表和任务详情展示。
-- 仿真结果展示。
-- Benchmark 展示。
+- Python 3.10+
+- FastAPI
+- Pydantic / pydantic-settings
+- SQLAlchemy
+- PostgreSQL
+- PyYAML
+- python-multipart
 
-## 5. Simulation 功能
+## 4. 后端入口与配置
 
-Simulation 模块目标是支持统一管理多种芯片仿真能力。
+后端入口：
 
-当前设计支持：
-
-```
-Simulator Version
-        |
-        Chip Variant
-                |
-                Simulation Mode
+```text
+backend/app/main.py
 ```
 
-配置入口：
+当前入口会创建 FastAPI app，并注册：
 
+- `/health`
+- `/api/simulation/...`
+- `/api/benchmark/...`
+
+关键配置文件：
+
+```text
+backend/app/common/config.py
+backend/app/benchmark/config.py
+backend/config/simulator_profiles.yml
+backend/config/simulator_profiles.multi.example.yml
+backend/.env.example.additions
 ```
+
+通用环境变量由 `app.common.config.Settings` 读取，重要字段包括：
+
+- `DATABASE_URL`
+- `TASK_ROOT`
+- `SIMULATOR_HOME`
+- `SST_EXECUTABLE`
+- `SIM_WORKER_ID`
+- `SIM_MAX_CONCURRENT_TASKS`
+- `SIM_USER_TASK_LIMIT`
+- `SIM_SAMPLE_TEMPLATE_ROOT`
+
+Benchmark 使用 `AIBENCH_HOME` 读取现有 aibench registry。
+
+注意：`backend/app/common/database.py` 在导入时要求 `DATABASE_URL` 已配置。由于 simulation API 会导入数据库模块，启动完整 FastAPI app 时需要先准备数据库连接配置。
+
+## 5. Simulation 当前实现
+
+Simulation 的核心代码位于：
+
+```text
+backend/app/simulation/
+backend/app/api/simulation.py
+backend/worker/simulation_worker.py
+```
+
+核心模型：
+
+- `SimulationTask`
+- `UploadSession`
+
+任务状态：
+
+- `QUEUED`
+- `RUNNING`
+- `COMPLETED`
+- `FAILED`
+- `CANCELLED`
+- `TERMINATED`
+
+执行阶段：
+
+- `WAITING`
+- `PREPARING`
+- `STARTING`
+- `EXECUTING`
+- `COLLECTING`
+- `FINISHED`
+
+Trace 状态：
+
+- `NOT_REQUESTED`
+- `PENDING`
+- `GENERATING`
+- `READY`
+- `FAILED`
+
+上传会话状态：
+
+- `UPLOADING`
+- `READY`
+- `VALIDATING`
+- `INVALID`
+- `COMMITTING`
+- `SUBMITTED`
+- `EXPIRED`
+
+## 6. Simulation 任务流程
+
+标准流程：
+
+```text
+前端创建 Upload Session
+        ↓
+上传或套用样例 chip_config / workload
+        ↓
+后端校验上传内容
+        ↓
+提交 Upload Session
+        ↓
+创建 SimulationTask 和独立 workspace
+        ↓
+Worker FIFO claim 任务
+        ↓
+准备 runtime 输入
+        ↓
+启动 SST / Simulator 子进程
+        ↓
+更新日志、cycle、runtime
+        ↓
+收集 summary / trace
+        ↓
+任务进入终态
+```
+
+相关服务：
+
+- `UploadSessionService`：上传会话创建、文件替换、过期清理。
+- `UploadSessionValidator`：检查 chip_config / workload 文件结构和引用安全性。
+- `SimulationSubmissionService`：提交上传会话、创建任务 workspace、支持 rerun。
+- `TaskWorkspaceManager`：创建、克隆、删除任务 workspace。
+- `SimulationTaskService`：任务状态流转、取消、终止、归档。
+- `SimulationTaskIOService`：读取日志、summary 和 trace。
+- `SimulationWorker`：后台领取任务、启动仿真、采集进度和结果。
+
+## 7. Workspace 与文件组织
+
+每个仿真任务拥有独立 workspace，避免日志、结果和 Trace 相互覆盖。
+
+典型结构：
+
+```text
+TASK_ROOT/
+└── SIM-xxxx/
+    ├── input/
+    │   ├── chip_config/
+    │   └── workload/
+    ├── runtime/
+    │   └── resolved_config/
+    ├── logs/
+    │   └── davinci_sim.log
+    └── result/
+        ├── summary.json
+        └── trace/
+            └── dumps/
+                └── trace.json
+```
+
+数据库保存任务状态、路径和元数据；日志、summary、trace 这类大文件保存在文件系统中。
+
+## 8. Simulator Profile
+
+Profile 配置入口：
+
+```text
 backend/config/simulator_profiles.yml
 ```
 
-配置用于描述：
+Profile 描述：
 
-- Simulator 启动信息。
-- 芯片版本。
-- 仿真模式。
-- 运行参数。
+- `simulator_version`
+- `simulator_label`
+- `chip_variant`
+- `chip_variant_label`
+- `simulation_mode`
+- `simulation_mode_label`
+- `entry_script`
+- `sst_args`
 
-## 6. 仿真运行流程
+选择层级：
 
-基本流程：
-
-```
-用户提交任务
-      ↓
-Backend创建Job
-      ↓
-准备Runtime环境
-      ↓
-启动Simulator
-      ↓
-收集日志和结果
-      ↓
-Result页面展示
+```text
+Simulator Version
+        ↓
+Chip Variant
+        ↓
+Simulation Mode
 ```
 
-每个任务应保持独立运行环境，避免不同任务之间文件冲突。
+`SimulatorAdapter` 会根据任务选择的 profile 生成 `LaunchSpec`，设置：
 
-## 7. Trace能力
+- SST 命令行。
+- Simulator 工作目录。
+- `DAVINCI_SIM_ROOT`
+- `DAVINCI_DUMP_DIR`
+- `DAVINCI_SIMULATOR_CONFIG_DIR`
+- `DAVINCI_WORKLOAD_CONFIG_DIR`
+- `PYTHONPATH`
 
-Trace 用于展示芯片微架构执行过程。
+注意：当前 `simulator_profiles.yml` 中部分 `entry_script` 仍可能是占位路径。Capabilities 查询可以正常使用，但真正启动仿真前必须替换为真实脚本路径。
+
+## 9. Benchmark 当前实现
+
+Benchmark 当前是 V0.1 只读接入，不运行 benchmark，也不落库保存 benchmark result。
+
+核心代码：
+
+```text
+backend/app/api/benchmark.py
+backend/app/benchmark/registry_reader.py
+backend/app/benchmark/service.py
+backend/app/benchmark/result_provider.py
+```
+
+当前数据来源：
+
+```text
+AIBENCH_HOME/
+└── registry/
+    ├── chip_registry.json
+    └── ...
+```
+
+当前 API：
+
+- `GET /api/benchmark/status`
+- `GET /api/benchmark/chips`
+- `GET /api/benchmark/chips/{vendor}/{chip}`
+- `GET /api/benchmark/chips/{vendor}/{chip}/benchmarks`
+- `GET /api/benchmark/chips/{vendor}/{chip}/benchmarks/{benchmark_name}`
+- `GET /api/benchmark/chips/{vendor}/{chip}/benchmarks/{benchmark_name}/results`
+
+当前 result provider 是 `EmptyBenchmarkResultProvider`，会返回空结果列表。未来可以扩展为文件系统或数据库结果提供器。
+
+未来规划：
+
+- Macro 指标展示，例如 latency、throughput、power、memory usage。
+- Micro 指标展示，例如 bandwidth、compute、memory latency。
+- Benchmark result parser。
+- 不同芯片、版本、benchmark 的对比分析。
+- Benchmark Trace 分析。
+
+## 10. 前端当前实现
+
+前端入口和路由：
+
+```text
+frontend/src/main.tsx
+frontend/src/App.tsx
+```
+
+主要页面：
+
+- `/`：欢迎页。
+- `/login`：开发态登录页。
+- `/home`：首页。
+- `/simulation/new`：创建仿真任务。
+- `/simulation/tasks`：任务列表。
+- `/simulation/tasks/:taskId`：任务详情和实时日志。
+- `/simulation/tasks/:taskId/result`：仿真结果和 Trace。
+- `/benchmark`：Benchmark 芯片浏览。
+- `/benchmark/chips/:vendor/:chip`：芯片 Benchmark 页面。
+- `/benchmark/chips/:vendor/:chip/benchmarks/:benchmarkName`：Benchmark 详情。
+
+前端 API 封装：
+
+```text
+frontend/src/api/client.ts
+frontend/src/api/simulation.ts
+frontend/src/api/benchmark.ts
+```
+
+登录当前是开发态本地身份标识，保存在 `localStorage` 中；正式 SSO / LDAP 尚未接入。
+
+## 11. Trace 能力
+
+Trace 目标是复用 Chrome Trace Format 和 Catapult Trace Viewer，避免重复开发复杂时间线能力。
 
 当前方向：
 
-- 使用 Chrome Trace Format。
-- 使用 Catapult trace viewer 进行展示。
-- 避免重复开发自定义时间线组件。
+```text
+trace.json
+    ↓
+Trace Viewer 展示
+```
 
-未来支持：
+规划方向：
 
-- 多 Trace 对比。
-- Benchmark Trace 分析。
-- 性能瓶颈定位。
+```text
+trace.json
+    ↓
+trace2html
+    ↓
+trace.html
+    ↓
+前端 iframe 或独立 viewer 展示
+```
 
-## 8. Benchmark功能规划
+复用 Catapult 的原因：
 
-Benchmark 模块用于管理芯片性能数据。
+- 支持 lane 展示。
+- 支持缩放和搜索。
+- 支持事件详情查看。
+- 后续更容易扩展多 Trace 对比。
 
-规划支持：
+## 12. 当前开发状态
 
-- Macro 指标展示。
-- Micro 指标展示。
-- Trace 对比分析。
-- 不同芯片和版本之间的性能比较。
+已完成或已有代码：
 
-## 9. 当前开发状态
+- React + Vite 前端基础框架。
+- FastAPI 后端入口和 health API。
+- Simulation API 路由。
+- Benchmark API 路由。
+- SQLAlchemy 任务和上传会话模型。
+- 上传会话、任务提交、任务管理、日志读取、结果读取相关服务。
+- Worker 轮询、claim、启动仿真进程和更新任务状态的基础框架。
+- Simulator Profile 配置读取和 capabilities API。
+- Benchmark registry 只读浏览。
+- 前端登录、任务创建、任务列表、任务详情、结果页、Benchmark 浏览页面。
 
-已完成：
+进行中或待完善：
 
-- 基础 Web 平台框架。
-- 前后端分离架构。
-- Simulation任务管理基础能力。
-- Simulator Profile 配置框架。
-- 多级 Simulator 配置选择。
-- Trace生成和Catapult验证。
+- 数据库迁移脚本和部署初始化流程。
+- 真实 Simulator 环境和 profile 路径配置。
+- Trace Viewer 的最终集成方式。
+- Benchmark result provider 和真实结果数据链。
+- Benchmark compare 和性能回归分析。
+- 正式认证和权限体系。
 
-进行中：
+## 13. 开发规范
 
-- 仿真结果页面完善。
-- Trace Viewer 集成。
-- Benchmark 数据链建设。
+- 文档统一使用中文 Markdown。
+- 大功能建议使用 feature 分支开发，通过 PR 合入 main。
+- 代码修改需要同步更新相关文档。
+- Simulator 核心代码与平台代码保持解耦。
+- 优先复用成熟开源工具。
+- 提交前确认是否应包含 `tools/` 这类大型第三方目录，避免误提交。
 
-## 10. 开发规范
+## 14. 给 AI Agent 的注意事项
 
-1. 文档统一使用中文 Markdown。
-2. 大功能使用 feature 分支开发，通过 PR 合入 main。
-3. 代码修改需要同步更新相关文档。
-4. Simulator 核心代码与平台代码保持解耦。
-5. 优先复用成熟开源工具。
-
-## 11. 后续规划
-
-- 完善 Trace Viewer。
-- Benchmark Compare。
-- 性能回归分析。
-- AI Agent辅助开发流程。
-- 建立持续维护的项目知识库。
+- 先读 `AI_CONTEXT.md`、`backend/app/main.py`、`frontend/src/App.tsx` 再判断任务入口。
+- 后端完整启动依赖 `DATABASE_URL`；如果只是阅读代码，不要假设服务可直接启动。
+- Benchmark 当前不是完整执行平台，只是 registry read-only 接入。
+- 不要把未来规划中的用户表、Benchmark 结果表当作当前已经实现的数据库模型。
+- 修改前端时保持 Ant Design 和现有页面风格。
+- 修改后端时优先沿用 service / repository / schema 的分层方式。
+- 工作区可能存在未跟踪的 `tools/` 目录，提交前要显式确认是否需要纳入。
