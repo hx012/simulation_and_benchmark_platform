@@ -9,6 +9,7 @@
 - FastAPI Backend
 - Simulation Worker
 - Frontend
+- Catapult Trace Viewer 工具目录
 
 推荐启动顺序：PostgreSQL -> Alembic -> Backend -> Worker -> Frontend。
 
@@ -30,6 +31,10 @@ DATABASE_URL=postgresql+psycopg://ascend_platform:CHANGE_ME@127.0.0.1:15432/asce
 SIMULATOR_HOME=/path/to/simulator
 SST_EXECUTABLE=/path/to/sst
 AIBENCH_HOME=/path/to/aibench
+CATAPULT_HOME=/path/to/simulation_and_benchmark_platform/tools/catapult
+CATAPULT_PYTHON=/usr/bin/python3
+SIM_TRACE_VIEWER_ENABLED=true
+SIM_TRACE_VIEWER_CONFIG=full
 ```
 
 不要将服务器 `.env` 提交到 Git。
@@ -117,7 +122,44 @@ PYTHONPATH=$PWD uv run python worker/simulation_worker.py
 - Worker 用户对 `TASK_ROOT` 有读写权限；
 - Simulator 运行依赖和环境变量已加载。
 
-## 7. Frontend
+## 7. Catapult Trace Viewer
+
+部署包必须包含仓库根目录下的 `tools/catapult`。当前验证版本为：
+
+```text
+Source: https://chromium.googlesource.com/catapult
+Commit: 1d18f6e11082de030c45fd55b556d15e3aa628a8
+Config: full
+```
+
+`tools/` 被根级 `.gitignore` 忽略，因此 `git clone`、`git archive` 和 PR 都不会携带 Catapult。离线部署包必须显式加入该目录：
+
+```text
+simulation_and_benchmark_platform/
+├── backend/
+├── frontend/
+└── tools/
+    └── catapult/
+```
+
+不要把开发机的 `backend/.env`、`.venv`、`node_modules`、`runtime` 打入代码包。服务器上重新创建 `.env`，并将 `CATAPULT_HOME` 指向服务器项目内的绝对路径。WSL 为规避 `/mnt/*` 小文件读取性能问题可能使用 `$HOME/.cache` 副本，这个本机覆盖路径不得复制到公司服务器。
+
+部署后验证：
+
+```bash
+test -f "$CATAPULT_HOME/tracing/tracing_build/trace2html.py"
+cd /path/to/simulation_and_benchmark_platform/backend
+uv run python scripts/test_catapult_trace_viewer.py
+uv run python scripts/build_trace_viewers.py --all --dry-run
+```
+
+平台通过 Python 3 适配入口调用 Catapult，生成 `full` 配置的独立 `trace.html`。生成文件内包含平台集成桥：导入期间隐藏 Catapult 自带的黑色 `Importing...` 弹窗，模型就绪后通过 `postMessage` 通知结果页显示 iframe。已有 `trace.json` 的存量任务升级后需要执行：
+
+```bash
+uv run python scripts/build_trace_viewers.py --all --force
+```
+
+## 8. Frontend
 
 ```bash
 cd /path/to/simulation_and_benchmark_platform/frontend
@@ -131,12 +173,13 @@ npm run dev -- --host 0.0.0.0
 
 正式部署建议由 Nginx 提供前端静态文件并代理 `/api`，具体配置在公司部署方案确定后补充。
 
-## 8. 日常检查
+## 9. 日常检查
 
 ```bash
 docker ps --filter name=ascend-platform-postgres
 uv run alembic current
 curl http://127.0.0.1:8000/health
+test -f "$CATAPULT_HOME/tracing/tracing_build/trace2html.py"
 ```
 
 数据库记录与任务文件必须同时保留：PostgreSQL 保存任务元数据，`TASK_ROOT` 保存日志、summary 和 Trace。只恢复其中一部分会造成页面和文件系统状态不一致。

@@ -1,4 +1,4 @@
-import { apiRequest } from './client';
+import { apiRequest, apiResourceUrl } from './client';
 import type {
   ApplySimulationSampleResponse,
   LocalFileEntry,
@@ -103,6 +103,13 @@ export const simulationApi = {
   getTrace(taskId: string) {
     return apiRequest<SimulationTraceResponse>(
       `${BASE}/tasks/${encodeURIComponent(taskId)}/trace`,
+    );
+  },
+
+  getTraceViewerUrl(taskId: string, revision?: number) {
+    return apiResourceUrl(
+      `${BASE}/tasks/${encodeURIComponent(taskId)}/trace/viewer`,
+      revision === undefined ? undefined : { revision },
     );
   },
 

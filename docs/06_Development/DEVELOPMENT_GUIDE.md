@@ -85,6 +85,26 @@ uv run python scripts/seed_local_completed_task.py \
 
 该脚本会在仓库根目录 `runtime/<task_id>/` 生成日志、summary 和 Trace，并新增或更新数据库任务。Trace 文件属于本地输入，不进入 Git。
 
+为已有任务生成 Catapult Viewer：
+
+```bash
+cd backend
+uv run python scripts/build_trace_viewers.py --all --dry-run
+uv run python scripts/build_trace_viewers.py --all
+```
+
+Catapult 默认从仓库根目录 `tools/catapult` 读取，也可以通过 `CATAPULT_HOME` 和 `CATAPULT_PYTHON` 指向部署环境中的固定版本。当前验证并要求打包的版本是 `1d18f6e11082de030c45fd55b556d15e3aa628a8`。生成文件位于 `runtime/<task_id>/result/trace/trace.html`，不进入 Git。
+
+`tools/` 被 Git 忽略，PR 只提交适配代码和版本文档，不提交 Catapult 源码。制作离线服务器包时必须显式包含 `tools/catapult`。WSL 项目位于 `/mnt/*` 时，Catapult 大量小文件的冷读取可能超过转换超时；本地可把同一 commit 缓存到 Linux 原生文件系统并仅在本机 `.env` 覆盖 `CATAPULT_HOME`，公司原生 Linux 服务器仍使用项目内目录。
+
+`catapult_trace2html.py` 会向生成的 HTML 注入平台集成桥。Catapult 解析期间隐藏其原生 `Importing...` overlay，完成、失败或超时后向父页面发送状态。调整该逻辑后必须强制回填测试任务并做浏览器验证：
+
+```bash
+uv run python scripts/build_trace_viewers.py \
+  --task-id <task-id> \
+  --force
+```
+
 如果页面使用其他工号登录，将 `--owner-id` 改为当前工号；“我的任务”会按 `owner_id` 严格过滤。
 
 ## 5. 修改约束
@@ -105,3 +125,4 @@ uv run python scripts/seed_local_completed_task.py \
 4. 运行与改动风险匹配的测试。
 5. PR 描述写明范围、验证结果、已知限制和文档变化。
 6. 默认先创建 Draft PR，验证和评审完成后再转 Ready。
+7. Catapult 相关 PR 必须写明验证 commit；离线工具目录通过部署包交付，不得误认为 PR 会包含 `tools/`。

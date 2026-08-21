@@ -28,6 +28,9 @@ from app.simulation.simulator.cycle_parser import (
 from app.simulation.simulator.trace_runner import (
     TraceRunner,
 )
+from app.simulation.catapult_trace_exporter import (
+    CatapultTraceExporter,
+)
 from app.simulation.result_writer import (
     ResultWriter,
 )
@@ -97,6 +100,9 @@ class SimulationWorker:
         )
 
         self.trace_runner = TraceRunner(
+            settings=self.settings,
+        )
+        self.trace_exporter = CatapultTraceExporter(
             settings=self.settings,
         )
         self.result_writer = ResultWriter()
@@ -945,6 +951,26 @@ print("mock simulator completed", flush=True)
             )
 
             if result.success:
+                if self.settings.sim_trace_viewer_enabled:
+                    viewer_result = self.trace_exporter.run(
+                        workspace_path,
+                        title=f"{task_id} · Simulation Trace",
+                    )
+
+                    if not viewer_result.success:
+                        with SessionLocal.begin() as db:
+                            self.task_service.mark_trace_failed(
+                                db,
+                                task_id,
+                            )
+
+                        print(
+                            f"[worker] Catapult viewer failed "
+                            f"{task_id}: "
+                            f"{viewer_result.error_message}"
+                        )
+                        return
+
                 with SessionLocal.begin() as db:
                     self.task_service.mark_trace_ready(
                         db,

@@ -43,6 +43,8 @@
 | A-013 | 本地 PostgreSQL 使用 named volume 保存数据 | 避免容器重建后任务元数据丢失 | Accepted |
 | A-014 | 仓库根目录 `runtime/` 保存本地任务文件，Backend 通过 `TASK_ROOT=../runtime` 访问 | 保持运行数据与代码模块同级隔离 | Accepted |
 | A-015 | 本地演示任务通过种子脚本生成，不提交日志、Trace 和数据库数据 | 保持仓库轻量且可重复恢复开发状态 | Accepted |
+| A-016 | V1 使用 Catapult `trace2html` 的 `full` 配置生成独立 Viewer，由前端受限 iframe 展示 | 本地 Catapult 的 `lean` 产物缺少运行时 importer；`full` 可复用成熟 Lane、缩放、搜索和事件详情能力 | Accepted |
+| A-017 | Catapult 固定使用 commit `1d18f6e11082de030c45fd55b556d15e3aa628a8`，通过离线部署包而非 Git PR 分发 | 公司服务器不能直接下载；`tools/` 不进入 Git；固定验证版本避免上游 HEAD 漂移 | Accepted |
 
 ## 变更规则
 

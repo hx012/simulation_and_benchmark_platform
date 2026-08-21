@@ -139,6 +139,8 @@ export interface SimulationResultResponse {
   exit_code: number | null;
   trace_status: TraceStatus;
   trace_available: boolean;
+  trace_source_available: boolean;
+  trace_viewer_available: boolean;
   summary_available: boolean;
   summary: Record<string, unknown> | null;
   summary_error: string | null;
