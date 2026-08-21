@@ -1,6 +1,6 @@
 # AI 芯片仿真与 Benchmark 平台 - AI_CONTEXT
 
-本文档用于给 AI Agent 和新开发者快速建立项目上下文。内容以当前代码为准，同时保留近期规划方向；如果代码和规划不一致，以“当前开发状态”为准。
+本文档用于给 AI Agent 和新开发者快速建立项目上下文。当前工程基线见 `docs/00_Project/BASELINE_STATUS.md`，后续优先级见 `docs/00_Project/ROADMAP.md`。如果目标设计与代码不一致，以当前代码和基线状态文档为准。
 
 ## 1. 项目定位
 
@@ -20,8 +20,14 @@
 
 ```text
 simulation_and_benchmark_platform/
-├── AI_CONTEXT.md
 ├── README.md
+├── docs/
+│   ├── AI_CONTEXT.md
+│   ├── 00_Project/
+│   ├── 01_Product/
+│   ├── 03_Architecture/
+│   ├── 04_Startup/
+│   └── 06_Development/
 ├── backend/
 │   ├── app/
 │   │   ├── api/
@@ -43,15 +49,17 @@ simulation_and_benchmark_platform/
 │   │   ├── types/
 │   │   └── utils/
 │   └── package.json
-├── runtime/
-└── tools/
+├── runtime/              # 本地任务数据，不提交 Git
+└── tools/                # 本地第三方工具，不纳入当前基线
 ```
 
 说明：
 
 - `backend/app/main.py` 是当前 FastAPI 应用入口。
 - `backend/app/api/health.py` 提供健康检查接口。
-- `tools/` 当前包含 Catapult 相关工具代码，文件量很大，提交前需要确认是否应纳入仓库。
+- `docs/README.md` 是文档入口，新会话先读本文件、`BASELINE_STATUS.md` 和 `ROADMAP.md`。
+- `runtime/` 与 `backend/` 同级，由 `TASK_ROOT=../runtime` 指向。
+- `tools/` 当前包含 Catapult 相关工具代码，文件量很大，当前明确不纳入基线 PR。
 
 ## 3. 技术栈
 
@@ -94,7 +102,9 @@ backend/app/common/config.py
 backend/app/benchmark/config.py
 backend/config/simulator_profiles.yml
 backend/config/simulator_profiles.multi.example.yml
-backend/.env.example.additions
+backend/.env.example
+backend/alembic.ini
+backend/alembic/
 ```
 
 通用环境变量由 `app.common.config.Settings` 读取，重要字段包括：
@@ -111,6 +121,13 @@ backend/.env.example.additions
 Benchmark 使用 `AIBENCH_HOME` 读取现有 aibench registry。
 
 注意：`backend/app/common/database.py` 在导入时要求 `DATABASE_URL` 已配置。由于 simulation API 会导入数据库模块，启动完整 FastAPI app 时需要先准备数据库连接配置。
+
+本地开发默认从 `backend` 目录启动，使用：
+
+```env
+TASK_ROOT=../runtime
+DATABASE_URL=postgresql+psycopg://ascend_platform:12345678@127.0.0.1:15432/ascend_platform
+```
 
 ## 5. Simulation 当前实现
 
@@ -225,6 +242,17 @@ TASK_ROOT/
 ```
 
 数据库保存任务状态、路径和元数据；日志、summary、trace 这类大文件保存在文件系统中。
+
+仓库内置一个用于界面开发的 V310 样例：
+
+```text
+backend/config/simulation_templates/v310/default/single_chip/
+├── chip_config/
+│   ├── simulator_config.yml
+│   └── daw_config.yml
+└── workload/
+    └── workload.yml
+```
 
 ## 8. Simulator Profile
 
@@ -342,7 +370,7 @@ frontend/src/api/benchmark.ts
 
 ## 11. Trace 能力
 
-Trace 目标是复用 Chrome Trace Format 和 Catapult Trace Viewer，避免重复开发复杂时间线能力。
+Trace 输入采用 Chrome Trace Format。当前前端由 `frontend/src/components/TraceViewer.tsx` 直接渲染事件；Catapult/trace2html 是候选演进方案，尚未确定为最终基线。
 
 当前方向：
 
@@ -352,7 +380,7 @@ trace.json
 Trace Viewer 展示
 ```
 
-规划方向：
+候选演进方向：
 
 ```text
 trace.json
@@ -385,10 +413,13 @@ trace.html
 - Simulator Profile 配置读取和 capabilities API。
 - Benchmark registry 只读浏览。
 - 前端登录、任务创建、任务列表、任务详情、结果页、Benchmark 浏览页面。
+- Docker PostgreSQL 镜像、Alembic 初始迁移和 WSL 启动流程。
+- V310 界面样例，以及本地成功任务种子脚本。
+- 根级 `runtime/` 任务目录约定、日志/summary/trace API 验证。
 
 进行中或待完善：
 
-- 数据库迁移脚本和部署初始化流程。
+- 本地 Mock Capability/Profile 的完整前端提交闭环。
 - 真实 Simulator 环境和 profile 路径配置。
 - Trace Viewer 的最终集成方式。
 - Benchmark result provider 和真实结果数据链。
@@ -402,14 +433,16 @@ trace.html
 - 代码修改需要同步更新相关文档。
 - Simulator 核心代码与平台代码保持解耦。
 - 优先复用成熟开源工具。
-- 提交前确认是否应包含 `tools/` 这类大型第三方目录，避免误提交。
+- 不提交 `tools/`、`runtime/`、`.env`、虚拟环境、`node_modules` 和 Python 缓存。
 
 ## 14. 给 AI Agent 的注意事项
 
-- 先读 `AI_CONTEXT.md`、`backend/app/main.py`、`frontend/src/App.tsx` 再判断任务入口。
+- 先读 `docs/AI_CONTEXT.md`、`docs/00_Project/BASELINE_STATUS.md`、`docs/00_Project/ROADMAP.md`，再查看 `backend/app/main.py` 和 `frontend/src/App.tsx`。
 - 后端完整启动依赖 `DATABASE_URL`；如果只是阅读代码，不要假设服务可直接启动。
 - Benchmark 当前不是完整执行平台，只是 registry read-only 接入。
 - 不要把未来规划中的用户表、Benchmark 结果表当作当前已经实现的数据库模型。
 - 修改前端时保持 Ant Design 和现有页面风格。
 - 修改后端时优先沿用 service / repository / schema 的分层方式。
-- 工作区可能存在未跟踪的 `tools/` 目录，提交前要显式确认是否需要纳入。
+- 当前 `tools/` 和 `runtime/` 是明确的本地目录，不纳入基线提交。
+- “我的任务”按当前登录用户的 `owner_id` 过滤，本地种子任务默认属于 `test-user`。
+- 后端数据模型变化必须新增 Alembic migration，不能直接修改已发布 migration。
