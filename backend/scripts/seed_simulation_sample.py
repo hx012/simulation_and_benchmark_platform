@@ -12,6 +12,12 @@ def main() -> None:
     )
     parser.add_argument("--source", required=True, help="Directory containing chip_config/ and workload/")
     parser.add_argument("--simulator-version", default="v310")
+    parser.add_argument("--chip-variant", default="default")
+    parser.add_argument(
+        "--simulation-mode",
+        default="single_chip",
+        choices=("single_chip", "multi_chip"),
+    )
     parser.add_argument(
         "--target-root",
         default=str(BACKEND_ROOT / "config" / "simulation_templates"),
@@ -29,9 +35,10 @@ def main() -> None:
     target = (
         Path(args.target_root).resolve()
         / args.simulator_version
-        / "default"
+        / args.chip_variant
+        / args.simulation_mode
     )
-    staging = target.parent / ".default.installing"
+    staging = target.parent / f".{target.name}.installing"
     shutil.rmtree(staging, ignore_errors=True)
     staging.mkdir(parents=True, exist_ok=True)
     shutil.copytree(chip, staging / "chip_config")
@@ -39,7 +46,7 @@ def main() -> None:
     shutil.rmtree(target, ignore_errors=True)
     staging.replace(target)
 
-    print(f"default installed: {target}")
+    print(f"sample installed: {target}")
     print(f"chip_config files: {sum(1 for p in (target / 'chip_config').rglob('*') if p.is_file())}")
     print(f"workload files: {sum(1 for p in (target / 'workload').rglob('*') if p.is_file())}")
 

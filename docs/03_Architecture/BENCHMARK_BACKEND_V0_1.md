@@ -1,4 +1,6 @@
-# Benchmark Backend V0.1 空壳
+# Benchmark Backend V0.1 基线
+
+> **Status:** Implemented read-only baseline
 
 ## 目标
 
@@ -98,36 +100,26 @@ FilesystemBenchmarkResultProvider
 
 然后替换 Provider，不需要推翻 Registry/API 主结构。
 
-## 接入现有 FastAPI
+## FastAPI 接入
 
-由于本增量包不知道你当前 `app/main.py` 的完整内容，因此没有覆盖它。
-
-按照 `MAIN_INTEGRATION_SNIPPET.txt` 增加 Benchmark router：
+Benchmark router 已在 `backend/app/main.py` 注册：
 
 ```python
 from app.api.benchmark import router as benchmark_router
 app.include_router(benchmark_router)
 ```
 
-如果要我下一步给出 `app/main.py` 完整替换版，把当前文件内容发我即可。
-
 ## 验证
-
-先检查 Python：
-
-```bash
-cd backend
-python -m compileall app scripts
-```
 
 Registry 直接验证：
 
 ```bash
-python scripts/test_benchmark_registry.py \
-  --aibench-home /home/h00517730/code/ascend_workload_modeling_and_simulation/ascend-bench/aibench/aibench
+cd backend
+uv run python scripts/test_benchmark_registry.py \
+  --aibench-home /path/to/aibench
 ```
 
-接入 main.py 并启动 FastAPI 后：
+启动 FastAPI 后：
 
 ```bash
 curl http://127.0.0.1:8000/api/benchmark/status
@@ -137,4 +129,4 @@ curl http://127.0.0.1:8000/api/benchmark/chips/huawei/a5/benchmarks
 
 ## 下一阶段
 
-等 Benchmark 结果保存位置和真实样例确定后，再定义结果目录和 Parser。不要现在预设 MACRO/MICRO/TRACE 的具体 Result Schema。
+等 Benchmark 结果保存位置和真实样例确定后，再定义结果目录和 Parser。不要在缺少真实数据时预设 MACRO/MICRO/TRACE 的具体 Result Schema。

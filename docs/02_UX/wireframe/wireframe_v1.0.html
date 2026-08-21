@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AI芯片仿真与Benchmark平台 - Wireframe V1.0</title>
+<style>
+:root{
+  --bg:#f5f6f8; --panel:#fff; --line:#cfd4dc; --text:#20242a; --muted:#69707d;
+  --soft:#eef0f3; --dark:#4c5563; --warn:#fff7dd;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,"Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text)}
+button,input,select,textarea{font:inherit}
+.app{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+.side{background:#e8eaee;border-right:1px solid var(--line);padding:18px 14px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{font-weight:800;font-size:17px;padding:7px 8px 18px;border-bottom:1px solid var(--line);margin-bottom:12px}
+.small{font-size:12px;color:var(--muted)}
+.navbtn{width:100%;text-align:left;border:0;background:transparent;padding:10px 12px;margin:2px 0;border-radius:6px;cursor:pointer;color:#303640}
+.navbtn:hover,.navbtn.active{background:#d9dde4;font-weight:700}
+.group{font-size:11px;color:#7b818a;margin:16px 10px 5px;text-transform:uppercase;letter-spacing:.06em}
+.main{min-width:0}
+.top{height:58px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:3}
+.user{display:flex;gap:15px;align-items:center}
+.content{padding:24px;max-width:1500px;margin:auto}
+.screen{display:none}.screen.active{display:block}
+.pagehead{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:20px}
+h1{font-size:24px;margin:0 0 4px} h2{font-size:17px;margin:0 0 12px} h3{font-size:14px;margin:0 0 8px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px;margin-bottom:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.metric{border:1px solid var(--line);background:#fff;border-radius:8px;padding:16px}.metric .num{font-size:26px;font-weight:800;margin-top:5px}
+.bigentry{min-height:145px;padding:22px;border:2px solid #aeb4bd;background:#fff;border-radius:10px;display:flex;flex-direction:column;justify-content:space-between}.bigentry strong{font-size:21px}
+.btn{border:1px solid #9097a2;background:#fff;padding:8px 14px;border-radius:6px;cursor:pointer}.btn.primary{background:#4e5663;color:#fff;border-color:#4e5663}.btn.danger{background:#fff;border-color:#777;font-weight:700}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.spread{display:flex;justify-content:space-between;align-items:center;gap:15px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:180px;flex:1}.field label{font-size:12px;color:var(--muted);font-weight:700}
+input,select,textarea{border:1px solid #b9bec7;border-radius:5px;background:#fff;padding:9px 10px}
+.code{height:235px;width:100%;font-family:Consolas,monospace;background:#fafafa;white-space:pre}
+.table{width:100%;border-collapse:collapse}.table th,.table td{border-bottom:1px solid #d9dde3;padding:10px;text-align:left;font-size:13px}.table th{background:#f0f1f3;color:#535b66}
+.tag{display:inline-block;border:1px solid #9ca2ab;border-radius:99px;padding:3px 8px;font-size:11px;background:#f7f7f7}
+.status{font-weight:700}.tabs{display:flex;gap:8px;margin:12px 0;flex-wrap:wrap}.tab{padding:7px 11px;border:1px solid #b7bcc5;border-radius:99px;background:#fff;font-size:12px}
+.note{background:var(--warn);border:1px solid #d5c99b;padding:11px 13px;border-radius:6px;font-size:12px;color:#5c5540;margin-bottom:14px}
+.log{font-family:Consolas,monospace;background:#f7f7f7;border:1px solid var(--line);padding:12px;line-height:1.7;font-size:12px;max-height:250px;overflow:auto}
+.watermark{position:relative;overflow:hidden}.watermark:after{content:"00123456 · 仅限内部使用";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transform:rotate(-20deg);font-size:32px;font-weight:800;color:rgba(70,70,70,.08);pointer-events:none}
+.kpirow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.kpi{border:1px solid var(--line);background:#fff;padding:12px;border-radius:6px}.kpi b{font-size:20px;display:block;margin-top:4px}
+.loginwrap{min-height:700px;display:grid;grid-template-columns:1.1fr .9fr;background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}.loginhero{background:#e5e8ed;padding:55px}.loginbox{padding:60px;display:flex;align-items:center}.loginbox .inner{width:100%;max-width:420px}
+.hr{height:1px;background:var(--line);margin:16px 0}
+.bundle{display:grid;grid-template-columns:300px 1fr;gap:14px}.tree{border:1px solid var(--line);border-radius:6px;background:#fafafa;min-height:310px;padding:12px;font-family:Consolas,"Microsoft YaHei",monospace;font-size:12px;line-height:1.8}.tree .sel{background:#dfe3e8;border-radius:4px;padding:2px 5px}.tree .muted{color:#777}
+.viewer{border:2px dashed #9da4ae;background:#fafafa;min-height:300px;border-radius:8px;padding:22px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
+.viewer strong{font-size:20px}.viewer p{max-width:700px;color:#69707d}
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.chipcard{border:1px solid var(--line);background:#fff;border-radius:9px;padding:18px;cursor:pointer;min-height:145px}.chipcard:hover{outline:2px solid #b9bec7}.chipcard h3{font-size:19px}
+.filterbar{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:14px}
+.viewer-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.analysis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.microgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.microitem{border:1px solid var(--line);border-radius:8px;background:#fff;padding:16px}
+.microitem .value{font-size:24px;font-weight:800;margin:8px 0}
+.catbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.catpill{padding:8px 12px;border:1px solid #b7bcc5;background:#fff;border-radius:99px;cursor:pointer}
+.catpill.active{background:#dfe3e8;font-weight:700}
+.drawer{border-left:4px solid #9aa1ab;background:#fafafa;padding:16px;margin-top:14px}
+.arch{font-family:Consolas,monospace;font-size:12px;line-height:1.65;white-space:pre;background:#f7f7f7;border:1px solid var(--line);border-radius:6px;padding:14px}
+.reportlist .item{padding:12px 0;border-bottom:1px solid var(--line)}
+@media(max-width:1000px){
+ .app{grid-template-columns:1fr}.side{position:relative;height:auto}.grid2,.grid3,.grid4,.kpirow,.chips,.analysis,.microgrid{grid-template-columns:1fr}.bundle{grid-template-columns:1fr}.top{position:relative}
+}
+
+.detail-shell{display:grid;grid-template-columns:260px 1fr;gap:16px}
+.sideinfo{border:1px solid var(--line);background:#fff;border-radius:8px;padding:16px;height:max-content}
+.sideinfo .kv{margin:0 0 12px}.sideinfo b{display:block;font-size:12px;color:#666;margin-bottom:3px}
+.resultblocks{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.chartbox{border:1px dashed #999;border-radius:8px;background:#fafafa;min-height:210px;display:flex;align-items:center;justify-content:center;color:#777}
+.checkgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.check{border:1px solid var(--line);border-radius:6px;background:#fff;padding:12px}
+.table tr.clickable{cursor:pointer}.table tr.clickable:hover td{background:#f7f8fa}
+@media(max-width:1000px){.detail-shell,.resultblocks,.checkgrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="side">
+  <div class="brand">AI Chip Platform<br><span class="small">Wireframe V1.0</span></div>
+  <div class="group">入口</div>
+  <button class="navbtn active" data-screen="login">01 登录 / 账号申请</button>
+  <button class="navbtn" data-screen="home">02 首页 Dashboard</button>
+
+  <div class="group">仿真开发</div>
+  <button class="navbtn" data-screen="sim-new">03 新建仿真任务</button>
+  <button class="navbtn" data-screen="sim-list">04 我的任务</button>
+  <button class="navbtn" data-screen="sim-running">05 运行详情</button>
+  <button class="navbtn" data-screen="sim-result">06 仿真结果 / Trace</button>
+
+  <div class="group">Benchmark</div>
+  <button class="navbtn" data-screen="bench-browse">07 Benchmark 浏览</button>
+  <button class="navbtn" data-screen="chip-home">08 芯片主页</button>
+  <button class="navbtn" data-screen="macro">09 MACRO Benchmark List</button>
+  <button class="navbtn" data-screen="micro">10 MICRO Benchmark List</button>
+  <button class="navbtn" data-screen="trace">11 TRACE Benchmark List</button>
+  <button class="navbtn" data-screen="bench-detail">12 Benchmark Detail</button>
+  <button class="navbtn" data-screen="trace-detail">13 Trace Benchmark Detail</button>
+  <button class="navbtn" data-screen="analysis-list">14 分析报告列表</button>
+  <button class="navbtn" data-screen="analysis-detail">15 单篇分析报告</button>
+  <button class="navbtn" data-screen="compare">16 Compare</button>
+
+  <div class="group">管理员</div>
+  <button class="navbtn" data-screen="admin">17 管理员中心（V1 简化）</button>
+</aside>
+
+<main class="main">
+<header class="top">
+  <div><b id="screenTitle">登录 / 账号申请</b></div>
+  <div class="user"><span class="small">内部平台</span><span>张三 · 00123456</span></div>
+</header>
+
+<div class="content">
+
+<section class="screen active" id="login" data-title="登录 / 账号申请">
+  <div class="loginwrap">
+    <div class="loginhero"><h1>AI 芯片仿真与 Benchmark 平台</h1><p>统一提供芯片仿真、性能 Benchmark、Trace 与研究成果浏览能力。</p><div class="hr"></div><p class="small">仅限公司内部用户使用</p></div>
+    <div class="loginbox"><div class="inner"><h2>工号登录</h2><div class="field"><label>工号</label><input value="00123456"/></div><br/><div class="field"><label>密码</label><input type="password" value="123456"/></div><br/><button class="btn primary">登录</button><div class="hr"></div><div class="spread"><span class="small">普通权限账号可自动开通</span><button class="btn">申请账号</button></div></div></div>
+  </div>
+</section>
+
+<section class="screen" id="home" data-title="首页 Dashboard">
+  <div class="pagehead"><div><h1>AI 芯片仿真与 Benchmark 平台</h1><div class="small">芯片仿真 · 性能 Benchmark · 微架构研究与分析</div></div></div>
+  <div class="grid2">
+    <div class="bigentry"><div><strong>仿真开发</strong><p class="small">提交 Simulator Version + Chip Config Bundle + Workload Package。</p></div><div class="row"><button class="btn primary goto" data-goto="sim-new">新建仿真任务</button><button class="btn goto" data-goto="sim-list">我的任务</button></div></div>
+    <div class="bigentry"><div><strong>Benchmark</strong><p class="small">筛选厂商并选择芯片，进入芯片档案与 Benchmark 资产。</p></div><button class="btn primary goto" data-goto="bench-browse">查看 Benchmark</button></div>
+  </div>
+  <h2 style="margin-top:24px">平台资产</h2>
+  <div class="grid4"><div class="metric"><div class="small">支持芯片</div><div class="num">12</div></div><div class="metric"><div class="small">Benchmark</div><div class="num">368</div></div><div class="metric"><div class="small">分析报告</div><div class="num">21</div></div><div class="metric"><div class="small">仿真器版本</div><div class="num">6</div></div></div>
+  <div class="grid2" style="margin-top:16px"><div class="card"><h2>最近新增 Benchmark</h2><table class="table"><tr><td>V300 / HBM Bandwidth</td><td>今天</td></tr><tr><td>V300 / Cube FP16</td><td>昨天</td></tr><tr><td>Vendor-B / Interconnect</td><td>3天前</td></tr></table></div><div class="card"><h2>代表性成果</h2><table class="table"><tr><td><button class="btn goto" data-goto="analysis-detail">V300 Memory System 性能分析</button></td><td>分析报告</td></tr><tr><td>V300 HBM Bandwidth</td><td>Benchmark</td></tr><tr><td>STARS 调度优化研究</td><td>分析报告</td></tr></table></div></div>
+</section>
+
+
+<section class="screen" id="sim-new" data-title="新建仿真任务">
+  <div class="pagehead"><div><h1>新建仿真任务</h1><div class="small">一个任务 = Simulator Version + Chip Config Bundle + Workload Package</div></div></div>
+
+  <div class="card"><h2>1. 基本信息</h2><div class="grid2">
+    <div class="field"><label>任务名称</label><input value="V120_AllGather_20260810_1658"/></div>
+    <div class="field"><label>Simulator Version</label><select><option>V120</option><option>V100</option></select></div>
+  </div></div>
+
+  <div class="card">
+    <div class="spread"><div><h2>2. Chip Config Bundle</h2><div class="small">支持多文件、多级目录；平台保持目录结构。</div></div><div class="row"><select><option>V120 Default Chip Config</option></select><button class="btn">上传目录 / ZIP</button></div></div>
+    <div class="bundle"><div class="tree">▼ chip_config/
+  ├── chip.yaml
+  ├── memory.yaml
+  ├── interconnect.yaml
+  └── subsystem/
+      <span class="sel">├── stars.yaml</span>
+      └── smmu.yaml</div><div><div class="field"><label>chip_config/subsystem/stars.yaml</label><textarea class="code">stars:
+  ...
+</textarea></div><div class="row" style="margin-top:10px"><button class="btn">检查 YAML</button><button class="btn">恢复模板</button></div></div></div>
+  </div>
+
+  <div class="card">
+    <div class="spread"><div><h2>3. Workload Package</h2><div class="small">用户按照现有 Simulator 已支持的目录结构准备，平台不重新建模 SQ / SQE。</div></div><button class="btn">上传目录 / ZIP</button></div>
+    <div class="note">Workload Package 可以同时包含多个 YAML、Kernel 文件、Input Bin 和其他依赖。V1 主要负责上传、保持目录结构和基础文件检查。</div>
+
+    <div class="bundle"><div class="tree">▼ chip1_case/
+  <span class="sel">├── top.yml</span>
+  ├── sq0/
+  │   ├── sq_config.yml
+  │   ├── sqe0_config.yml
+  │   └── sqe1_config.yml
+  ├── sq1/
+  │   ├── sq_config.yml
+  │   ├── sqe0_config.yml
+  │   ├── sqe1_config.yml
+  │   └── sq_top.yml
+  ├── case_bin/
+  │   └── coc_allgather_matmul_all.cce.o
+  └── input_data/
+      ├── 0/
+      │   ├── input_matrix_a.bin
+      │   └── input_matrix_b.bin
+      └── 1/
+          ├── input_matrix_a.bin
+          └── input_matrix_b.bin</div>
+      <div><div class="field"><label>chip1_case/top.yml</label><textarea class="code">workload:
+  ...
+# YAML 可查看 / 编辑
+</textarea></div><div class="row" style="margin-top:10px"><button class="btn">检查 YAML</button><button class="btn">查看文件信息</button></div></div>
+    </div>
+
+    <div class="grid3" style="margin-top:14px">
+      <div class="metric"><div class="small">Config Files</div><div class="num">7</div></div>
+      <div class="metric"><div class="small">Binary / Assets</div><div class="num">18</div></div>
+      <div class="metric"><div class="small">Package Size</div><div class="num" style="font-size:20px">1.8 GB</div></div>
+    </div>
+    <div class="checkgrid" style="margin-top:14px">
+      <div class="check"><b>✓ Directory / ZIP</b><div class="small">可以正常读取</div></div>
+      <div class="check"><b>✓ YAML Syntax</b><div class="small">基础语法通过</div></div>
+      <div class="check"><b>✓ Package Non-empty</b><div class="small">目录结构已保存</div></div>
+    </div>
+  </div>
+
+  <div class="spread"><span class="small">SQ/SQE、kernel_file、input_bin 等业务合法性仍由现有 Simulator 判断。</span><button class="btn primary">提交仿真任务</button></div>
+</section>
+
+<section class="screen" id="sim-list" data-title="我的任务">
+  <div class="pagehead"><div><h1>我的任务</h1><div class="small">用户只查看自己的任务。</div></div><button class="btn primary goto" data-goto="sim-new">新建任务</button></div>
+  <div class="tabs"><span class="tab">全部</span><span class="tab">排队中</span><span class="tab">运行中</span><span class="tab">已完成</span><span class="tab">失败</span><span class="tab">已归档</span></div>
+  <div class="card"><table class="table"><thead><tr><th>任务名称</th><th>版本</th><th>状态</th><th>提交时间</th><th>排队/结果</th><th>操作</th></tr></thead><tbody>
+  <tr><td>VectorAdd_test</td><td>V120</td><td class="status">运行中</td><td>13:02</td><td>Cycle 3,821,336</td><td><button class="btn goto" data-goto="sim-running">查看</button></td></tr>
+  <tr><td>ResNet_test</td><td>V120</td><td class="status">排队中</td><td>13:04</td><td>前方 6 个任务</td><td><button class="btn">取消</button></td></tr>
+  <tr><td>Cube_test</td><td>V100</td><td class="status">已完成</td><td>10:12</td><td>5,328,120 cycles</td><td><button class="btn goto" data-goto="sim-result">结果</button></td></tr>
+  </tbody></table></div>
+</section>
+
+<section class="screen" id="sim-running" data-title="运行详情">
+  <div class="pagehead"><div><h1>VectorAdd_test <span class="tag">运行中</span></h1><div class="small">SIM-20260809-000128 · DavidSimulator V120</div></div><button class="btn danger">强制终止</button></div>
+  <div class="grid2"><div class="metric"><div class="small">当前 Cycle</div><div class="num">3,821,336</div></div><div class="metric"><div class="small">已运行时间</div><div class="num">18m 34s</div></div></div>
+  <div class="card" style="margin-top:16px"><h2>公开运行状态</h2><div class="note">只展示 Log Processor 白名单提取后的非敏感信息。</div><div class="log">13:02:10  任务开始
+13:02:14  仿真环境初始化完成
+13:06:32  Simulation running
+13:10:21  Cycle 2,000,000
+13:18:44  Cycle 3,000,000
+13:20:44  Cycle 3,821,336</div></div>
+</section>
+
+<section class="screen" id="sim-result" data-title="仿真结果 / Trace">
+  <div class="pagehead"><div><h1>Simulation Result <span class="tag">Completed</span></h1><div class="small">VectorAdd_test · SIM-20260809-000128</div></div><div class="row"><button class="btn">归档</button><button class="btn primary">重新运行</button></div></div>
+  <div class="grid4"><div class="metric"><div class="small">DavidSimulator</div><div class="num" style="font-size:20px">V120</div></div><div class="metric"><div class="small">运行时间</div><div class="num" style="font-size:20px">18m32s</div></div><div class="metric"><div class="small">Total Cycle</div><div class="num" style="font-size:20px">5,328,120</div></div><div class="metric"><div class="small">完成时间</div><div class="num" style="font-size:15px">13:21:04</div></div></div>
+  <div class="card" style="margin-top:16px"><h2>Trace</h2><div class="viewer"><strong>详细 Trace Viewer</strong><p>复用现有 Trace Viewer；平台负责任务上下文、权限、水印和后续分析能力。</p><div class="viewer-actions"><button class="btn primary">打开 Trace Viewer</button></div></div></div>
+  <div class="card"><h2>任务配置快照</h2><div class="row"><button class="btn">Chip Config Bundle</button><button class="btn">Workload Package</button></div></div>
+</section>
+
+<section class="screen" id="bench-browse" data-title="Benchmark 浏览">
+  <div class="pagehead"><div><h1>Benchmark</h1><div class="small">厂商筛选 + 芯片卡片，点击后直接进入芯片主页。</div></div></div>
+  <div class="card">
+    <div class="filterbar">
+      <div class="field"><label>厂商</label><select><option>全部厂商</option><option>Vendor A</option><option>Vendor B</option><option>Vendor C</option></select></div>
+      <div class="field"><label>芯片标签</label><select><option>全部</option><option>当代</option><option>未来</option></select></div>
+    </div>
+    <div class="chips">
+      <div class="chipcard goto" data-goto="chip-home"><h3>Vendor A / V100</h3><p><span class="tag">历史代次</span></p><p class="small">Benchmark 72 · Analysis 0 · Trace 1</p></div>
+      <div class="chipcard goto" data-goto="chip-home"><h3>Vendor A / V200</h3><p><span class="tag">当代</span></p><p class="small">Benchmark 96 · Analysis 1 · Trace 1</p></div>
+      <div class="chipcard goto" data-goto="chip-home"><h3>Vendor A / V300</h3><p><span class="tag">未来</span> <span class="tag">权限</span></p><p class="small">Benchmark 83 · Analysis 4 · Trace 1</p></div>
+      <div class="chipcard goto" data-goto="chip-home"><h3>Vendor B / X100</h3><p><span class="tag">当代</span></p><p class="small">Benchmark 51 · Analysis 2 · Trace 1</p></div>
+      <div class="chipcard goto" data-goto="chip-home"><h3>Vendor B / X200</h3><p><span class="tag">未来</span></p><p class="small">Benchmark 39 · Analysis 0 · Trace 1</p></div>
+      <div class="chipcard goto" data-goto="chip-home"><h3>Vendor C / Z10</h3><p><span class="tag">当代</span></p><p class="small">Benchmark 27 · Analysis 0 · Trace 1</p></div>
+    </div>
+  </div>
+</section>
+
+
+<section class="screen" id="chip-home" data-title="芯片主页">
+  <div class="pagehead"><div><h1>Huawei / A5 <span class="tag">当代</span></h1><div class="small">一个芯片可注册多个不同 Benchmark；Benchmark Type 与 Test Target 是两个维度。</div></div></div>
+  <div class="card watermark"><h2>芯片简介</h2><p>展示芯片定位、主要能力和架构特点。</p></div>
+  <h2>Benchmark 资产</h2>
+  <div class="grid4">
+    <div class="bigentry"><strong>MACRO</strong><p>12 个 Benchmark</p><button class="btn goto" data-goto="macro">查看 Benchmark</button></div>
+    <div class="bigentry"><strong>MICRO</strong><p>18 个 Benchmark</p><button class="btn goto" data-goto="micro">查看 Benchmark</button></div>
+    <div class="bigentry"><strong>TRACE</strong><p>4 个 Benchmark</p><button class="btn goto" data-goto="trace">查看 Benchmark</button></div>
+    <div class="bigentry"><strong>分析报告</strong><p>3 篇研究成果</p><button class="btn goto" data-goto="analysis-list">查看报告</button></div>
+  </div>
+  <div class="note" style="margin-top:16px">例：cube_throughput_benchmark = MICRO + Cube；matmul_benchmark = MACRO + Cube；stars_schedule_trace = TRACE + STARS。</div>
+</section>
+
+
+<section class="screen" id="macro" data-title="MACRO Benchmark List">
+  <div class="pagehead"><div><h1>Huawei / A5 · MACRO</h1><div class="small">Benchmark List 是主要发现入口，Target 用于筛选。</div></div></div>
+  <div class="card">
+    <div class="filterbar">
+      <div class="field"><label>Target</label><select><option>全部</option><option>Cube</option><option>STARS</option><option>Runtime</option></select></div>
+      <div class="field"><label>搜索 Benchmark</label><input placeholder="name / description"/></div>
+    </div>
+    <table class="table"><thead><tr><th>Benchmark</th><th>Target</th><th>Description</th><th>Latest Result</th><th>Version</th></tr></thead><tbody>
+      <tr class="clickable goto" data-goto="bench-detail"><td><b>matmul_benchmark</b></td><td><span class="tag">Cube</span></td><td>cube matmul kernel</td><td>312 TFLOPS</td><td>v1.3</td></tr>
+      <tr class="clickable goto" data-goto="bench-detail"><td><b>matmul_tiling_benchmark</b></td><td><span class="tag">Cube</span></td><td>test matmul tiling</td><td>11.8 ms</td><td>v1.1</td></tr>
+      <tr class="clickable goto" data-goto="bench-detail"><td><b>stars_e2e_benchmark</b></td><td><span class="tag">STARS</span></td><td>end-to-end scheduling workload</td><td>528,120 cycles</td><td>v1.0</td></tr>
+    </tbody></table>
+  </div>
+</section>
+
+
+<section class="screen" id="micro" data-title="MICRO Benchmark List">
+  <div class="pagehead"><div><h1>Huawei / A5 · MICRO</h1><div class="small">不再固定成“内存/计算/互联”的页面结构；以 Registry 中注册的具体 Benchmark 为中心。</div></div></div>
+  <div class="card">
+    <div class="filterbar">
+      <div class="field"><label>Target</label><select><option>全部</option><option>Cube</option><option>HBM</option><option>STARS</option><option>SMMU</option></select></div>
+      <div class="field"><label>搜索 Benchmark</label><input placeholder="name / description"/></div>
+    </div>
+    <table class="table"><thead><tr><th>Benchmark</th><th>Target</th><th>Description</th><th>Latest Result</th><th>Version</th></tr></thead><tbody>
+      <tr class="clickable goto" data-goto="bench-detail"><td><b>cube_throughput_benchmark</b></td><td><span class="tag">Cube</span></td><td>test cube throughput</td><td>312 TFLOPS</td><td>v1.3</td></tr>
+      <tr class="clickable goto" data-goto="bench-detail"><td><b>hbm_bandwidth_benchmark</b></td><td><span class="tag">HBM</span></td><td>test hbm bandwidth</td><td>3.2 TB/s</td><td>v2.1</td></tr>
+      <tr class="clickable goto" data-goto="bench-detail"><td><b>stars_swapin_latency</b></td><td><span class="tag">STARS</span></td><td>swapin latency</td><td>26 cycles</td><td>v1.0</td></tr>
+      <tr class="clickable goto" data-goto="bench-detail"><td><b>smmu_translation_latency</b></td><td><span class="tag">SMMU</span></td><td>translation latency</td><td>xxx ns</td><td>v1.0</td></tr>
+    </tbody></table>
+  </div>
+</section>
+
+
+<section class="screen" id="trace" data-title="TRACE Benchmark List">
+  <div class="pagehead"><div><h1>Huawei / A5 · TRACE</h1><div class="small">TRACE 与 MACRO/MICRO 一样由 Benchmark Registry 注册，一个芯片允许存在多个 Trace Benchmark。</div></div></div>
+  <div class="card">
+    <div class="filterbar">
+      <div class="field"><label>Target</label><select><option>全部</option><option>STARS</option><option>Cube</option><option>System</option></select></div>
+      <div class="field"><label>搜索 Benchmark</label><input placeholder="name / description"/></div>
+    </div>
+    <table class="table"><thead><tr><th>Benchmark</th><th>Target</th><th>Description</th><th>Latest Trace</th><th>Version</th></tr></thead><tbody>
+      <tr class="clickable goto" data-goto="trace-detail"><td><b>stars_schedule_trace</b></td><td><span class="tag">STARS</span></td><td>STARS scheduling trace</td><td>528,120 cycles</td><td>v1.2</td></tr>
+      <tr class="clickable goto" data-goto="trace-detail"><td><b>cube_execution_trace</b></td><td><span class="tag">Cube</span></td><td>Cube execution timeline</td><td>312,860 cycles</td><td>v1.0</td></tr>
+      <tr class="clickable goto" data-goto="trace-detail"><td><b>system_overall_trace</b></td><td><span class="tag">System</span></td><td>overall system timing</td><td>812,040 cycles</td><td>v1.0</td></tr>
+    </tbody></table>
+  </div>
+</section>
+
+
+<section class="screen" id="bench-detail" data-title="Benchmark Detail">
+  <div class="pagehead"><div><h1>Benchmark Detail</h1><div class="small">固定信息外壳 + 动态 Result Block。</div></div><button class="btn primary goto" data-goto="compare">加入 Compare</button></div>
+  <div class="card"><div class="grid2">
+    <div class="field"><label>当前 Benchmark</label><select><option>hbm_bandwidth_benchmark</option><option>cube_throughput_benchmark</option><option>stars_swapin_latency</option></select></div>
+    <div class="field"><label>Result Version</label><select><option>v2.1 · Latest</option><option>v2.0</option><option>v1.8</option></select></div>
+  </div></div>
+
+  <div class="detail-shell">
+    <aside class="sideinfo">
+      <div class="kv"><b>Name</b>hbm_bandwidth_benchmark</div>
+      <div class="kv"><b>Type</b><span class="tag">MICRO</span></div>
+      <div class="kv"><b>Target</b><span class="tag">HBM</span></div>
+      <div class="kv"><b>Description</b>test hbm bandwidth</div>
+      <div class="kv"><b>Module</b><span class="small">aibench.benchmark.huawei.a5.micro_benchmark...</span></div>
+      <div class="kv"><b>Class</b>HbmBandwidthBenchmark</div>
+      <div class="kv"><b>Test Date</b>2026-08-01</div>
+      <div class="kv"><b>Status</b>已验证</div>
+    </aside>
+    <div>
+      <div class="card">
+        <h2>Test Result</h2>
+        <div class="note">Benchmark Framework 决定测试内容；Benchmark Adapter 转为平台标准 Result Block；前端不针对每个 Benchmark 写专用页面。</div>
+        <div class="resultblocks">
+          <div class="metric"><div class="small">Peak Bandwidth</div><div class="num" style="font-size:21px">3.2 TB/s</div></div>
+          <div class="metric"><div class="small">Avg Bandwidth</div><div class="num" style="font-size:21px">2.86 TB/s</div></div>
+          <div class="metric"><div class="small">Efficiency</div><div class="num" style="font-size:21px">89.4%</div></div>
+        </div>
+        <h3 style="margin-top:18px">Series / Curve Block</h3>
+        <div class="chartbox">Bandwidth vs Data Size</div>
+        <h3 style="margin-top:18px">Table Block</h3>
+        <table class="table"><thead><tr><th>Data Size</th><th>Concurrency</th><th>Bandwidth</th></tr></thead><tbody><tr><td>1 MB</td><td>1</td><td>620 GB/s</td></tr><tr><td>16 MB</td><td>8</td><td>2.73 TB/s</td></tr><tr><td>64 MB</td><td>16</td><td>3.2 TB/s</td></tr></tbody></table>
+      </div>
+      <div class="card"><h2>Test Conditions</h2><table class="table"><tr><td>Software Version</td><td>xxx</td></tr><tr><td>Environment</td><td>Internal Benchmark Env</td></tr></table></div>
+      <div class="card"><h2>Test Report</h2><p>描述当前 Benchmark 的测试方法、环境、版本和结果。</p><button class="btn">查看 Test Report</button></div>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="trace-detail" data-title="Trace Benchmark Detail">
+  <div class="pagehead"><div><h1>Trace Benchmark Detail</h1><div class="small">Trace 是 Benchmark Result 的一种标准结果类型。</div></div><button class="btn primary goto" data-goto="compare">加入 Compare</button></div>
+  <div class="card"><div class="grid2">
+    <div class="field"><label>当前 Trace Benchmark</label><select><option>stars_schedule_trace</option><option>cube_execution_trace</option><option>system_overall_trace</option></select></div>
+    <div class="field"><label>Result Version</label><select><option>v1.2 · Latest</option><option>v1.1</option></select></div>
+  </div></div>
+  <div class="grid4">
+    <div class="metric"><div class="small">Type</div><div class="num" style="font-size:18px">TRACE</div></div>
+    <div class="metric"><div class="small">Target</div><div class="num" style="font-size:18px">STARS</div></div>
+    <div class="metric"><div class="small">Total Cycle</div><div class="num" style="font-size:20px">528,120</div></div>
+    <div class="metric"><div class="small">Trace Version</div><div class="num" style="font-size:18px">v1.2</div></div>
+  </div>
+  <div class="card watermark" style="margin-top:16px"><h2>Trace Result Block</h2><div class="viewer"><strong>现有 Trace Viewer / 成熟 Viewer</strong><p>平台提供权限、上下文和分析层；Timeline 本身继续复用成熟 Viewer。</p><button class="btn primary">打开 Trace Viewer</button></div></div>
+  <div class="card"><h2>Test Report</h2><p>说明当前 Trace Benchmark 的生成场景、版本、环境和基础观察。</p></div>
+</section>
+
+<section class="screen" id="analysis-list" data-title="芯片分析报告">
+  <div class="pagehead"><div><h1>Vendor A / V300 · 分析报告</h1><div class="small">共 4 篇。即使只有 1 篇，也先进入统一列表页。</div></div></div>
+  <div class="filterbar"><div class="field"><label>报告类型</label><select><option>全部</option><option>性能分析</option><option>微架构分析</option><option>对比研究</option><option>优化研究</option></select></div></div>
+  <div class="card"><div class="spread"><h2>V300 Memory System 性能分析</h2><span class="tag">性能分析</span></div><div class="small">2026-08-01 · 作者 XXX · 涉及 HBM / L2 / Memory Trace · future_chip</div><p>综合 HBM、L2、Memory Latency 与 Trace，分析 V300 内存系统性能特征和主要瓶颈。</p><button class="btn primary goto" data-goto="analysis-detail">查看报告</button></div>
+  <div class="card"><div class="spread"><h2>V300 与 V200 Cube 性能对比</h2><span class="tag">对比研究</span></div><div class="small">2026-07-18 · 作者 XXX · 涉及 MACRO / MICRO</div><p>对比两代芯片 Cube 性能、利用率和软件版本变化。</p><button class="btn">查看报告</button></div>
+  <div class="card"><div class="spread"><h2>STARS 调度性能分析</h2><span class="tag">微架构分析</span></div><div class="small">2026-07-02 · 作者 XXX · 涉及 Trace / Simulation</div><p>基于仿真 Trace 分析调度阶段耗时、关键路径和潜在优化点。</p><button class="btn">查看报告</button></div>
+</section>
+
+<section class="screen" id="analysis-detail" data-title="单篇分析报告">
+  <div class="pagehead"><div><h1>V300 Memory System 性能分析</h1><div class="small">Analysis Report v1.2</div></div><button class="btn goto" data-goto="analysis-list">返回报告列表</button></div>
+  <div class="card watermark">
+    <div class="small">芯片 V300 · 作者 XXX · 2026-08-01 · 权限 future_chip · 状态 已发布</div>
+    <h2 style="margin-top:24px">摘要</h2><p>本报告综合 V300 HBM、L2、Memory Latency 与仿真 Trace 数据，对内存系统性能特征、主要瓶颈与优化方向进行分析。</p>
+    <h2>1. 背景</h2><p>说明研究背景、数据版本、分析范围和研究问题。</p>
+    <h2>2. HBM Performance</h2><p>引用 HBM Bandwidth 数据并分析不同测试条件下的性能变化。</p><span class="tag">关联：V300 / HBM Bandwidth</span>
+    <h2 style="margin-top:22px">3. L2 Performance</h2><p>结合 L2 Cache Bandwidth 与 Memory Latency 分析缓存层表现。</p><span class="tag">关联：V300 / L2 Cache Bandwidth</span> <span class="tag">关联：V300 / Memory Latency</span>
+    <h2 style="margin-top:22px">4. Trace Analysis</h2><p>结合整体 Trace 分析关键阶段和潜在等待。</p><span class="tag">关联：V300 / Trace</span>
+    <h2 style="margin-top:22px">5. 结论</h2><p>总结当前芯片表现，并给出后续验证或架构优化建议。</p>
+  </div>
+  <div class="card"><h2>关联数据</h2><div class="row"><button class="btn goto" data-goto="bench-detail">HBM Benchmark</button><button class="btn goto" data-goto="bench-detail">L2 Benchmark</button><button class="btn goto" data-goto="bench-detail">Memory Latency</button><button class="btn goto" data-goto="trace-detail">Trace Benchmark</button></div></div>
+</section>
+
+<section class="screen" id="compare" data-title="Compare">
+  <div class="pagehead"><div><h1>Compare Workspace</h1><div class="small">最多 4 个对象，可混合 MACRO / MICRO / Trace；只对兼容指标做自动数值比较。</div></div><button class="btn">清空</button></div>
+  <div class="grid4"><div class="metric"><b>A · V200</b><p>MICRO / HBM</p></div><div class="metric"><b>B · V300</b><p>MICRO / HBM</p></div><div class="metric"><b>C · V300</b><p>Trace</p></div><div class="metric"><b>+</b><p>加入对象</p></div></div>
+  <div class="card" style="margin-top:16px"><h2>兼容指标对比</h2><table class="table"><thead><tr><th>指标</th><th>A</th><th>B</th><th>差值</th><th>变化</th></tr></thead><tbody><tr><td>HBM Bandwidth</td><td>2.7 TB/s</td><td>3.2 TB/s</td><td>+0.5 TB/s</td><td>+18.5%</td></tr></tbody></table></div>
+  <div class="card"><h2>Trace Compare</h2><div class="analysis"><div class="kpi">A Total Cycle<b>52,340</b></div><div class="kpi">B Total Cycle<b>47,210</b></div><div class="kpi">变化<b>-9.8%</b></div></div><div class="viewer" style="margin-top:14px"><strong>Trace 对比分析区域</strong><p>后续支持事件/阶段对齐、差异最大阶段定位、进入双方 Viewer。</p></div></div>
+</section>
+
+
+<section class="screen" id="admin" data-title="管理员中心">
+  <div class="pagehead">
+    <div>
+      <h1>管理员中心</h1>
+      <div class="small">V1 原则：只统计平台天然可获得、实现简单且结果可靠的数据。</div>
+    </div>
+  </div>
+
+  <div class="note">
+    V1 不做页面 Heartbeat / 有效停留时间，不推断仿真任务属于 STARS、Cube 等业务类型，
+    不做复杂用户路径分析。后续确有价值再增加。
+  </div>
+
+  <div class="tabs">
+    <span class="tab">平台概览</span>
+    <span class="tab">用户管理</span>
+    <span class="tab">权限审批</span>
+    <span class="tab">用户行为审计</span>
+  </div>
+
+  <div class="card">
+    <h2>平台概览</h2>
+    <div class="kpirow">
+      <div class="kpi">今日登录用户<b>38</b></div>
+      <div class="kpi">本周 Benchmark 查看<b>532</b></div>
+      <div class="kpi">本周仿真任务<b>84</b></div>
+      <div class="kpi">仿真成功率<b>96.4%</b></div>
+      <div class="kpi">待审批权限<b>7</b></div>
+    </div>
+    <div class="small" style="margin-top:10px">
+      以上均可由 Login/AuditEvent、Benchmark View Event 和 SimulationTask 直接统计，不增加复杂埋点。
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>Benchmark 使用情况</h2>
+      <table class="table">
+        <thead><tr><th>类型</th><th>本周查看次数</th></tr></thead>
+        <tbody>
+          <tr><td>MICRO</td><td>248</td></tr>
+          <tr><td>MACRO</td><td>156</td></tr>
+          <tr><td>TRACE</td><td>91</td></tr>
+          <tr><td>Analysis Report</td><td>37</td></tr>
+        </tbody>
+      </table>
+      <div class="small" style="margin-top:10px">可进一步查看热门 Chip / Benchmark，但 V1 不统计停留时长。</div>
+    </div>
+
+    <div class="card">
+      <h2>仿真任务情况</h2>
+      <table class="table">
+        <thead><tr><th>指标</th><th>本周</th></tr></thead>
+        <tbody>
+          <tr><td>Submitted</td><td>84</td></tr>
+          <tr><td>Completed</td><td>81</td></tr>
+          <tr><td>Failed</td><td>2</td></tr>
+          <tr><td>Terminated / Cancelled</td><td>1</td></tr>
+          <tr><td>平均运行时间</td><td>42 min</td></tr>
+        </tbody>
+      </table>
+      <div class="small" style="margin-top:10px">
+        直接由 SimulationTask 的 submit/start/end/status 统计；任务业务类型暂不推断。
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Simulator Version 使用量</h2>
+    <table class="table">
+      <thead><tr><th>Version</th><th>任务数</th><th>Completed</th><th>Failed</th></tr></thead>
+      <tbody>
+        <tr><td>V120</td><td>63</td><td>61</td><td>2</td></tr>
+        <tr><td>V100</td><td>21</td><td>20</td><td>0</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="spread">
+      <div>
+        <h2>用户行为审计</h2>
+        <div class="small">只记录关键业务与安全行为，不记录普通点击、滚动、筛选。</div>
+      </div>
+      <div class="row">
+        <select>
+          <option>全部 Action</option>
+          <option>LOGIN</option>
+          <option>VIEW_BENCHMARK</option>
+          <option>VIEW_TRACE</option>
+          <option>VIEW_ANALYSIS_REPORT</option>
+          <option>SUBMIT_SIM</option>
+          <option>TERMINATE_SIM</option>
+          <option>REQUEST_PERMISSION</option>
+        </select>
+        <input placeholder="工号 / Object ID"/>
+      </div>
+    </div>
+
+    <table class="table">
+      <thead>
+        <tr><th>工号</th><th>时间</th><th>Action</th><th>Object</th><th>结果</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>00123456</td><td>16:58:01</td><td>SUBMIT_SIM</td><td>SIM-20260810-000128</td><td>SUCCESS</td></tr>
+        <tr><td>00123456</td><td>16:44:18</td><td>VIEW_BENCHMARK</td><td>A5 / hbm_bandwidth_benchmark</td><td>SUCCESS</td></tr>
+        <tr><td>00124567</td><td>16:32:10</td><td>VIEW_TRACE</td><td>A5 / stars_schedule_trace</td><td>SUCCESS</td></tr>
+        <tr><td>00127890</td><td>15:48:33</td><td>REQUEST_PERMISSION</td><td>future_chip</td><td>SUCCESS</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>V1 暂不上线</h2>
+    <div class="grid3">
+      <div class="metric"><div class="small">页面有效停留时间</div><div class="num" style="font-size:16px">Later</div><p class="small">需要 Heartbeat / 前后台判断。</p></div>
+      <div class="metric"><div class="small">用户访问路径分析</div><div class="num" style="font-size:16px">Later</div><p class="small">第一版业务价值有限。</p></div>
+      <div class="metric"><div class="small">仿真任务 STARS/Cube 分类</div><div class="num" style="font-size:16px">Later</div><p class="small">无可靠元数据时不做猜测。</p></div>
+    </div>
+  </div>
+</section>
+
+</div>
+</main>
+</div>
+
+<script>
+const buttons=[...document.querySelectorAll('.navbtn')];
+const screens=[...document.querySelectorAll('.screen')];
+const title=document.getElementById('screenTitle');
+
+function show(id){
+  buttons.forEach(b=>b.classList.toggle('active',b.dataset.screen===id));
+  screens.forEach(s=>s.classList.toggle('active',s.id===id));
+  const screen=document.getElementById(id);
+  if(screen){title.textContent=screen.dataset.title; window.scrollTo({top:0,behavior:'smooth'});}
+}
+buttons.forEach(btn=>btn.addEventListener('click',()=>show(btn.dataset.screen)));
+document.querySelectorAll('.goto').forEach(el=>el.addEventListener('click',()=>show(el.dataset.goto)));
+
+document.querySelectorAll('.catpill').forEach(p=>p.addEventListener('click',()=>{
+  document.querySelectorAll('.catpill').forEach(x=>x.classList.remove('active'));
+  p.classList.add('active');
+}));
+</script>
+</body>
+</html>
