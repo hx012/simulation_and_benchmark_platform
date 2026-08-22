@@ -129,6 +129,17 @@ TASK_ROOT=../runtime
 DATABASE_URL=postgresql+psycopg://ascend_platform:12345678@127.0.0.1:15432/ascend_platform
 ```
 
+完整平台从仓库根目录统一启停：
+
+```bash
+cp .env.platform.example .env.platform
+bash scripts/platform.sh start dev
+bash scripts/platform.sh status
+bash scripts/platform.sh stop
+```
+
+工作 Linux 服务器使用 `start server`。PostgreSQL 必须挂载 external named volume `ascend-platform-postgres-data`；脚本检测到匿名卷时拒绝启动，已有匿名卷通过 `scripts/migrate-postgres-volume.sh` 一次性迁移。
+
 ## 5. Simulation 当前实现
 
 Simulation 的核心代码位于：
@@ -422,7 +433,7 @@ GET /api/simulation/tasks/{task_id}/trace/viewer
 - Benchmark registry 只读浏览。
 - 前端登录、任务创建、任务列表、任务详情、结果页、Benchmark 浏览页面。
 - Catapult Trace Viewer 生成、受控读取、iframe 展示和全屏交互。
-- Docker PostgreSQL 镜像、Alembic 初始迁移和 WSL 启动流程。
+- Docker PostgreSQL 镜像、external named volume、Alembic 初始迁移和 Linux/WSL 统一生命周期脚本。
 - V310 界面样例，以及本地成功任务种子脚本。
 - 根级 `runtime/` 任务目录约定、日志/summary/trace API 验证。
 
@@ -448,6 +459,7 @@ GET /api/simulation/tasks/{task_id}/trace/viewer
 
 - 先读 `docs/AI_CONTEXT.md`、`docs/00_Project/BASELINE_STATUS.md`、`docs/00_Project/ROADMAP.md`，再查看 `backend/app/main.py` 和 `frontend/src/App.tsx`。
 - 后端完整启动依赖 `DATABASE_URL`；如果只是阅读代码，不要假设服务可直接启动。
+- 启动完整平台优先使用根目录 `scripts/platform.sh`，不要绕过 named volume 挂载检查手工重建 PostgreSQL 容器。
 - Benchmark 当前不是完整执行平台，只是 registry read-only 接入。
 - 不要把未来规划中的用户表、Benchmark 结果表当作当前已经实现的数据库模型。
 - 修改前端时保持 Ant Design 和现有页面风格。

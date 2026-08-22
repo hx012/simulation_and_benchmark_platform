@@ -48,7 +48,17 @@ frontend/src/components/               通用组件和 Trace Viewer
 
 ## 3. 常用命令
 
-启动完整本地环境见 `docs/04_Startup/wsl_startup.md`。
+Linux 服务器和 WSL 使用同一入口。Windows 路径 `D:\code\chip_simulation\simulation_and_benchmark_platform` 对应 WSL 路径 `/mnt/d/code/chip_simulation/simulation_and_benchmark_platform`：
+
+```bash
+cd /mnt/d/code/chip_simulation/simulation_and_benchmark_platform
+bash scripts/platform.sh start dev
+bash scripts/platform.sh status
+bash scripts/platform.sh logs
+bash scripts/platform.sh stop
+```
+
+工作服务器使用 `bash scripts/platform.sh start server`。完整配置和故障排查见 `docs/04_Startup/startup.md` 与 `docs/04_Startup/wsl_startup.md`。
 
 后端基础检查：
 
@@ -119,7 +129,7 @@ uv run python scripts/build_trace_viewers.py \
 
 ## 6. PR 交付清单
 
-1. 从最新 `main` 创建 `codex/` 或 `feature/` 分支。
+1. 从最新 `main` 创建 `codex/` 或 `feature/` 分支；依赖未合入 PR 时，从父 PR 分支创建堆叠分支并将 PR base 指向父分支。
 2. 只暂存本次任务文件，不使用 `git add .`。
 3. 检查 `git diff --check` 和最终 staged diff。
 4. 运行与改动风险匹配的测试。
