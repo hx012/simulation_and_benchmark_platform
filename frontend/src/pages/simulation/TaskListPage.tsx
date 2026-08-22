@@ -330,6 +330,7 @@ export function TaskListPage() {
 
       <Card className="table-card">
         <Table<SimulationTask>
+          className="task-list-table"
           rowKey="task_id"
           loading={loading}
           columns={columns}

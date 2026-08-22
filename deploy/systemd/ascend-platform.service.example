@@ -1,0 +1,19 @@
+[Unit]
+Description=Ascend Simulator and Benchmark Platform
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=CHANGE_ME
+WorkingDirectory=/path/to/simulation_and_benchmark_platform
+Environment=PLATFORM_ENV_FILE=/path/to/simulation_and_benchmark_platform/.env.platform
+ExecStart=/usr/bin/bash /path/to/simulation_and_benchmark_platform/scripts/platform.sh start server
+ExecStop=/usr/bin/bash /path/to/simulation_and_benchmark_platform/scripts/platform.sh stop
+TimeoutStartSec=300
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

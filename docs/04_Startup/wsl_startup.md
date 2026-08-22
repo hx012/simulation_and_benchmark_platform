@@ -117,7 +117,22 @@ uv run alembic check
 
 ## 2. 电脑重启后的日常启动
 
-重启电脑后不需要重新构建镜像或创建数据库，只需要启动已有容器和各服务。
+重启电脑后不需要重新构建镜像或创建数据库。推荐从 WSL 使用与公司 Linux 服务器相同的统一脚本：
+
+```bash
+cd /mnt/d/code/chip_simulation/simulation_and_benchmark_platform
+cp .env.platform.example .env.platform   # 仅首次；随后设置本机数据库密码
+bash scripts/platform.sh start dev
+bash scripts/platform.sh status
+```
+
+关闭全部服务：
+
+```bash
+bash scripts/platform.sh stop
+```
+
+日志位于 `runtime/platform/logs/`。下面的分终端命令仅作为手工排障方法保留。
 
 ### 2.1 Terminal 1：启动数据库和后端
 
@@ -305,6 +320,17 @@ uv run python scripts/build_trace_viewers.py --all --force
 Viewer HTML 内含平台集成桥，用于隐藏 Catapult 原生黑色 `Importing...` 弹窗，并在加载完成后通知结果页显示 iframe。更新适配脚本后应使用上面的 `--force` 重新生成存量 Viewer。
 
 ## 6. 日常快速命令
+
+优先使用：
+
+```bash
+cd /mnt/d/code/chip_simulation/simulation_and_benchmark_platform
+bash scripts/platform.sh start dev
+bash scripts/platform.sh logs
+bash scripts/platform.sh stop
+```
+
+以下命令用于手工排障。
 
 后端终端：
 

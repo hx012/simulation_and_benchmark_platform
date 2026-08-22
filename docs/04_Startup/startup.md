@@ -13,7 +13,32 @@
 
 推荐启动顺序：PostgreSQL -> Alembic -> Backend -> Worker -> Frontend。
 
-## 2. 后端配置
+## 2. 统一启停脚本
+
+平台以 Linux Bash 脚本作为开发机和工作服务器的统一入口，不依赖 WSL 路径：
+
+```bash
+cd /path/to/simulation_and_benchmark_platform
+cp .env.platform.example .env.platform
+cp backend/.env.example backend/.env
+```
+
+修改两个本机配置文件后执行：
+
+```bash
+bash scripts/platform.sh start dev       # Uvicorn reload + Vite dev
+bash scripts/platform.sh start server    # Uvicorn 常驻 + 前端构建/preview
+bash scripts/platform.sh status
+bash scripts/platform.sh logs backend
+bash scripts/platform.sh restart server
+bash scripts/platform.sh stop
+```
+
+脚本负责依赖检查、PostgreSQL 健康检查、Alembic 迁移、PID/进程组、日志和 HTTP 健康检查。运行状态位于 `runtime/platform/`，不会提交 Git。重复启动不会创建同一服务的第二个实例；端口被外部进程占用时会明确失败。
+
+`stop` 按 Frontend -> Worker -> Backend -> PostgreSQL 顺序停止，只执行容器 stop，不删除容器或 volume。服务器开机启动模板见 `deploy/systemd/`。
+
+## 3. 后端配置
 
 进入仓库 `backend` 目录：
 
@@ -39,45 +64,40 @@ SIM_TRACE_VIEWER_CONFIG=full
 
 不要将服务器 `.env` 提交到 Git。
 
-## 3. PostgreSQL
+## 4. PostgreSQL
 
-构建镜像：
+PostgreSQL 由仓库根目录 `compose.yaml` 管理，数据固定写入外部 named volume：
 
-```bash
-docker build -t ascend-platform-postgres docker/postgres
+```text
+ascend-platform-postgres-data
 ```
 
-创建 named volume：
+数据库账号、密码和端口来自不提交 Git 的 `.env.platform`：
 
-```bash
-docker volume create ascend-platform-postgres-data
+```env
+POSTGRES_USER=ascend_platform
+POSTGRES_PASSWORD=CHANGE_ME
+POSTGRES_DB=ascend_platform
+POSTGRES_PORT=15432
 ```
 
-首次创建容器：
+只管理数据库时可执行：
 
 ```bash
-docker run -d \
-  --name ascend-platform-postgres \
-  --restart unless-stopped \
-  -p 15432:5432 \
-  -v ascend-platform-postgres-data:/var/lib/postgresql/data \
-  -e POSTGRES_USER=ascend_platform \
-  -e POSTGRES_PASSWORD=CHANGE_ME \
-  -e POSTGRES_DB=ascend_platform \
-  ascend-platform-postgres
+bash scripts/platform.sh start-db
+bash scripts/platform.sh db-check
+bash scripts/platform.sh stop-db
 ```
 
-后续启动已有容器：
+如果已有容器使用匿名 volume，脚本会拒绝启动。先阅读 `docs/05_KnownIssues/database_issue.md`，然后执行一次性安全迁移：
 
 ```bash
-docker start ascend-platform-postgres
-docker exec ascend-platform-postgres \
-  pg_isready -U ascend_platform -d ascend_platform
+bash scripts/migrate-postgres-volume.sh
 ```
 
-删除容器前必须确认 named volume 已存在。不要删除 `ascend-platform-postgres-data`，除非明确需要清空数据库。
+迁移会生成逻辑备份并保留重命名后的旧容器。该卷声明为 Compose external volume，不属于 Compose 项目生命周期；仍然不要手工删除 `ascend-platform-postgres-data`，除非明确需要清空数据库。
 
-## 4. 数据库迁移
+## 5. 数据库迁移
 
 ```bash
 cd /path/to/simulation_and_benchmark_platform/backend
@@ -86,7 +106,7 @@ uv run alembic upgrade head
 uv run alembic current
 ```
 
-## 5. Backend
+## 6. Backend
 
 开发或联调：
 
@@ -107,7 +127,7 @@ http://<server-ip>:8000/health
 http://<server-ip>:8000/docs
 ```
 
-## 6. Simulation Worker
+## 7. Simulation Worker
 
 新终端进入 `backend`：
 
@@ -122,7 +142,7 @@ PYTHONPATH=$PWD uv run python worker/simulation_worker.py
 - Worker 用户对 `TASK_ROOT` 有读写权限；
 - Simulator 运行依赖和环境变量已加载。
 
-## 7. Catapult Trace Viewer
+## 8. Catapult Trace Viewer
 
 部署包必须包含仓库根目录下的 `tools/catapult`。当前验证版本为：
 
@@ -159,7 +179,7 @@ uv run python scripts/build_trace_viewers.py --all --dry-run
 uv run python scripts/build_trace_viewers.py --all --force
 ```
 
-## 8. Frontend
+## 9. Frontend
 
 ```bash
 cd /path/to/simulation_and_benchmark_platform/frontend
@@ -173,12 +193,12 @@ npm run dev -- --host 0.0.0.0
 
 正式部署建议由 Nginx 提供前端静态文件并代理 `/api`，具体配置在公司部署方案确定后补充。
 
-## 9. 日常检查
+## 10. 日常检查
 
 ```bash
-docker ps --filter name=ascend-platform-postgres
-uv run alembic current
-curl http://127.0.0.1:8000/health
+bash scripts/platform.sh status
+bash scripts/platform.sh db-check
+bash scripts/platform.sh logs worker
 test -f "$CATAPULT_HOME/tracing/tracing_build/trace2html.py"
 ```
 
