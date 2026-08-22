@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Button, Form, Input, message } from 'antd';
+import { Button, Form, Input, message, Segmented } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArchitectureBackground } from '../../components/ArchitectureBackground';
 import { useAuth } from '../../auth/AuthContext';
 
 interface LoginFormValues {
   employeeId: string;
+  password?: string;
 }
 
 export function LoginPage() {
   const [form] = Form.useForm<LoginFormValues>();
   const [submitting, setSubmitting] = useState(false);
+  const [authMode, setAuthMode] = useState<'normal' | 'admin'>('normal');
   const navigate = useNavigate();
   const location = useLocation();
   const { authenticated, login } = useAuth();
@@ -27,7 +29,7 @@ export function LoginPage() {
   async function handleSubmit(values: LoginFormValues) {
     setSubmitting(true);
     try {
-      await login(values.employeeId);
+      await login(values.employeeId, authMode, values.password);
       navigate(redirectTo, { replace: true });
     } catch (error) {
       message.error(error instanceof Error ? error.message : String(error));
@@ -36,16 +38,24 @@ export function LoginPage() {
     }
   }
 
-  function handlePermissionRequest() {
-    message.info('高阶权限申请功能将在权限模块接入后开放');
-  }
-
   return (
     <div className="employee-login-page">
       <ArchitectureBackground variant="login" />
       <main className="employee-login-card">
-        <h1>工号登录</h1>
-        <p>普通功能可直接使用，高阶能力需申请相应权限</p>
+        <h1>登录平台</h1>
+        <Segmented
+          block
+          className="login-mode-switch"
+          value={authMode}
+          options={[
+            { label: '普通登录', value: 'normal' },
+            { label: '管理员登录', value: 'admin' },
+          ]}
+          onChange={(value) => {
+            setAuthMode(value as 'normal' | 'admin');
+            form.setFieldValue('password', '');
+          }}
+        />
         <Form<LoginFormValues>
           form={form}
           layout="vertical"
@@ -65,6 +75,19 @@ export function LoginPage() {
               size="large"
             />
           </Form.Item>
+          {authMode === 'admin' ? (
+            <Form.Item
+              label="管理员密码"
+              name="password"
+              rules={[{ required: true, message: '请输入管理员密码' }]}
+            >
+              <Input.Password
+                autoComplete="current-password"
+                placeholder="请输入管理员密码"
+                size="large"
+              />
+            </Form.Item>
+          ) : null}
           <Button
             type="primary"
             htmlType="submit"
@@ -73,15 +96,9 @@ export function LoginPage() {
             size="large"
             className="employee-login-submit"
           >
-            进入平台
+            {authMode === 'admin' ? '以管理员身份登录' : '进入平台'}
           </Button>
         </Form>
-        <div className="employee-login-permission-row">
-          <span>需要访问受限数据或高阶分析能力？</span>
-          <Button type="link" onClick={handlePermissionRequest}>
-            申请高阶权限
-          </Button>
-        </div>
       </main>
     </div>
   );

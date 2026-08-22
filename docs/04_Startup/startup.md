@@ -34,6 +34,17 @@ bash scripts/platform.sh restart server
 bash scripts/platform.sh stop
 ```
 
+首次启动前必须在 `.env.platform` 设置启动管理员，不能保留示例密码：
+
+```env
+PLATFORM_BOOTSTRAP_ADMIN_ID=admin
+PLATFORM_BOOTSTRAP_ADMIN_PASSWORD=至少8位且同时包含字母和数字
+PLATFORM_SESSION_HOURS=12
+PLATFORM_SESSION_COOKIE_SECURE=true
+```
+
+开发环境没有 HTTPS 时可将 `PLATFORM_SESSION_COOKIE_SECURE` 设为 `false`；公司 HTTPS 环境必须使用 `true`。首次管理员登录会将密码哈希写入数据库，后续管理员在权限中心配置。完整说明见 `../03_Architecture/PERMISSION_MANAGEMENT_V1.md`。
+
 脚本负责依赖检查、PostgreSQL 健康检查、Alembic 迁移、PID/进程组、日志和 HTTP 健康检查。运行状态位于 `runtime/platform/`，不会提交 Git。重复启动不会创建同一服务的第二个实例；端口被外部进程占用时会明确失败。
 
 `stop` 按 Frontend -> Worker -> Backend -> PostgreSQL 顺序停止，只执行容器 stop，不删除容器或 volume。服务器开机启动模板见 `deploy/systemd/`。

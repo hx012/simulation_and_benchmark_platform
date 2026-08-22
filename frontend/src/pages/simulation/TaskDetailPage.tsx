@@ -16,6 +16,7 @@ import {
   StopOutlined,
   VerticalAlignBottomOutlined,
   VerticalAlignTopOutlined,
+  LockOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { simulationApi } from '../../api/simulation';
@@ -24,6 +25,8 @@ import { PageHeading } from '../../components/PageHeading';
 import { TaskStatusTag } from '../../components/StatusTag';
 import { useTaskPolling } from '../../hooks/useTaskPolling';
 import type { SimulationQueueResponse } from '../../types/simulation';
+import { useAuth } from '../../auth/AuthContext';
+import { PermissionRequestButton } from '../../components/PermissionRequestButton';
 import {
   executionPhaseText,
   formatDateTime,
@@ -37,6 +40,8 @@ const LOG_CHUNK_BYTES = 512 * 1024;
 export function TaskDetailPage() {
   const { taskId } = useParams();
   const navigate = useNavigate();
+  const { hasResource } = useAuth();
+  const canViewLog = hasResource('simulation.log');
   const { task, loading, error, refresh } = useTaskPolling(taskId, 2000);
   const [queue, setQueue] = useState<SimulationQueueResponse | null>(null);
   const [logText, setLogText] = useState('');
@@ -48,13 +53,13 @@ export function TaskDetailPage() {
   const fullscreenLogRef = useRef<HTMLPreElement>(null);
 
   useEffect(() => {
-    if (!taskId || !task) return;
+    if (!taskId || !task || !canViewLog) return;
     if (task.status === 'QUEUED') {
       simulationApi.getQueue(taskId).then(setQueue).catch(() => setQueue(null));
     } else {
       setQueue(null);
     }
-  }, [task?.status, taskId]);
+  }, [canViewLog, task?.status, taskId]);
 
   useEffect(() => {
     logOffset.current = 0;
@@ -194,8 +199,12 @@ export function TaskDetailPage() {
           message={terminalSuccess ? '仿真执行完成' : `任务已结束：${task.status}`}
           description={
             terminalSuccess
-              ? '结果已经生成。你可以继续查看完整运行日志，或进入仿真结果页查看 Trace 与最终指标。'
-              : (task.error_message || task.error_code || '任务已经进入终态，运行日志仍保留在当前页面。')
+              ? (canViewLog
+                ? '结果已经生成。你可以继续查看完整运行日志，或进入仿真结果页查看 Trace 与最终指标。'
+                : '结果已经生成。你可以进入仿真结果页查看 Trace 与最终指标；原始日志需要单独申请权限。')
+              : (task.error_message || task.error_code || (canViewLog
+                ? '任务已经进入终态，运行日志仍保留在当前页面。'
+                : '任务已经进入终态；原始日志需要单独申请权限。'))
           }
           action={terminalSuccess ? (
             <Button
@@ -233,24 +242,40 @@ export function TaskDetailPage() {
         </Descriptions>
       </Card>
 
-      <Card
-        title={terminal ? '运行日志' : '实时运行日志'}
-        className="section-card clean-card"
-        extra={(
-          <Space size={8}>
-            <span className="muted-text">
-              {terminal && logEof ? '完整日志' : '增量读取'}
-            </span>
-            <Button size="small" icon={<VerticalAlignTopOutlined />} onClick={() => scrollLog('top')}>顶部</Button>
-            <Button size="small" icon={<VerticalAlignBottomOutlined />} onClick={() => scrollLog('bottom')}>末尾</Button>
-            <Button size="small" icon={<FullscreenOutlined />} onClick={() => setLogFullscreen(true)}>全屏</Button>
-          </Space>
-        )}
-      >
-        <pre ref={logBoxRef} className="log-viewer">
-          {logAvailable ? (logText || '等待新的日志输出…') : '日志文件尚未生成…'}
-        </pre>
-      </Card>
+      {canViewLog ? (
+        <Card
+          title={terminal ? '运行日志' : '实时运行日志'}
+          className="section-card clean-card"
+          extra={(
+            <Space size={8}>
+              <span className="muted-text">
+                {terminal && logEof ? '完整日志' : '增量读取'}
+              </span>
+              <Button size="small" icon={<VerticalAlignTopOutlined />} onClick={() => scrollLog('top')}>顶部</Button>
+              <Button size="small" icon={<VerticalAlignBottomOutlined />} onClick={() => scrollLog('bottom')}>末尾</Button>
+              <Button size="small" icon={<FullscreenOutlined />} onClick={() => setLogFullscreen(true)}>全屏</Button>
+            </Space>
+          )}
+        >
+          <pre ref={logBoxRef} className="log-viewer">
+            {logAvailable ? (logText || '等待新的日志输出…') : '日志文件尚未生成…'}
+          </pre>
+        </Card>
+      ) : (
+        <Card title={terminal ? '运行日志' : '实时运行日志'} className="section-card clean-card">
+          <div className="permission-locked-panel">
+            <LockOutlined />
+            <div>
+              <strong>原始运行日志属于受限内容</strong>
+              <p>获得 Simulator 日志访问权限后，可以查看自己任务的完整日志。</p>
+            </div>
+            <PermissionRequestButton
+              permission="simulation_log"
+              reason={`从任务 ${task.task_id} 的日志区域申请`}
+            />
+          </div>
+        </Card>
+      )}
 
       {logFullscreen ? (
         <div className="log-fullscreen" role="dialog" aria-modal="true" aria-label="运行日志全屏查看">

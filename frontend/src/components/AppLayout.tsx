@@ -9,6 +9,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   PlusSquareOutlined,
+  SafetyCertificateOutlined,
   UnorderedListOutlined,
   UserOutlined,
 } from '@ant-design/icons';
@@ -48,6 +49,11 @@ const navGroups: NavGroup[] = [
     label: 'Benchmark',
     items: [{ path: '/benchmark', label: 'Benchmark 浏览', icon: <BarChartOutlined /> }],
   },
+  {
+    key: 'account',
+    label: '账户',
+    items: [{ path: '/permissions', label: '权限中心', icon: <SafetyCertificateOutlined /> }],
+  },
 ];
 
 function isActivePath(current: string, target: string) {
@@ -62,6 +68,7 @@ export function AppLayout() {
     overview: true,
     simulation: true,
     benchmark: true,
+    account: true,
   });
   const location = useLocation();
   const navigate = useNavigate();
@@ -76,11 +83,12 @@ export function AppLayout() {
     if (/^\/benchmark\/chips\/[^/]+\/[^/]+\/benchmarks\/[^/]+$/.test(location.pathname)) return 'Benchmark 详情';
     if (/^\/benchmark\/chips\/[^/]+\/[^/]+$/.test(location.pathname)) return '芯片 Benchmark';
     if (location.pathname.startsWith('/benchmark')) return 'Benchmark 浏览';
+    if (location.pathname.startsWith('/permissions')) return '权限中心';
     return 'AI Chip Platform';
   }, [location.pathname]);
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
     navigate('/', { replace: true });
   }
 
@@ -180,6 +188,13 @@ export function AppLayout() {
                   },
                   { type: 'divider' },
                   {
+                    key: 'permissions',
+                    label: '权限中心',
+                    icon: <SafetyCertificateOutlined />,
+                    onClick: () => navigate('/permissions'),
+                  },
+                  { type: 'divider' },
+                  {
                     key: 'logout',
                     label: '退出登录',
                     icon: <LogoutOutlined />,
@@ -191,6 +206,7 @@ export function AppLayout() {
               <button type="button" className="header-user-button">
                 <UserOutlined />
                 <span>{user?.displayName || user?.userId}</span>
+                {user?.authMode === 'admin' ? <span className="admin-mode-badge">管理员</span> : null}
               </button>
             </Dropdown>
           </div>

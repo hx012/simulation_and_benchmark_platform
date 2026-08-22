@@ -126,6 +126,8 @@ bash scripts/platform.sh start dev
 bash scripts/platform.sh status
 ```
 
+首次启动还必须修改 `.env.platform` 中的 `PLATFORM_BOOTSTRAP_ADMIN_PASSWORD`。密码至少 8 位且同时包含字母和数字，示例值不能用于实际环境。
+
 关闭全部服务：
 
 ```bash
@@ -302,7 +304,7 @@ docker volume inspect ascend-platform-postgres-data
 cd /mnt/d/code/chip_simulation/simulation_and_benchmark_platform/backend
 uv run python scripts/seed_local_completed_task.py \
   --trace-source /mnt/c/Users/zyp/Downloads/trace_sample.json \
-  --owner-id test-user
+  --owner-id admin
 ```
 
 脚本会在与 `backend` 同级的 `runtime/` 下生成任务文件，并新增或更新数据库记录。

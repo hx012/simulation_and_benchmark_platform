@@ -58,7 +58,7 @@ function QueueCell({ task }: { task: SimulationTask }) {
 export function TaskListPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const ownerId = user?.userId || import.meta.env.VITE_DEFAULT_OWNER_ID || 'test-user';
+  const ownerId = user?.userId || import.meta.env.VITE_DEFAULT_OWNER_ID || 'admin';
   const [filter, setFilter] = useState<FilterKey>('ALL');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);

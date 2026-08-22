@@ -377,7 +377,7 @@ frontend/src/api/simulation.ts
 frontend/src/api/benchmark.ts
 ```
 
-登录当前是开发态本地身份标识，保存在 `localStorage` 中；正式 SSO / LDAP 尚未接入。
+登录分为普通模式和管理员模式。普通工号识别仍是开发态方案；管理员模式必须验证数据库中的密码哈希。两种模式都使用后端 HttpOnly 会话 Cookie，`localStorage` 只缓存非敏感展示状态；正式 SSO / LDAP 尚未接入。
 
 ## 11. Trace 能力
 
@@ -444,7 +444,7 @@ GET /api/simulation/tasks/{task_id}/trace/viewer
 - 真实大规模 Trace 的转换耗时和浏览器内存上限验证。
 - Benchmark result provider 和真实结果数据链。
 - Benchmark compare 和性能回归分析。
-- 正式认证和权限体系。
+- 正式 SSO 认证，以及在现有 Permission Set 第一版基础上的完整 Simulation 所有权、Raw Trace、Audit 和水印体系。
 
 ## 13. 开发规范
 
@@ -465,5 +465,5 @@ GET /api/simulation/tasks/{task_id}/trace/viewer
 - 修改前端时保持 Ant Design 和现有页面风格。
 - 修改后端时优先沿用 service / repository / schema 的分层方式。
 - 当前 `tools/` 和 `runtime/` 是明确的本地目录，不纳入基线提交。
-- “我的任务”按当前登录用户的 `owner_id` 过滤，本地种子任务默认属于 `test-user`。
+- “我的任务”按当前登录用户的 `owner_id` 过滤；启动管理员账号为 `admin`，旧 `test-user` 数据由迁移同步重命名。
 - 后端数据模型变化必须新增 Alembic migration，不能直接修改已发布 migration。

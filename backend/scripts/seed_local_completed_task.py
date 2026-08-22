@@ -42,7 +42,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--trace-source", required=True, type=Path)
     parser.add_argument("--task-id", default=DEFAULT_TASK_ID)
     parser.add_argument("--task-name", default="V310 API E2E")
-    parser.add_argument("--owner-id", default="test-user")
+    parser.add_argument("--owner-id", default="admin")
     return parser.parse_args()
 
 

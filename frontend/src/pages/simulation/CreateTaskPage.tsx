@@ -54,7 +54,7 @@ function taskNameSuffix() {
 export function CreateTaskPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const ownerId = user?.userId || import.meta.env.VITE_DEFAULT_OWNER_ID || 'test-user';
+  const ownerId = user?.userId || import.meta.env.VITE_DEFAULT_OWNER_ID || 'admin';
   const [form] = Form.useForm<BasicFormValues>();
   const [quota, setQuota] = useState<SimulationTaskQuotaResponse | null>(null);
 

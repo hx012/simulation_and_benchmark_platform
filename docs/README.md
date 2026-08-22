@@ -1,6 +1,6 @@
 # AI Chip Platform 文档导航
 
-> 当前工程基线：2026-08-21
+> 当前工程基线：2026-08-22
 > 产品目标：V1
 > 工程状态：基础版本已可在 WSL 本地运行，后续通过 PR 迭代
 
@@ -33,7 +33,8 @@ docs/
 │   └── wireframe/wireframe_v1.0.html
 ├── 03_Architecture/
 │   ├── SYSTEM_ARCHITECTURE.md
-│   └── BENCHMARK_BACKEND_V0_1.md
+│   ├── BENCHMARK_BACKEND_V0_1.md
+│   └── PERMISSION_MANAGEMENT_V1.md
 ├── 04_Startup/
 │   ├── startup.md
 │   └── wsl_startup.md

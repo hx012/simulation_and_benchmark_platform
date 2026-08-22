@@ -15,7 +15,7 @@
 ### Frontend
 
 - React、TypeScript、Vite、Ant Design 基础应用。
-- 开发态工号登录，身份保存在浏览器 `localStorage`。
+- 双入口登录：普通工号登录，以及需要密码的管理员登录；身份由后端 HttpOnly 会话 Cookie 管理。
 - Simulation 新建任务、我的任务、任务详情、运行日志、结果和 Catapult Trace 页面。
 - Trace Viewer 支持浏览器全屏、`Esc` 退出、新窗口打开、导入弹窗隐藏和存量任务 React Viewer 回退。
 - Chip Config / Workload 文件树、上传、YAML/JSON 在线编辑和样例载入。
@@ -85,7 +85,7 @@ DATABASE_URL=postgresql+psycopg://ascend_platform:12345678@127.0.0.1:15432/ascen
 
 ```text
 Task ID: SIM-20260818-024736-A3051FC3
-Owner: test-user
+Owner: admin
 Status: COMPLETED
 Trace Status: READY
 ```
@@ -97,9 +97,12 @@ Trace Status: READY
 - 真实公司 Simulator 尚未在本地接入；Profile 中部分真实路径仍是部署占位值。
 - Worker 具有 Mock 执行能力，但前端 Capabilities 尚未提供完整的本地 Mock 配置闭环。
 - Benchmark 目前只读取 Registry；Result Provider 返回空结果，不执行 Benchmark。
-- 登录是前端开发态身份，后端尚无正式 SSO、用户表和权限校验。
-- 当前任务日志和原始 Trace 可由前端读取，尚未实现 PRD 中的敏感资产权限策略。
-- Compare、Analysis Report、Admin、Audit 尚未形成完整实现。
+- 普通工号识别仍是开发态方案，尚未接入正式 SSO；管理员已经使用数据库角色、密码哈希和后端会话认证。
+- 当前自动授予 `normal`；`benchmark_access` 与 `simulation_log` 可申请。管理员模式默认具备全部启用的 Permission Set。
+- Permission Set 名称、说明、可申请状态，以及模块的普通/指定权限/仅管理员/未开放策略均由数据库管理，可在权限中心配置；代码只注册稳定资源代码并执行策略。
+- 支持多个管理员，提升管理员时必须配置密码，并保护最后一个有效管理员不被移除或停用。
+- 原始 Trace、其他 Simulation 接口的完整所有权收口、正式身份水印和 Audit 尚未实现。
+- Compare、Analysis Report 和完整 Admin 统计尚未形成完整实现。
 - Catapult 工具目录不进入 Git，离线部署包必须携带固定 commit `1d18f6e11082de030c45fd55b556d15e3aa628a8`，并通过 `CATAPULT_HOME` 指向该目录；继续验证大 Trace 的资源上限。
 
 ## 6. 基线变更规则

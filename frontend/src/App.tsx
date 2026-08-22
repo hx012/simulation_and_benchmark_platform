@@ -11,6 +11,8 @@ import { ChipBenchmarkPage } from './pages/benchmark/ChipBenchmarkPage';
 import { CreateTaskPage } from './pages/simulation/CreateTaskPage';
 import { TaskDetailPage } from './pages/simulation/TaskDetailPage';
 import { TaskListPage } from './pages/simulation/TaskListPage';
+import { PermissionCenterPage } from './pages/permissions/PermissionCenterPage';
+import { PermissionGate } from './components/PermissionGate';
 import { TaskResultPage } from './pages/simulation/TaskResultPage';
 
 function RequireAuth({ children }: { children: ReactElement }) {
@@ -40,9 +42,10 @@ export default function App() {
         <Route path="/simulation/tasks" element={<TaskListPage />} />
         <Route path="/simulation/tasks/:taskId" element={<TaskDetailPage />} />
         <Route path="/simulation/tasks/:taskId/result" element={<TaskResultPage />} />
-        <Route path="/benchmark" element={<BenchmarkBrowsePage />} />
-        <Route path="/benchmark/chips/:vendor/:chip" element={<ChipBenchmarkPage />} />
-        <Route path="/benchmark/chips/:vendor/:chip/benchmarks/:benchmarkName" element={<BenchmarkDetailPage />} />
+        <Route path="/permissions" element={<PermissionCenterPage />} />
+        <Route path="/benchmark" element={<PermissionGate resource="benchmark.view" fallbackPermission="benchmark_access"><BenchmarkBrowsePage /></PermissionGate>} />
+        <Route path="/benchmark/chips/:vendor/:chip" element={<PermissionGate resource="benchmark.view" fallbackPermission="benchmark_access"><ChipBenchmarkPage /></PermissionGate>} />
+        <Route path="/benchmark/chips/:vendor/:chip/benchmarks/:benchmarkName" element={<PermissionGate resource="benchmark.view" fallbackPermission="benchmark_access"><BenchmarkDetailPage /></PermissionGate>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
