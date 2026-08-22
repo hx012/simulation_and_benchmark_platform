@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     app_name: str = "Ascend Simulator & Benchmark Platform"
     app_version: str = "0.1.0"
     app_env: str = "development"
+    # Used only to create/recover the first administrator. Additional admins live in DB.
+    platform_bootstrap_admin_id: str = "admin"
+    platform_bootstrap_admin_password: str = ""
+    platform_session_hours: float = 12.0
+    platform_session_cookie_secure: bool = False
 
     task_root: Path = Path("./data/simulation_tasks")
 

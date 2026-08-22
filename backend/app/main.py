@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.api.auth import router as auth_router
 from app.api.benchmark import router as benchmark_router
 from app.api.simulation import router as simulation_router
 from app.common.config import get_settings
@@ -12,6 +13,7 @@ def create_app() -> FastAPI:
         version=settings.app_version
     )
     app.include_router(health_router)
+    app.include_router(auth_router)
     app.include_router(benchmark_router)
     app.include_router(simulation_router)
     return app

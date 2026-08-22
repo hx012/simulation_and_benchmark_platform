@@ -2,6 +2,7 @@ import argparse
 import json
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -14,11 +15,14 @@ TERMINAL_STATUSES = {
     "TERMINATED",
 }
 
+COOKIE_JAR: Path | None = None
+
 
 def run_curl(args: list[str]) -> Any:
     command = [
         "curl",
         "-sS",
+        *(["-b", str(COOKIE_JAR), "-c", str(COOKIE_JAR)] if COOKIE_JAR else []),
         *args,
     ]
 
@@ -112,7 +116,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--owner-id",
-        default="test-user",
+        default="admin",
     )
     parser.add_argument(
         "--task-name",
@@ -147,9 +151,21 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    global COOKIE_JAR
+    cookie_file = tempfile.NamedTemporaryFile(prefix="platform-e2e-", suffix=".cookie")
+    COOKIE_JAR = Path(cookie_file.name)
+
     base_url = args.base_url.rstrip("/")
     chip_config_dir = args.chip_config_dir.resolve()
     workload_dir = args.workload_dir.resolve()
+
+    login = run_curl([
+        "-X", "POST", f"{base_url}/api/auth/login",
+        "-H", "Content-Type: application/json",
+        "-d", json.dumps({"employee_id": args.owner_id, "auth_mode": "normal"}),
+    ])
+    if login.get("user_id") != args.owner_id:
+        raise SystemExit("Failed to establish the expected platform session")
 
     if not chip_config_dir.is_dir():
         raise SystemExit(

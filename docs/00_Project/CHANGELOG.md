@@ -1,5 +1,26 @@
 # AI Chip Platform — Changelog
 
+## 2026-08-22 — Permission Management V1
+
+### Added
+
+- 普通/管理员双入口和后端 HttpOnly 会话；
+- 多管理员数据库配置、管理员密码哈希和自助改密；
+- `normal`、`benchmark_access`、`simulation_log` Permission Set；
+- 权限申请、审批、授权闭环；
+- 数据库化模块访问策略和权限中心配置界面。
+
+### Migration
+
+- `20260822_0002` 创建用户、授权和权限申请表；
+- `20260822_0003` 创建会话、Permission Set 和受保护资源表，并将 `test-user` 迁移为 `admin`。
+
+### Known Gaps
+
+- 普通工号识别仍待公司 SSO / LDAP；
+- 首次登录强制改密、失败锁定和管理员审计尚未实现；
+- Raw Trace 和跨用户支持访问仍需独立权限设计。
+
 ## 2026-08-21 — Engineering Baseline B0
 
 形成可继续迭代的本地开发基础版本。
