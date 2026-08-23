@@ -1,0 +1,21 @@
+team:
+  name: 芯片仿真与性能分析团队
+  description: 面向 AI 芯片架构研究与工程验证，提供仿真、Benchmark、Trace 与性能分析能力。
+  specialties:
+    - 架构仿真
+    - 负载建模
+    - 性能分析
+  achievements:
+    - title: 内存热力图分析组件
+      category: 工具与平台
+      summary: 支持按地址、Core 和时间窗口聚合，为仿真结果分析提供基础能力。
+      contributors: 团队共建
+      date: "2026-08"
+    - title: Trace 自动归因方法验证
+      category: 分析方法
+      summary: 围绕关键路径与等待事件建立可复核的分析方法。
+      contributors: 性能分析组
+      date: "2026-08"
+
+# 新需求默认仅提交人和管理员可见。审视后按需求编号添加配置。
+demand_reviews: {}

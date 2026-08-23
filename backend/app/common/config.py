@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     platform_bootstrap_admin_password: str = ""
     platform_session_hours: float = 12.0
     platform_session_cookie_secure: bool = False
+    platform_community_w3_name: str = "W3 负载建模社区"
+    platform_community_w3_url: str = ""
+    platform_community_jiaxian_name: str = "稼先社区"
+    platform_community_jiaxian_url: str = ""
+    platform_content_config: Path = BACKEND_ROOT / "config" / "platform_content.yml"
 
     task_root: Path = Path("./data/simulation_tasks")
 

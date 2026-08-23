@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Skeleton } from 'antd';
+import { Button, Card, Skeleton, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { benchmarkApi } from '../api/benchmark';
 import { useAuth } from '../auth/AuthContext';
 import { simulationApi } from '../api/simulation';
 import { PageHeading } from '../components/PageHeading';
 import { PermissionRequestButton } from '../components/PermissionRequestButton';
+import { collaborationApi, type CommunityLink } from '../api/collaboration';
 
 interface PlatformAssetStats {
   chips: number | null;
@@ -18,6 +19,7 @@ export function HomePage() {
   const { user, hasResource } = useAuth();
   const canViewBenchmark = hasResource('benchmark.view');
   const [stats, setStats] = useState<PlatformAssetStats | null>(null);
+  const [communities, setCommunities] = useState<CommunityLink[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,6 +63,12 @@ export function HomePage() {
     };
   }, [canViewBenchmark, user?.userId]);
 
+  useEffect(() => {
+    void collaborationApi.getPlatformConfig()
+      .then((config) => setCommunities(config.communities))
+      .catch(() => setCommunities([]));
+  }, []);
+
   return (
     <div className="page-container platform-home-page">
       <PageHeading
@@ -91,6 +99,41 @@ export function HomePage() {
             />
           )}
         </Card>
+
+        <Card className="platform-home-entry-card">
+          <div><Tag>建设中</Tag></div>
+          <h2>性能分析</h2>
+          <p>统一承载仿真结果、Trace 与 Benchmark 的性能分析能力。</p>
+          <Button block onClick={() => navigate('/performance')}>查看建设进度</Button>
+        </Card>
+
+        <Card className="platform-home-entry-card">
+          <h2>团队共建</h2>
+          <p>了解团队成果，提交业务需求并跟踪已公开的审视结论。</p>
+          <div className="platform-home-actions">
+            <Button type="primary" onClick={() => navigate('/demands')}>进入需求池</Button>
+            <Button onClick={() => navigate('/team')}>团队风采</Button>
+          </div>
+        </Card>
+      </div>
+
+      <h2 className="platform-home-section-title">社区生态</h2>
+      <div className="community-card-grid">
+        {communities.map((item) => (
+          <Card key={item.key} className="community-card">
+            <div className="community-card-mark">{item.key === 'w3' ? 'W3' : '稼先'}</div>
+            <div className="community-card-copy">
+              <h3>{item.name}</h3>
+              <p>{item.enabled ? '进入社区交流技术方法与项目成果。' : '社区地址暂未配置。'}</p>
+            </div>
+            <Button
+              disabled={!item.enabled}
+              onClick={() => window.open(item.url, '_blank', 'noopener,noreferrer')}
+            >
+              进入社区 ↗
+            </Button>
+          </Card>
+        ))}
       </div>
 
       <h2 className="platform-home-section-title">平台资产</h2>
