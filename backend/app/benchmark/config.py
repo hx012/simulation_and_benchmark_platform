@@ -1,7 +1,10 @@
 from functools import lru_cache
+import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.common.config import DEFAULT_PLATFORM_ENV_FILE
 
 
 class BenchmarkSettings(BaseSettings):
@@ -14,7 +17,7 @@ class BenchmarkSettings(BaseSettings):
     aibench_home: Path | None = None
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=DEFAULT_PLATFORM_ENV_FILE,
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -22,4 +25,5 @@ class BenchmarkSettings(BaseSettings):
 
 @lru_cache
 def get_benchmark_settings() -> BenchmarkSettings:
-    return BenchmarkSettings()
+    env_file = os.environ.get("PLATFORM_ENV_FILE", str(DEFAULT_PLATFORM_ENV_FILE))
+    return BenchmarkSettings(_env_file=env_file)

@@ -1,4 +1,4 @@
-# Example only. Keep using config/simulator_profiles.yml as the runtime source of truth.
+# Default example only. Set SIMULATOR_PROFILES_FILE to an untracked deployment file for real simulators.
 # Labels are optional; when omitted the backend provides sensible fallbacks.
 profiles:
   - simulator_version: v310

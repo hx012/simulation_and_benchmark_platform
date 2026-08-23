@@ -5,16 +5,18 @@ import { benchmarkApi } from '../api/benchmark';
 import { useAuth } from '../auth/AuthContext';
 import { simulationApi } from '../api/simulation';
 import { PageHeading } from '../components/PageHeading';
+import { PermissionRequestButton } from '../components/PermissionRequestButton';
 
 interface PlatformAssetStats {
-  chips: number;
-  benchmarks: number;
+  chips: number | null;
+  benchmarks: number | null;
   simulationTasks: number;
 }
 
 export function HomePage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, hasResource } = useAuth();
+  const canViewBenchmark = hasResource('benchmark.view');
   const [stats, setStats] = useState<PlatformAssetStats | null>(null);
 
   useEffect(() => {
@@ -22,26 +24,33 @@ export function HomePage() {
 
     async function load() {
       try {
-        const chips = await benchmarkApi.listChips();
-        const benchmarkLists = await Promise.all(
-          chips.items.map((item) => benchmarkApi.listBenchmarks(item.vendor, item.chip)),
-        );
         const tasks = await simulationApi.listTasks({
           ownerId: user?.userId,
           archived: false,
           pageSize: 1,
         });
 
+        let chipCount: number | null = null;
+        let benchmarkCount: number | null = null;
+        if (canViewBenchmark) {
+          const chips = await benchmarkApi.listChips();
+          const benchmarkLists = await Promise.all(
+            chips.items.map((item) => benchmarkApi.listBenchmarks(item.vendor, item.chip)),
+          );
+          chipCount = chips.total;
+          benchmarkCount = benchmarkLists.reduce((sum, item) => sum + item.total, 0);
+        }
+
         if (!cancelled) {
           setStats({
-            chips: chips.total,
-            benchmarks: benchmarkLists.reduce((sum, item) => sum + item.total, 0),
+            chips: chipCount,
+            benchmarks: benchmarkCount,
             simulationTasks: tasks.total,
           });
         }
       } catch {
         if (!cancelled) {
-          setStats({ chips: 0, benchmarks: 0, simulationTasks: 0 });
+          setStats({ chips: null, benchmarks: null, simulationTasks: 0 });
         }
       }
     }
@@ -50,7 +59,7 @@ export function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [user?.userId]);
+  }, [canViewBenchmark, user?.userId]);
 
   return (
     <div className="page-container platform-home-page">
@@ -72,7 +81,15 @@ export function HomePage() {
         <Card className="platform-home-entry-card">
           <h2>Benchmark</h2>
           <p>筛选厂商并选择芯片，进入芯片档案与 Benchmark 资产。</p>
-          <Button type="primary" block onClick={() => navigate('/benchmark')}>查看 Benchmark</Button>
+          {canViewBenchmark ? (
+            <Button type="primary" block onClick={() => navigate('/benchmark')}>查看 Benchmark</Button>
+          ) : (
+            <PermissionRequestButton
+              permission="benchmark_access"
+              reason="从首页 Benchmark 入口申请"
+              block
+            />
+          )}
         </Card>
       </div>
 
@@ -81,11 +98,11 @@ export function HomePage() {
         <div className="platform-asset-grid">
           <div className="platform-asset-card">
             <span>支持芯片</span>
-            <strong>{stats.chips}</strong>
+            <strong>{stats.chips ?? '受限'}</strong>
           </div>
           <div className="platform-asset-card">
             <span>Benchmark</span>
-            <strong>{stats.benchmarks}</strong>
+            <strong>{stats.benchmarks ?? '受限'}</strong>
           </div>
           <div className="platform-asset-card">
             <span>分析报告</span>

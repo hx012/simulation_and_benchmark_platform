@@ -1,5 +1,36 @@
 # AI Chip Platform — Changelog
 
+## 2026-08-23 — Offline uv deployment and one-command startup
+
+### Changed
+
+- 根目录 `.env.platform` 成为数据库、Backend、Worker 和管理员的唯一环境配置；
+- Backend 根据 `POSTGRES_*` 自动构造数据库连接，不再重复维护 `DATABASE_URL`；
+- 公司真实 `simulator_profiles.yml` 可通过 `SIMULATOR_PROFILES_FILE` 放在仓库外；
+- `scripts/platform.sh` 拆分 `setup`、`update` 和 `start`，运行时直接使用 `.venv/bin/*`；
+- 增加 Linux x86_64 / Python 3.10 uv 离线缓存构建和断网验证脚本。
+
+## 2026-08-22 — Permission Management V1
+
+### Added
+
+- 普通/管理员双入口和后端 HttpOnly 会话；
+- 多管理员数据库配置、管理员密码哈希和自助改密；
+- `normal`、`benchmark_access`、`simulation_log` Permission Set；
+- 权限申请、审批、授权闭环；
+- 数据库化模块访问策略和权限中心配置界面。
+
+### Migration
+
+- `20260822_0002` 创建用户、授权和权限申请表；
+- `20260822_0003` 创建会话、Permission Set 和受保护资源表，并将 `test-user` 迁移为 `admin`。
+
+### Known Gaps
+
+- 普通工号识别仍待公司 SSO / LDAP；
+- 首次登录强制改密、失败锁定和管理员审计尚未实现；
+- Raw Trace 和跨用户支持访问仍需独立权限设计。
+
 ## 2026-08-21 — Engineering Baseline B0
 
 形成可继续迭代的本地开发基础版本。

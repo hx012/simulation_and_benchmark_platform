@@ -90,7 +90,7 @@ WSL 必须使用 Linux 版 `node` 和 `npm`。如果 `command -v npm` 指向 `/m
 cd backend
 uv run python scripts/seed_local_completed_task.py \
   --trace-source /mnt/c/Users/zyp/Downloads/trace_sample.json \
-  --owner-id test-user
+  --owner-id admin
 ```
 
 该脚本会在仓库根目录 `runtime/<task_id>/` 生成日志、summary 和 Trace，并新增或更新数据库任务。Trace 文件属于本地输入，不进入 Git。

@@ -1,3 +1,6 @@
 /runtime/
 /tools/
 /.env.platform
+/deploy/offline/python/*
+!/deploy/offline/python/README.md
+/deploy/local/

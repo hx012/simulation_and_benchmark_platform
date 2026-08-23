@@ -86,33 +86,43 @@ docker run -d \
 | User | `ascend_platform` |
 | Password | `12345678` |
 
-### 1.5 创建后端环境配置
+### 1.5 创建统一环境配置
 
-仅在 `backend/.env` 不存在时执行：
+在仓库根目录仅创建一份 `.env.platform`：
 
 ```bash
-cp .env.example .env
+cd /mnt/d/code/chip_simulation/simulation_and_benchmark_platform
+cp .env.platform.example .env.platform
+chmod 600 .env.platform
 ```
 
-本地数据库连接配置应为：
+本地数据库配置应为：
 
 ```env
 TASK_ROOT=../runtime
-DATABASE_URL=postgresql+psycopg://ascend_platform:12345678@127.0.0.1:15432/ascend_platform
+POSTGRES_HOST=127.0.0.1
+POSTGRES_PORT=15432
+POSTGRES_USER=ascend_platform
+POSTGRES_PASSWORD=12345678
+POSTGRES_DB=ascend_platform
 ```
+
+Backend 自动读取根目录 `.env.platform` 并构造数据库连接，不再创建 `backend/.env`。
 
 ### 1.6 安装后端依赖并初始化数据库
 
 ```bash
-uv sync
-uv run alembic upgrade head
+cd /mnt/d/code/chip_simulation/simulation_and_benchmark_platform
+bash scripts/platform.sh setup
+bash scripts/platform.sh update
 ```
 
 确认数据库迁移状态：
 
 ```bash
-uv run alembic current
-uv run alembic check
+cd backend
+.venv/bin/alembic current
+.venv/bin/alembic check
 ```
 
 ## 2. 电脑重启后的日常启动
@@ -122,9 +132,13 @@ uv run alembic check
 ```bash
 cd /mnt/d/code/chip_simulation/simulation_and_benchmark_platform
 cp .env.platform.example .env.platform   # 仅首次；随后设置本机数据库密码
+bash scripts/platform.sh setup           # 仅首次或依赖变化
+bash scripts/platform.sh update          # 依赖校验、迁移、前端构建
 bash scripts/platform.sh start dev
 bash scripts/platform.sh status
 ```
+
+首次启动还必须修改 `.env.platform` 中的 `PLATFORM_BOOTSTRAP_ADMIN_PASSWORD`。密码至少 8 位且同时包含字母和数字，示例值不能用于实际环境。
 
 关闭全部服务：
 
@@ -302,7 +316,7 @@ docker volume inspect ascend-platform-postgres-data
 cd /mnt/d/code/chip_simulation/simulation_and_benchmark_platform/backend
 uv run python scripts/seed_local_completed_task.py \
   --trace-source /mnt/c/Users/zyp/Downloads/trace_sample.json \
-  --owner-id test-user
+  --owner-id admin
 ```
 
 脚本会在与 `backend` 同级的 `runtime/` 下生成任务文件，并新增或更新数据库记录。

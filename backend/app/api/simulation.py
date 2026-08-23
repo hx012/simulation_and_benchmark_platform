@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from fastapi import (
     APIRouter,
     Depends,
@@ -12,6 +10,9 @@ from fastapi import (
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.auth.constants import SIMULATION_LOG_RESOURCE, SIMULATION_TASK_RESOURCE
+from app.auth.models import User
+from app.auth.service import require_resource
 from app.common.config import get_settings
 from app.common.database import get_db
 from app.simulation.enums import TaskStatus
@@ -72,11 +73,10 @@ from app.simulation.upload_validator import UploadSessionValidator
 from app.simulation.workspace_manager import TaskWorkspaceManager
 
 
-BACKEND_ROOT = Path(__file__).resolve().parents[2]
-
 router = APIRouter(
     prefix="/api/simulation",
     tags=["simulation"],
+    dependencies=[Depends(require_resource(SIMULATION_TASK_RESOURCE))],
 )
 
 settings = get_settings()
@@ -101,9 +101,7 @@ upload_file_service = UploadSessionFileService(
 )
 
 profile_registry = SimulatorProfileRegistry(
-    BACKEND_ROOT
-    / "config"
-    / "simulator_profiles.yml"
+    settings.simulator_profiles_file
 )
 workspace_manager = TaskWorkspaceManager(settings)
 task_management_service = SimulationTaskManagementService(
@@ -447,9 +445,12 @@ def get_simulation_log(
         ge=1,
     ),
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_resource(SIMULATION_LOG_RESOURCE)),
 ) -> SimulationLogResponse:
     try:
         task = task_service.get_task(db, task_id)
+        if task.owner_id != current_user.employee_id:
+            raise TaskNotFoundError(f"Simulation task not found: {task_id}")
         chunk = task_io_service.read_log(
             task,
             offset=offset,

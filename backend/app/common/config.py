@@ -1,22 +1,38 @@
 from functools import lru_cache
+import os
 from pathlib import Path
+from urllib.parse import quote
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = BACKEND_ROOT.parent
+DEFAULT_PLATFORM_ENV_FILE = PROJECT_ROOT / ".env.platform"
 
 
 class Settings(BaseSettings):
     app_name: str = "Ascend Simulator & Benchmark Platform"
     app_version: str = "0.1.0"
     app_env: str = "development"
+    # Used only to create/recover the first administrator. Additional admins live in DB.
+    platform_bootstrap_admin_id: str = "admin"
+    platform_bootstrap_admin_password: str = ""
+    platform_session_hours: float = 12.0
+    platform_session_cookie_secure: bool = False
 
     task_root: Path = Path("./data/simulation_tasks")
 
     simulator_home: Path | None = None
+    simulator_profiles_file: Path = BACKEND_ROOT / "config" / "simulator_profiles.yml"
     sst_executable: Path | None = None
     database_url: str | None = None
+    postgres_host: str = "127.0.0.1"
+    postgres_port: int = 15432
+    postgres_user: str = "ascend_platform"
+    postgres_password: str = ""
+    postgres_db: str = "ascend_platform"
 
     sim_worker_id: str = "simulation-worker-01"
     sim_max_concurrent_tasks: int = 2
@@ -44,12 +60,26 @@ class Settings(BaseSettings):
     upload_submit_lock_stale_seconds: float = 600.0
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=DEFAULT_PLATFORM_ENV_FILE,
         env_file_encoding="utf-8",
         extra="ignore",
     )
 
+    @model_validator(mode="after")
+    def derive_database_url(self) -> "Settings":
+        if self.database_url is not None or not self.postgres_password:
+            return self
+        user = quote(self.postgres_user, safe="")
+        password = quote(self.postgres_password, safe="")
+        database = quote(self.postgres_db, safe="")
+        self.database_url = (
+            f"postgresql+psycopg://{user}:{password}"
+            f"@{self.postgres_host}:{self.postgres_port}/{database}"
+        )
+        return self
+
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    env_file = os.environ.get("PLATFORM_ENV_FILE", str(DEFAULT_PLATFORM_ENV_FILE))
+    return Settings(_env_file=env_file)

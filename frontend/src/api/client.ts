@@ -69,7 +69,6 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const headers = new Headers(init.headers);
   const isFormData = init.body instanceof FormData;
-
   if (!isFormData && init.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
@@ -77,6 +76,7 @@ export async function apiRequest<T>(
   const response = await fetch(makeUrl(path, query), {
     ...init,
     headers,
+    credentials: 'include',
   });
 
   if (!response.ok) {

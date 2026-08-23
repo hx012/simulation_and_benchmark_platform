@@ -1,64 +1,85 @@
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-
-export interface PlatformUser {
-  userId: string;
-  displayName: string;
-  role: 'normal' | 'admin';
-}
+import { authApi } from '../api/auth';
+import { clearStoredUser, readStoredUser, storeUser } from './storage';
+import { mapCurrentUser } from './types';
+import type { AuthMode, PermissionCatalogItem, PermissionCode, PlatformUser } from './types';
 
 interface AuthContextValue {
   user: PlatformUser | null;
   authenticated: boolean;
-  login: (employeeId: string) => Promise<PlatformUser>;
-  logout: () => void;
-}
-
-const STORAGE_KEY = 'ai-chip-platform.auth.v1';
-
-function readStoredUser(): PlatformUser | null {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const value = JSON.parse(raw) as Partial<PlatformUser>;
-    if (!value.userId || !value.displayName) return null;
-    return {
-      userId: value.userId,
-      displayName: value.displayName,
-      role: value.role === 'admin' ? 'admin' : 'normal',
-    };
-  } catch {
-    return null;
-  }
+  login: (employeeId: string, authMode: AuthMode, password?: string) => Promise<PlatformUser>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<PlatformUser | null>;
+  hasPermission: (permission: PermissionCode) => boolean;
+  hasResource: (resource: string) => boolean;
+  permissionCatalog: Record<string, PermissionCatalogItem>;
+  refreshPermissionCatalog: () => Promise<Record<string, PermissionCatalogItem>>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<PlatformUser | null>(() => readStoredUser());
+  const [permissionCatalog, setPermissionCatalog] = useState<Record<string, PermissionCatalogItem>>({});
 
-  async function login(employeeId: string): Promise<PlatformUser> {
+  async function refreshPermissionCatalog() {
+    const response = await authApi.getPermissionCatalog();
+    const next = Object.fromEntries(response.items.map((item) => [item.code, item]));
+    setPermissionCatalog(next);
+    return next;
+  }
+
+  async function refreshUser(): Promise<PlatformUser | null> {
+    try {
+      const current = mapCurrentUser(await authApi.getMe());
+      storeUser(current);
+      setUser(current);
+      await refreshPermissionCatalog();
+      return current;
+    } catch {
+      clearStoredUser();
+      setUser(null);
+      return null;
+    }
+  }
+
+  useEffect(() => {
+    void refreshUser();
+    // Reconcile the server-side session once on startup.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function login(employeeId: string, authMode: AuthMode, password = ''): Promise<PlatformUser> {
     const normalizedId = employeeId.trim();
     if (!normalizedId) {
       throw new Error('请输入工号');
     }
 
-    // 临时开发态身份方案：仅记录工号，不承担真实身份认证。
-    // 正式接入 W3 OAuth2 SSO 后，由 Auth Provider 从 /userinfo 获取 uid，
-    // PlatformUser / owner_id 等业务接口保持不变。
-    const nextUser: PlatformUser = {
-      userId: normalizedId,
-      displayName: normalizedId,
-      role: 'normal',
-    };
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
+    const nextUser = mapCurrentUser(await authApi.login(normalizedId, authMode, password));
+    storeUser(nextUser);
     setUser(nextUser);
+    await refreshPermissionCatalog();
     return nextUser;
   }
 
-  function logout() {
-    window.localStorage.removeItem(STORAGE_KEY);
+  async function logout() {
+    try {
+      await authApi.logout();
+    } catch {
+      // Local logout still clears stale UI state if the session already expired.
+    }
+    clearStoredUser();
     setUser(null);
+    setPermissionCatalog({});
+  }
+
+  function hasPermission(permission: PermissionCode) {
+    return Boolean(user?.permissions.includes(permission));
+  }
+
+  function hasResource(resource: string) {
+    return Boolean(user?.resources.includes(resource));
   }
 
   const value = useMemo<AuthContextValue>(() => ({
@@ -66,7 +87,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     authenticated: Boolean(user),
     login,
     logout,
-  }), [user]);
+    refreshUser,
+    hasPermission,
+    hasResource,
+    permissionCatalog,
+    refreshPermissionCatalog,
+  }), [user, permissionCatalog]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -37,10 +37,11 @@
 
 ## P4：认证、权限与管理
 
-1. 接入公司 SSO/LDAP，建立后端可信身份。
-2. 实现 Permission Set 和敏感资产授权。
-3. 增加关键行为 Audit。
-4. 实现基础 Admin 指标和权限审批。
+1. 接入公司 SSO/LDAP，替换当前开发态工号身份并建立后端可信身份。
+2. 已完成 Permission Set 第一版：`normal`、`benchmark_access`、`simulation_log`，权限申请审批，以及数据库化模块访问策略。
+3. 已完成普通/管理员双入口、管理员密码会话和多管理员配置；后续接入正式 SSO / LDAP 并补充登录风控和审计。
+4. 继续收口 Simulation 所有权、Raw Trace 和后续细分资产权限。
+4. 增加关键行为 Audit、身份水印和基础 Admin 指标。
 
 ## 推荐下一个 PR
 

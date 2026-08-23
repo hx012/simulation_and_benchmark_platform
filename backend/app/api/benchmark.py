@@ -2,6 +2,8 @@ from functools import lru_cache
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.auth.constants import BENCHMARK_VIEW_RESOURCE
+from app.auth.service import require_resource
 from app.benchmark.config import get_benchmark_settings
 from app.benchmark.exceptions import (
     BenchmarkChipNotFoundError,
@@ -26,6 +28,7 @@ from app.benchmark.service import BenchmarkService
 router = APIRouter(
     prefix="/api/benchmark",
     tags=["benchmark"],
+    dependencies=[Depends(require_resource(BENCHMARK_VIEW_RESOURCE))],
 )
 
 

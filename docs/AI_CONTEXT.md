@@ -102,16 +102,18 @@ backend/app/common/config.py
 backend/app/benchmark/config.py
 backend/config/simulator_profiles.yml
 backend/config/simulator_profiles.multi.example.yml
-backend/.env.example
+.env.platform.example
 backend/alembic.ini
 backend/alembic/
 ```
 
 通用环境变量由 `app.common.config.Settings` 读取，重要字段包括：
 
-- `DATABASE_URL`
+- `POSTGRES_HOST` / `POSTGRES_PORT`
+- `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB`
 - `TASK_ROOT`
 - `SIMULATOR_HOME`
+- `SIMULATOR_PROFILES_FILE`
 - `SST_EXECUTABLE`
 - `SIM_WORKER_ID`
 - `SIM_MAX_CONCURRENT_TASKS`
@@ -120,19 +122,25 @@ backend/alembic/
 
 Benchmark 使用 `AIBENCH_HOME` 读取现有 aibench registry。
 
-注意：`backend/app/common/database.py` 在导入时要求 `DATABASE_URL` 已配置。由于 simulation API 会导入数据库模块，启动完整 FastAPI app 时需要先准备数据库连接配置。
+注意：`backend/app/common/database.py` 在导入时要求数据库连接已配置。Backend 从根目录 `.env.platform` 的 `POSTGRES_*` 自动构造连接地址；`DATABASE_URL` 仅保留为显式覆盖项。
 
 本地开发默认从 `backend` 目录启动，使用：
 
 ```env
 TASK_ROOT=../runtime
-DATABASE_URL=postgresql+psycopg://ascend_platform:12345678@127.0.0.1:15432/ascend_platform
+POSTGRES_HOST=127.0.0.1
+POSTGRES_PORT=15432
+POSTGRES_USER=ascend_platform
+POSTGRES_PASSWORD=12345678
+POSTGRES_DB=ascend_platform
 ```
 
 完整平台从仓库根目录统一启停：
 
 ```bash
 cp .env.platform.example .env.platform
+bash scripts/platform.sh setup
+bash scripts/platform.sh update
 bash scripts/platform.sh start dev
 bash scripts/platform.sh status
 bash scripts/platform.sh stop
@@ -267,11 +275,13 @@ backend/config/simulation_templates/v310/default/single_chip/
 
 ## 8. Simulator Profile
 
-Profile 配置入口：
+默认 Profile 配置入口：
 
 ```text
 backend/config/simulator_profiles.yml
 ```
+
+公司真实配置通过 `.env.platform` 的 `SIMULATOR_PROFILES_FILE` 指向不提交 Git 的部署文件。
 
 Profile 描述：
 
@@ -377,7 +387,7 @@ frontend/src/api/simulation.ts
 frontend/src/api/benchmark.ts
 ```
 
-登录当前是开发态本地身份标识，保存在 `localStorage` 中；正式 SSO / LDAP 尚未接入。
+登录分为普通模式和管理员模式。普通工号识别仍是开发态方案；管理员模式必须验证数据库中的密码哈希。两种模式都使用后端 HttpOnly 会话 Cookie，`localStorage` 只缓存非敏感展示状态；正式 SSO / LDAP 尚未接入。
 
 ## 11. Trace 能力
 
@@ -444,7 +454,7 @@ GET /api/simulation/tasks/{task_id}/trace/viewer
 - 真实大规模 Trace 的转换耗时和浏览器内存上限验证。
 - Benchmark result provider 和真实结果数据链。
 - Benchmark compare 和性能回归分析。
-- 正式认证和权限体系。
+- 正式 SSO 认证，以及在现有 Permission Set 第一版基础上的完整 Simulation 所有权、Raw Trace、Audit 和水印体系。
 
 ## 13. 开发规范
 
@@ -465,5 +475,5 @@ GET /api/simulation/tasks/{task_id}/trace/viewer
 - 修改前端时保持 Ant Design 和现有页面风格。
 - 修改后端时优先沿用 service / repository / schema 的分层方式。
 - 当前 `tools/` 和 `runtime/` 是明确的本地目录，不纳入基线提交。
-- “我的任务”按当前登录用户的 `owner_id` 过滤，本地种子任务默认属于 `test-user`。
+- “我的任务”按当前登录用户的 `owner_id` 过滤；启动管理员账号为 `admin`，旧 `test-user` 数据由迁移同步重命名。
 - 后端数据模型变化必须新增 Alembic migration，不能直接修改已发布 migration。
