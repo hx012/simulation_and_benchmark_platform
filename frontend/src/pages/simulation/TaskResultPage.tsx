@@ -17,6 +17,7 @@ import { MetricCard } from '../../components/MetricCard';
 import { PageHeading } from '../../components/PageHeading';
 import { TaskStatusTag, TraceStatusTag } from '../../components/StatusTag';
 import { TraceViewer } from '../../components/TraceViewer';
+import { CatapultTraceViewer } from '../../components/CatapultTraceViewer';
 import type {
   SimulationResultResponse,
   SimulationTask,
@@ -64,8 +65,16 @@ export function TaskResultPage() {
   }, [load]);
 
   useEffect(() => {
-    if (!taskId || !result?.trace_available || result.trace_status !== 'READY') {
+    const sourceAvailable = result?.trace_source_available ?? result?.trace_available;
+    if (
+      !taskId
+      || !sourceAvailable
+      || result?.trace_viewer_available
+      || result?.trace_status !== 'READY'
+    ) {
       setTrace(null);
+      setTraceLoading(false);
+      setTraceError(null);
       return;
     }
     let cancelled = false;
@@ -82,7 +91,13 @@ export function TaskResultPage() {
         if (!cancelled) setTraceLoading(false);
       });
     return () => { cancelled = true; };
-  }, [taskId, result?.trace_available, result?.trace_status]);
+  }, [
+    taskId,
+    result?.trace_available,
+    result?.trace_source_available,
+    result?.trace_status,
+    result?.trace_viewer_available,
+  ]);
 
   async function archiveToggle() {
     if (!task) return;
@@ -180,11 +195,17 @@ export function TaskResultPage() {
         className="section-card clean-card trace-card"
         extra={<TraceStatusTag status={result.trace_status} />}
       >
-        {traceLoading ? (
+        {result.trace_viewer_available ? (
+          <CatapultTraceViewer
+            key={task.task_id}
+            taskId={task.task_id}
+            title={task.task_name}
+          />
+        ) : traceLoading ? (
           <div className="trace-loading"><Spin /><span>正在加载 Trace…</span></div>
         ) : traceError ? (
           <Alert type="error" showIcon message="Trace 加载失败" description={traceError} />
-        ) : result.trace_available && trace ? (
+        ) : (result.trace_source_available ?? result.trace_available) && trace ? (
           <TraceViewer events={trace.events} eventCount={trace.event_count} />
         ) : (
           <Alert

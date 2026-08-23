@@ -370,17 +370,9 @@ frontend/src/api/benchmark.ts
 
 ## 11. Trace 能力
 
-Trace 输入采用 Chrome Trace Format。当前前端由 `frontend/src/components/TraceViewer.tsx` 直接渲染事件；Catapult/trace2html 是候选演进方案，尚未确定为最终基线。
+Trace 输入采用 Chrome Trace Format。V1 已确定复用 Catapult/trace2html，Worker 在原始 Trace 生成成功后创建独立 HTML Viewer，前端通过受控 API 在受限 iframe 中展示。Catapult 需要同源存储保存 Viewer 偏好，因此 iframe 允许脚本和同源访问，同时由后端固定产物、CSP `connect-src 'none'` 和路径校验控制安全边界。
 
-当前方向：
-
-```text
-trace.json
-    ↓
-Trace Viewer 展示
-```
-
-候选演进方向：
+当前实现：
 
 ```text
 trace.json
@@ -390,6 +382,22 @@ trace2html
 trace.html
     ↓
 前端 iframe 或独立 viewer 展示
+```
+
+Viewer 默认使用 Catapult `full` 配置；验证版本固定为 `1d18f6e11082de030c45fd55b556d15e3aa628a8`。`lean` 产物缺少运行时 importer，不能作为可用性基线。结果页支持浏览器原生全屏、`Esc` 退出、新窗口打开和页面级全屏降级。对于尚未回填 `trace.html` 的存量任务，前端仍可使用原 React Viewer 读取原始 Trace。
+
+`catapult_trace2html.py` 在独立 HTML 中注入平台集成桥：Catapult 导入模型期间隐藏其原生黑色 `Importing...` overlay，完成、失败或超时后通过 `postMessage` 通知父页面。前端在收到终态通知前保持平台统一加载遮罩，从而避免 iframe 内部加载窗口闪现。
+
+Catapult 源码位于被 Git 忽略的 `tools/catapult`，不会进入 PR 或 `git archive`。公司离线部署包必须显式携带上述固定 commit 的目录；服务器 `.env` 使用项目内绝对路径。WSL `/mnt/*` 开发环境可使用 Linux 原生文件系统缓存加速，但该本机覆盖配置不得带到服务器。
+
+相关入口：
+
+```text
+backend/app/simulation/catapult_trace_exporter.py
+backend/scripts/catapult_trace2html.py
+backend/scripts/build_trace_viewers.py
+frontend/src/components/CatapultTraceViewer.tsx
+GET /api/simulation/tasks/{task_id}/trace/viewer
 ```
 
 复用 Catapult 的原因：
@@ -413,6 +421,7 @@ trace.html
 - Simulator Profile 配置读取和 capabilities API。
 - Benchmark registry 只读浏览。
 - 前端登录、任务创建、任务列表、任务详情、结果页、Benchmark 浏览页面。
+- Catapult Trace Viewer 生成、受控读取、iframe 展示和全屏交互。
 - Docker PostgreSQL 镜像、Alembic 初始迁移和 WSL 启动流程。
 - V310 界面样例，以及本地成功任务种子脚本。
 - 根级 `runtime/` 任务目录约定、日志/summary/trace API 验证。
@@ -421,7 +430,7 @@ trace.html
 
 - 本地 Mock Capability/Profile 的完整前端提交闭环。
 - 真实 Simulator 环境和 profile 路径配置。
-- Trace Viewer 的最终集成方式。
+- 真实大规模 Trace 的转换耗时和浏览器内存上限验证。
 - Benchmark result provider 和真实结果数据链。
 - Benchmark compare 和性能回归分析。
 - 正式认证和权限体系。

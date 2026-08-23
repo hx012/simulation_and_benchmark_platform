@@ -20,6 +20,8 @@ class LogChunk:
 @dataclass(frozen=True)
 class ResultArtifacts:
     trace_available: bool
+    trace_source_available: bool
+    trace_viewer_available: bool
     summary_available: bool
     summary: dict | None
     summary_error: str | None
@@ -103,6 +105,7 @@ class SimulationTaskIOService:
             / "dumps"
             / "trace.json"
         )
+        trace_viewer_path = workspace / "result" / "trace" / "trace.html"
 
         summary: dict | None = None
         summary_error: str | None = None
@@ -126,6 +129,8 @@ class SimulationTaskIOService:
 
         return ResultArtifacts(
             trace_available=trace_path.is_file(),
+            trace_source_available=trace_path.is_file(),
+            trace_viewer_available=trace_viewer_path.is_file(),
             summary_available=summary_path.is_file(),
             summary=summary,
             summary_error=summary_error,
@@ -175,6 +180,26 @@ class SimulationTaskIOService:
             events.append(item)
 
         return events
+
+    def get_trace_viewer_path(
+        self,
+        task: SimulationTask,
+    ) -> Path:
+        workspace = self._workspace(task)
+        trace_viewer_path = workspace / "result" / "trace" / "trace.html"
+
+        if not trace_viewer_path.is_file():
+            raise TaskIOError("Catapult Trace Viewer is not available for this task")
+
+        try:
+            resolved_viewer_path = trace_viewer_path.resolve(strict=True)
+            resolved_viewer_path.relative_to(workspace)
+        except (OSError, ValueError) as exc:
+            raise TaskIOError(
+                "Trace Viewer artifact is outside task workspace"
+            ) from exc
+
+        return resolved_viewer_path
 
     def _workspace(
         self,

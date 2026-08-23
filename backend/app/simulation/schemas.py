@@ -142,6 +142,8 @@ class SimulationResultResponse(BaseModel):
 
     trace_status: TraceStatus
     trace_available: bool
+    trace_source_available: bool
+    trace_viewer_available: bool
     summary_available: bool
     summary: dict[str, Any] | None
     summary_error: str | None

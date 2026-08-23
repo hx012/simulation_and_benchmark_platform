@@ -292,6 +292,18 @@ uv run python scripts/seed_local_completed_task.py \
 
 脚本会在与 `backend` 同级的 `runtime/` 下生成任务文件，并新增或更新数据库记录。
 
+如果任务已有 `trace.json`，可生成或回填 Catapult Viewer：
+
+```bash
+uv run python scripts/build_trace_viewers.py --all --force
+```
+
+默认要求仓库根目录存在 `tools/catapult`，当前验证版本固定为 commit `1d18f6e11082de030c45fd55b556d15e3aa628a8`。`tools/` 被 Git 忽略，制作公司服务器离线包时需要显式携带该目录；服务器可在 `.env` 中通过 `CATAPULT_HOME` 和 `CATAPULT_PYTHON` 指向项目内的绝对路径。
+
+如果 WSL 项目位于 `/mnt/*`，Catapult 大量小文件的冷读取可能显著变慢。开发机可把同一 commit 缓存到 WSL 的 Linux 原生文件系统，并仅在本机 `.env` 覆盖 `CATAPULT_HOME`。该缓存路径是本机性能优化，不能复制到公司 Linux 服务器配置。
+
+Viewer HTML 内含平台集成桥，用于隐藏 Catapult 原生黑色 `Importing...` 弹窗，并在加载完成后通知结果页显示 iframe。更新适配脚本后应使用上面的 `--force` 重新生成存量 Viewer。
+
 ## 6. 日常快速命令
 
 后端终端：

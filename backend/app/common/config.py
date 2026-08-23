@@ -29,8 +29,15 @@ class Settings(BaseSettings):
 
     sim_log_max_chunk_bytes: int = 1024 * 1024
     sim_trace_max_bytes: int = 64 * 1024 * 1024
+    sim_trace_viewer_enabled: bool = True
+    sim_trace_viewer_config: str = "full"
+    sim_trace_viewer_timeout_seconds: float = 120.0
+    sim_trace_viewer_max_output_bytes: int = 256 * 1024 * 1024
     sim_online_edit_max_bytes: int = 2 * 1024 * 1024
     sim_sample_template_root: Path = BACKEND_ROOT / "config" / "simulation_templates"
+
+    catapult_home: Path = BACKEND_ROOT.parent / "tools" / "catapult"
+    catapult_python: Path | None = None
 
     upload_session_ttl_hours: float = 24.0
     upload_cleanup_batch_size: int = 100

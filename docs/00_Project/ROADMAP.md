@@ -23,8 +23,8 @@
 
 ## P2：结果与 Trace
 
-1. 决定 Trace Viewer 最终方案：当前 React Viewer 或 Catapult/trace2html。
-2. 增加大 Trace 文件的加载策略和上限处理。
+1. 基于已接入的 Catapult/trace2html 验证真实大 Trace 的转换时间、输出大小和浏览器内存。
+2. 根据真实数据调整 Trace 输入、输出和转换超时上限。
 3. 完善 summary schema、版本兼容和前端 Result Block。
 4. 增加配置快照、日志下载或权限受控查看策略。
 
