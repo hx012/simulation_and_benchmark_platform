@@ -1,7 +1,7 @@
 # 当前工程基线
 
 > **Baseline:** B0
-> **Date:** 2026-08-21
+> **Date:** 2026-08-22
 > **Status:** Accepted as development baseline
 
 本文档只描述当前仓库已经实现并验证的能力。产品目标和远期设计分别见 `PRD.md`、`V1_SCOPE.md` 和 `ROADMAP.md`。
@@ -38,7 +38,10 @@
 ### Local Development
 
 - Docker PostgreSQL 镜像定义。
-- WSL 启动文档和 `.env.example`。
+- 根级 Compose 使用 external named volume `ascend-platform-postgres-data` 持久化 PostgreSQL。
+- Linux 通用 `scripts/platform.sh` 统一管理数据库、Alembic、Backend、Worker 和 Frontend，支持 dev/server、启停、状态和日志。
+- 匿名 PostgreSQL volume 检测与一次性逻辑备份/恢复迁移脚本。
+- Linux/WSL 启动文档、systemd 示例、`.env.platform.example` 和后端/前端环境变量示例。
 - V310/default/single_chip 界面样例，共 2 个 Chip Config 和 1 个 Workload 文件。
 - 本地成功任务种子脚本，可生成 10,000 行日志、summary、Trace 并写入数据库。
 - 运行数据统一放在仓库根目录 `runtime/`，不提交 Git。
@@ -70,6 +73,8 @@ DATABASE_URL=postgresql+psycopg://ascend_platform:12345678@127.0.0.1:15432/ascen
 
 - `GET /health` 可用。
 - Alembic `upgrade head` 和 `check` 可用。
+- `platform.sh` 的 dev/server、重复启动、优雅关闭、模式切换保护和前端 `/api` 代理可用。
+- PostgreSQL named volume 挂载校验及匿名卷迁移前后任务数校验可用。
 - 成功任务可在“我的任务”列表显示。
 - 任务详情可以增量读取 10,000 行日志。
 - 结果接口可以读取 summary 和 Trace。

@@ -240,6 +240,12 @@ button, input, textarea, select { font: inherit; }
 .table-card { border: 1px solid var(--border-soft); box-shadow: none; }
 .table-card .ant-card-body { padding: 0; }
 .table-card .ant-table-wrapper { border-radius: 8px; overflow: hidden; }
+.task-list-table .ant-table-tbody > tr.ant-table-row-selected > td {
+  background: #fff !important;
+}
+.task-list-table .ant-table-tbody > tr.ant-table-row-selected:hover > td {
+  background: #fafafa !important;
+}
 .log-note { margin-bottom: 12px; }
 .log-viewer, .json-viewer { margin: 0; border: 1px solid #dfe3e8; border-radius: 7px; background: #fbfbfc; padding: 14px; color: #303944; font: 11px/1.72 ui-monospace, SFMono-Regular, Consolas, monospace; overflow: auto; }
 .log-viewer { min-height: 300px; max-height: 520px; white-space: pre-wrap; }

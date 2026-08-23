@@ -1,7 +1,7 @@
 # 数据库任务持久化问题
 
-> **Status:** Resolved in baseline documentation
-> **Resolution:** PostgreSQL 容器必须挂载 named volume `ascend-platform-postgres-data`
+> **Status:** Resolved in lifecycle implementation
+> **Resolution:** Compose 固定 named volume，统一启动脚本校验挂载，一次性迁移脚本保留备份和旧容器
 
 ## 1. 问题描述
 ### 现象
@@ -184,3 +184,24 @@ uv run alembic upgrade head
 ## 5. 恢复历史任务
 
 如果历史 named volume 仍存在，应优先用原 volume 重建容器。只有 `runtime/` 而没有数据库记录时，页面无法自动恢复任务；需要从备份恢复数据库，或使用明确的迁移/重建脚本补回元数据。
+
+## 6. 仓库防护机制
+
+根目录 `compose.yaml` 将 PostgreSQL 数据卷固定为 `ascend-platform-postgres-data`。统一入口在启动数据库前读取容器挂载：
+
+```bash
+bash scripts/platform.sh db-check
+bash scripts/platform.sh start
+```
+
+发现匿名卷时脚本直接失败，不会创建空数据库，也不会自动覆盖或删除旧数据。
+
+已有匿名卷使用一次性迁移脚本：
+
+```bash
+bash scripts/migrate-postgres-volume.sh
+```
+
+迁移流程为 `停止应用写入 -> pg_dump -> 旧容器重命名保留 -> 创建 named volume -> pg_restore -> 校验任务数量`。失败时恢复旧容器；成功后同样保留逻辑备份和停止状态的 legacy 容器，待人工确认稳定后再清理。
+
+数据库迁移不能代替 `runtime/` 备份。生产备份必须同时覆盖 PostgreSQL 和 `TASK_ROOT`。
