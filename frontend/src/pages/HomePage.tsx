@@ -1,39 +1,34 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Skeleton, Tag } from 'antd';
+import { Button, Card, Skeleton } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { benchmarkApi } from '../api/benchmark';
 import { useAuth } from '../auth/AuthContext';
-import { simulationApi } from '../api/simulation';
 import { PageHeading } from '../components/PageHeading';
 import { PermissionRequestButton } from '../components/PermissionRequestButton';
-import { collaborationApi, type CommunityLink } from '../api/collaboration';
+import { collaborationApi, type CommunityLink, type TeamConfig } from '../api/collaboration';
 
 interface PlatformAssetStats {
   chips: number | null;
   benchmarks: number | null;
-  simulationTasks: number;
+  recentBenchmarks: Array<{ name: string; category: string }>;
 }
 
 export function HomePage() {
   const navigate = useNavigate();
-  const { user, hasResource } = useAuth();
+  const { hasResource } = useAuth();
   const canViewBenchmark = hasResource('benchmark.view');
   const [stats, setStats] = useState<PlatformAssetStats | null>(null);
   const [communities, setCommunities] = useState<CommunityLink[]>([]);
+  const [team, setTeam] = useState<TeamConfig | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       try {
-        const tasks = await simulationApi.listTasks({
-          ownerId: user?.userId,
-          archived: false,
-          pageSize: 1,
-        });
-
         let chipCount: number | null = null;
         let benchmarkCount: number | null = null;
+        let recentBenchmarks: Array<{ name: string; category: string }> = [];
         if (canViewBenchmark) {
           const chips = await benchmarkApi.listChips();
           const benchmarkLists = await Promise.all(
@@ -41,18 +36,22 @@ export function HomePage() {
           );
           chipCount = chips.total;
           benchmarkCount = benchmarkLists.reduce((sum, item) => sum + item.total, 0);
+          recentBenchmarks = benchmarkLists.flatMap((list) => list.items.map((item) => ({
+            name: `${item.chip} / ${item.name}`,
+            category: item.category || item.target || 'Benchmark',
+          }))).slice(0, 3);
         }
 
         if (!cancelled) {
           setStats({
             chips: chipCount,
             benchmarks: benchmarkCount,
-            simulationTasks: tasks.total,
+            recentBenchmarks,
           });
         }
       } catch {
         if (!cancelled) {
-          setStats({ chips: null, benchmarks: null, simulationTasks: 0 });
+          setStats({ chips: null, benchmarks: null, recentBenchmarks: [] });
         }
       }
     }
@@ -61,19 +60,26 @@ export function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [canViewBenchmark, user?.userId]);
+  }, [canViewBenchmark]);
 
   useEffect(() => {
-    void collaborationApi.getPlatformConfig()
-      .then((config) => setCommunities(config.communities))
-      .catch(() => setCommunities([]));
+    void Promise.all([
+      collaborationApi.getPlatformConfig(),
+      collaborationApi.getTeam(),
+    ]).then(([config, teamConfig]) => {
+      setCommunities(config.communities);
+      setTeam(teamConfig);
+    }).catch(() => {
+      setCommunities([]);
+      setTeam(null);
+    });
   }, []);
 
   return (
     <div className="page-container platform-home-page">
       <PageHeading
         title="AI 芯片仿真与 Benchmark 平台"
-        subtitle="芯片仿真 · 性能 Benchmark · 微架构研究与分析"
+        subtitle="芯片仿真 · 性能 Benchmark · Trace 与微架构分析"
       />
 
       <div className="platform-home-entry-grid">
@@ -87,53 +93,10 @@ export function HomePage() {
         </Card>
 
         <Card className="platform-home-entry-card">
-          <h2>Benchmark</h2>
-          <p>筛选厂商并选择芯片，进入芯片档案与 Benchmark 资产。</p>
-          {canViewBenchmark ? (
-            <Button type="primary" block onClick={() => navigate('/benchmark')}>查看 Benchmark</Button>
-          ) : (
-            <PermissionRequestButton
-              permission="benchmark_access"
-              reason="从首页 Benchmark 入口申请"
-              block
-            />
-          )}
-        </Card>
-
-        <Card className="platform-home-entry-card">
-          <div><Tag>建设中</Tag></div>
           <h2>性能分析</h2>
-          <p>统一承载仿真结果、Trace 与 Benchmark 的性能分析能力。</p>
-          <Button block onClick={() => navigate('/performance')}>查看建设进度</Button>
+          <p>选择仿真结果与 Trace，调用分析工具定位指令、内存与时间线瓶颈。</p>
+          <Button type="primary" onClick={() => navigate('/performance')}>进入性能分析</Button>
         </Card>
-
-        <Card className="platform-home-entry-card">
-          <h2>团队共建</h2>
-          <p>了解团队成果，提交业务需求并跟踪已公开的审视结论。</p>
-          <div className="platform-home-actions">
-            <Button type="primary" onClick={() => navigate('/demands')}>进入需求池</Button>
-            <Button onClick={() => navigate('/team')}>团队风采</Button>
-          </div>
-        </Card>
-      </div>
-
-      <h2 className="platform-home-section-title">社区生态</h2>
-      <div className="community-card-grid">
-        {communities.map((item) => (
-          <Card key={item.key} className="community-card">
-            <div className="community-card-mark">{item.key === 'w3' ? 'W3' : '稼先'}</div>
-            <div className="community-card-copy">
-              <h3>{item.name}</h3>
-              <p>{item.enabled ? '进入社区交流技术方法与项目成果。' : '社区地址暂未配置。'}</p>
-            </div>
-            <Button
-              disabled={!item.enabled}
-              onClick={() => window.open(item.url, '_blank', 'noopener,noreferrer')}
-            >
-              进入社区 ↗
-            </Button>
-          </Card>
-        ))}
       </div>
 
       <h2 className="platform-home-section-title">平台资产</h2>
@@ -161,17 +124,58 @@ export function HomePage() {
       )}
 
       <div className="platform-home-lower-grid">
-        <Card className="platform-home-list-card" title="最近新增 Benchmark">
-          <div className="platform-home-empty-row">暂无可展示的新增记录</div>
+        <Card
+          className="platform-home-list-card"
+          title="最近新增 Benchmark"
+          extra={canViewBenchmark
+            ? <Button type="link" onClick={() => navigate('/benchmark')}>查看全部</Button>
+            : <PermissionRequestButton permission="benchmark_access" reason="从首页 Benchmark 列表申请" />}
+        >
+          {stats?.recentBenchmarks.length ? stats.recentBenchmarks.map((item) => (
+            <div className="platform-home-list-row" key={item.name}>
+              <span>{item.name}</span><em>{item.category}</em>
+            </div>
+          )) : <div className="platform-home-empty-row">暂无可展示的新增记录</div>}
         </Card>
-        <Card className="platform-home-list-card" title="代表性成果">
-          <div className="platform-home-empty-row">暂无代表性成果</div>
+        <Card
+          className="platform-home-list-card"
+          title="团队最新成果"
+          extra={<Button type="link" onClick={() => navigate('/team')}>进入团队风采</Button>}
+        >
+          {team?.achievements.length ? team.achievements.slice(0, 3).map((item) => (
+            <div className="platform-home-list-row" key={`${item.title}-${item.date}`}>
+              <span>{item.title}</span><em>{item.category}</em>
+            </div>
+          )) : <div className="platform-home-empty-row">暂无团队成果</div>}
         </Card>
       </div>
 
-      {stats ? (
-        <div className="platform-home-footnote">当前用户共有 {stats.simulationTasks} 个未归档仿真任务</div>
-      ) : null}
+      <div className="platform-home-section-head">
+        <h2 className="platform-home-section-title">社区生态</h2>
+        <span>顶部“生态社区”菜单可在任意页面快捷访问</span>
+      </div>
+      <div className="community-card-grid">
+        {[...communities].sort((a, b) => (a.key === 'jiaxian' ? -1 : b.key === 'jiaxian' ? 1 : 0)).map((item) => (
+          <Card key={item.key} className="community-card">
+            <div className="community-card-mark">{item.key === 'w3' ? 'W3' : '稼先'}</div>
+            <div className="community-card-copy">
+              <h3>{item.name}</h3>
+              <p>{item.key === 'w3' ? '负载模型、建模方法和实践经验沉淀。' : '项目成果、技术文章发布与交流平台。'}</p>
+            </div>
+            <Button disabled={!item.enabled} onClick={() => window.open(item.url, '_blank', 'noopener,noreferrer')}>
+              进入社区 ↗
+            </Button>
+          </Card>
+        ))}
+      </div>
+
+      <Card className="platform-co-build-card">
+        <div>
+          <h3>平台共建</h3>
+          <p>有新的业务场景或改进想法？提交到需求池，由团队定期审视并反馈处理结果。</p>
+        </div>
+        <Button type="primary" onClick={() => navigate('/demands')}>提交需求</Button>
+      </Card>
     </div>
   );
 }

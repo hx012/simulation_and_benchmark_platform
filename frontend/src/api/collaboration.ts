@@ -22,8 +22,16 @@ export interface TeamAchievement {
 export interface TeamConfig {
   name: string;
   description: string;
+  team_size: string;
   specialties: string[];
   achievements: TeamAchievement[];
+  contributions: Array<{
+    member: string;
+    contribution: string;
+    achievement_count: number;
+    contribution_score: number;
+    views: number;
+  }>;
 }
 
 export interface FeedbackPayload {

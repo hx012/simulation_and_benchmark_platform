@@ -200,13 +200,18 @@ export function TaskResultPage() {
             key={task.task_id}
             taskId={task.task_id}
             title={task.task_name}
+            onAnalyze={() => navigate(`/performance?taskId=${encodeURIComponent(task.task_id)}`)}
           />
         ) : traceLoading ? (
           <div className="trace-loading"><Spin /><span>正在加载 Trace…</span></div>
         ) : traceError ? (
           <Alert type="error" showIcon message="Trace 加载失败" description={traceError} />
         ) : (result.trace_source_available ?? result.trace_available) && trace ? (
-          <TraceViewer events={trace.events} eventCount={trace.event_count} />
+          <TraceViewer
+            events={trace.events}
+            eventCount={trace.event_count}
+            onAnalyze={() => navigate(`/performance?taskId=${encodeURIComponent(task.task_id)}`)}
+          />
         ) : (
           <Alert
             type={result.trace_status === 'FAILED' ? 'error' : 'info'}

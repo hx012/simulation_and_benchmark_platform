@@ -23,11 +23,21 @@ class TeamAchievement(BaseModel):
     date: str = ""
 
 
+class TeamContribution(BaseModel):
+    member: str
+    contribution: str = ""
+    achievement_count: int = 0
+    contribution_score: int = 0
+    views: int = 0
+
+
 class TeamConfigResponse(BaseModel):
     name: str
     description: str
+    team_size: str = ""
     specialties: list[str]
     achievements: list[TeamAchievement]
+    contributions: list[TeamContribution] = Field(default_factory=list)
 
 
 class FeedbackCreate(BaseModel):

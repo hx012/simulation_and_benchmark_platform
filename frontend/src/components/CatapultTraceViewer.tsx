@@ -5,18 +5,20 @@ import {
   FullscreenExitOutlined,
   FullscreenOutlined,
   ReloadOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons';
 import { simulationApi } from '../api/simulation';
 
 interface CatapultTraceViewerProps {
   taskId: string;
   title: string;
+  onAnalyze?: () => void;
 }
 
 const VIEWER_READY_TIMEOUT_MS = 120_000;
 const VIEWER_STATUS_MESSAGE = 'catapult-trace-viewer-status';
 
-export function CatapultTraceViewer({ taskId, title }: CatapultTraceViewerProps) {
+export function CatapultTraceViewer({ taskId, title, onAnalyze }: CatapultTraceViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const readinessTimerRef = useRef<number | null>(null);
@@ -170,12 +172,16 @@ export function CatapultTraceViewer({ taskId, title }: CatapultTraceViewerProps)
             新窗口打开
           </Button>
           <Button
-            type="primary"
             icon={fullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
             onClick={() => void (fullscreen ? exitFullscreen() : enterFullscreen())}
           >
             {fullscreen ? '退出全屏' : '全屏查看'}
           </Button>
+          {onAnalyze ? (
+            <Button type="primary" icon={<BarChartOutlined />} onClick={onAnalyze}>
+              分析此结果
+            </Button>
+          ) : null}
         </Space>
       </div>
 

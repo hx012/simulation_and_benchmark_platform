@@ -10,8 +10,10 @@ from app.common.config import Settings
 DEFAULT_TEAM = {
     "name": "芯片仿真与性能分析团队",
     "description": "面向 AI 芯片架构研究与工程验证，提供仿真、Benchmark、Trace 与性能分析能力。",
+    "team_size": "",
     "specialties": ["架构仿真", "负载建模", "性能分析"],
     "achievements": [],
+    "contributions": [],
 }
 
 
