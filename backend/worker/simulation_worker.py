@@ -38,8 +38,6 @@ from app.simulation.simulator.result_parser import (
     SimulationResultParser,
 )
 
-BACKEND_ROOT = Path(__file__).resolve().parents[1]
-
 @dataclass
 class RunningTask:
     task_id: str
@@ -61,9 +59,7 @@ class SimulationWorker:
         )
 
         self.profile_registry = SimulatorProfileRegistry(
-            BACKEND_ROOT
-            / "config"
-            / "simulator_profiles.yml"
+            self.settings.simulator_profiles_file
         )
 
         self.simulator_adapter = SimulatorAdapter(

@@ -102,16 +102,18 @@ backend/app/common/config.py
 backend/app/benchmark/config.py
 backend/config/simulator_profiles.yml
 backend/config/simulator_profiles.multi.example.yml
-backend/.env.example
+.env.platform.example
 backend/alembic.ini
 backend/alembic/
 ```
 
 通用环境变量由 `app.common.config.Settings` 读取，重要字段包括：
 
-- `DATABASE_URL`
+- `POSTGRES_HOST` / `POSTGRES_PORT`
+- `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB`
 - `TASK_ROOT`
 - `SIMULATOR_HOME`
+- `SIMULATOR_PROFILES_FILE`
 - `SST_EXECUTABLE`
 - `SIM_WORKER_ID`
 - `SIM_MAX_CONCURRENT_TASKS`
@@ -120,19 +122,25 @@ backend/alembic/
 
 Benchmark 使用 `AIBENCH_HOME` 读取现有 aibench registry。
 
-注意：`backend/app/common/database.py` 在导入时要求 `DATABASE_URL` 已配置。由于 simulation API 会导入数据库模块，启动完整 FastAPI app 时需要先准备数据库连接配置。
+注意：`backend/app/common/database.py` 在导入时要求数据库连接已配置。Backend 从根目录 `.env.platform` 的 `POSTGRES_*` 自动构造连接地址；`DATABASE_URL` 仅保留为显式覆盖项。
 
 本地开发默认从 `backend` 目录启动，使用：
 
 ```env
 TASK_ROOT=../runtime
-DATABASE_URL=postgresql+psycopg://ascend_platform:12345678@127.0.0.1:15432/ascend_platform
+POSTGRES_HOST=127.0.0.1
+POSTGRES_PORT=15432
+POSTGRES_USER=ascend_platform
+POSTGRES_PASSWORD=12345678
+POSTGRES_DB=ascend_platform
 ```
 
 完整平台从仓库根目录统一启停：
 
 ```bash
 cp .env.platform.example .env.platform
+bash scripts/platform.sh setup
+bash scripts/platform.sh update
 bash scripts/platform.sh start dev
 bash scripts/platform.sh status
 bash scripts/platform.sh stop
@@ -267,11 +275,13 @@ backend/config/simulation_templates/v310/default/single_chip/
 
 ## 8. Simulator Profile
 
-Profile 配置入口：
+默认 Profile 配置入口：
 
 ```text
 backend/config/simulator_profiles.yml
 ```
+
+公司真实配置通过 `.env.platform` 的 `SIMULATOR_PROFILES_FILE` 指向不提交 Git 的部署文件。
 
 Profile 描述：
 

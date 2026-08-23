@@ -5,10 +5,15 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 BACKEND_DIR="$PROJECT_ROOT/backend"
 FRONTEND_DIR="$PROJECT_ROOT/frontend"
+BACKEND_VENV="$BACKEND_DIR/.venv"
+BACKEND_PYTHON="$BACKEND_VENV/bin/python"
+BACKEND_UVICORN="$BACKEND_VENV/bin/uvicorn"
+BACKEND_ALEMBIC="$BACKEND_VENV/bin/alembic"
 STATE_DIR="$PROJECT_ROOT/runtime/platform"
 PID_DIR="$STATE_DIR/pids"
 LOG_DIR="$STATE_DIR/logs"
 MODE_FILE="$STATE_DIR/mode"
+FRONTEND_LOCK_STAMP="$STATE_DIR/frontend-package-lock.sha256"
 PLATFORM_ENV_FILE="${PLATFORM_ENV_FILE:-$PROJECT_ROOT/.env.platform}"
 
 DB_CONTAINER=ascend-platform-postgres
@@ -19,6 +24,8 @@ mkdir -p "$PID_DIR" "$LOG_DIR"
 usage() {
   cat <<'EOF'
 Usage:
+  bash scripts/platform.sh setup
+  bash scripts/platform.sh update
   bash scripts/platform.sh start [dev|server]
   bash scripts/platform.sh stop
   bash scripts/platform.sh stop-apps
@@ -287,28 +294,93 @@ wait_for_http() {
   return 1
 }
 
-prepare_dependencies() {
-  configure_user_tools
-  require_command uv
-  require_command npm
-  require_command curl
+require_backend_environment() {
+  [[ -x "$BACKEND_PYTHON" ]] || fail "Missing $BACKEND_PYTHON. Run 'bash scripts/platform.sh setup'."
+  [[ -x "$BACKEND_UVICORN" ]] || fail "Missing $BACKEND_UVICORN. Run 'bash scripts/platform.sh setup'."
+  [[ -x "$BACKEND_ALEMBIC" ]] || fail "Missing $BACKEND_ALEMBIC. Run 'bash scripts/platform.sh setup'."
+}
 
-  [[ -f "$BACKEND_DIR/.env" ]] || fail "Missing backend/.env. Copy backend/.env.example and configure DATABASE_URL."
-  info "Synchronizing backend dependencies..."
-  (cd "$BACKEND_DIR" && uv sync --frozen)
+frontend_dependencies_ready() {
+  [[ -x "$FRONTEND_DIR/node_modules/.bin/vite" ]] && \
+    (cd "$FRONTEND_DIR" && ./node_modules/.bin/vite --version >/dev/null 2>&1)
+}
 
-  if [[ ! -d "$FRONTEND_DIR/node_modules" ]]; then
-    info "Installing frontend dependencies..."
-    (cd "$FRONTEND_DIR" && npm ci)
-  elif ! (cd "$FRONTEND_DIR" && npm exec vite -- --version >/dev/null 2>&1); then
-    info "Repairing frontend native dependencies for this Linux host..."
-    (cd "$FRONTEND_DIR" && npm install)
+require_frontend_dependencies() {
+  frontend_dependencies_ready || \
+    fail "Frontend dependencies are missing. Run 'bash scripts/platform.sh setup'."
+}
+
+require_applications_stopped() {
+  local name
+  for name in backend worker frontend; do
+    if managed_pid "$name" >/dev/null 2>&1; then
+      fail "Application processes must be stopped before setup/update. Run 'bash scripts/platform.sh stop-apps'."
+    fi
+  done
+  if command -v pgrep >/dev/null 2>&1 && \
+     pgrep -f 'uvicorn app.main:app|worker/simulation_worker.py' >/dev/null 2>&1; then
+    fail "An unmanaged Backend or Worker process is running. Stop it before setup/update."
+  fi
+  if port_in_use "$FRONTEND_PORT"; then
+    fail "Frontend port $FRONTEND_PORT is in use. Stop the frontend before setup/update."
   fi
 }
 
+sync_dependencies() {
+  local current_frontend_lock recorded_frontend_lock
+  configure_user_tools
+  require_command uv
+  require_command npm
+  require_command sha256sum
+
+  info "Synchronizing backend dependencies..."
+  (cd "$BACKEND_DIR" && UV_PROJECT_ENVIRONMENT="$BACKEND_VENV" uv sync --frozen)
+
+  current_frontend_lock="$(sha256sum "$FRONTEND_DIR/package-lock.json" | awk '{print $1}')"
+  recorded_frontend_lock=""
+  if [[ -f "$FRONTEND_LOCK_STAMP" ]]; then
+    read -r recorded_frontend_lock < "$FRONTEND_LOCK_STAMP"
+  fi
+
+  if ! frontend_dependencies_ready; then
+    info "Installing frontend dependencies..."
+    (cd "$FRONTEND_DIR" && npm ci)
+  elif [[ -n "$recorded_frontend_lock" && "$recorded_frontend_lock" != "$current_frontend_lock" ]]; then
+    info "Frontend lockfile changed; reinstalling dependencies..."
+    (cd "$FRONTEND_DIR" && npm ci)
+  else
+    info "Frontend dependencies are already available."
+  fi
+  printf '%s\n' "$current_frontend_lock" > "$FRONTEND_LOCK_STAMP"
+}
+
 run_migrations() {
+  require_backend_environment
   info "Applying database migrations..."
-  (cd "$BACKEND_DIR" && uv run alembic upgrade head)
+  (cd "$BACKEND_DIR" && "$BACKEND_ALEMBIC" upgrade head)
+}
+
+build_frontend() {
+  require_frontend_dependencies
+  info "Building frontend..."
+  (cd "$FRONTEND_DIR" && npm run build)
+}
+
+setup_platform() {
+  load_platform_env
+  require_applications_stopped
+  sync_dependencies
+  info "Setup complete. Run 'bash scripts/platform.sh update' before the first server start."
+}
+
+update_platform_files() {
+  load_platform_env
+  require_applications_stopped
+  sync_dependencies
+  start_database
+  run_migrations
+  build_frontend
+  info "Update complete. Run 'bash scripts/platform.sh start ${PLATFORM_MODE}'."
 }
 
 start_platform() {
@@ -329,7 +401,11 @@ start_platform() {
   fi
   backend_port="$BACKEND_PORT"
   frontend_port="$FRONTEND_PORT"
-  prepare_dependencies
+  configure_user_tools
+  require_command npm
+  require_command curl
+  require_backend_environment
+  require_frontend_dependencies
   start_database
   run_migrations
 
@@ -342,13 +418,13 @@ start_platform() {
     fail "Frontend port $frontend_port is already in use by an unmanaged process."
   fi
 
-  backend_command=(env PYTHONUNBUFFERED=1 uv run uvicorn app.main:app --host "$BACKEND_HOST" --port "$backend_port")
+  backend_command=(env PYTHONUNBUFFERED=1 "$BACKEND_UVICORN" app.main:app --host "$BACKEND_HOST" --port "$backend_port")
   if [[ "$mode" == dev ]]; then
     backend_command+=(--reload)
     frontend_command=(npm run dev -- --host "$FRONTEND_HOST" --port "$frontend_port" --strictPort)
   else
-    info "Building frontend for server mode..."
-    (cd "$FRONTEND_DIR" && npm run build)
+    [[ -f "$FRONTEND_DIR/dist/index.html" ]] || \
+      fail "Frontend build is missing. Run 'bash scripts/platform.sh update'."
     frontend_command=(npm run preview -- --host "$FRONTEND_HOST" --port "$frontend_port" --strictPort)
   fi
 
@@ -359,7 +435,7 @@ start_platform() {
   fi
 
   start_process worker "$BACKEND_DIR" \
-    env PYTHONPATH="$BACKEND_DIR" PYTHONUNBUFFERED=1 uv run python worker/simulation_worker.py
+    env PYTHONPATH="$BACKEND_DIR" PYTHONUNBUFFERED=1 "$BACKEND_PYTHON" worker/simulation_worker.py
   start_process frontend "$FRONTEND_DIR" "${frontend_command[@]}"
   if ! wait_for_http frontend "http://127.0.0.1:$frontend_port"; then
     stop_process frontend
@@ -436,6 +512,12 @@ show_logs() {
 
 command="${1:-}"
 case "$command" in
+  setup)
+    setup_platform
+    ;;
+  update)
+    update_platform_files
+    ;;
   start)
     start_platform "${2:-}"
     ;;

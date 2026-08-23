@@ -1,6 +1,6 @@
 # 公司 Linux 服务器启动指南
 
-本文档记录单机 Linux 部署的基础启动方式。真实 Simulator 和 Benchmark 路径必须通过服务器 `.env` 和 Profile 配置，不写入代码。
+本文档记录单机 Linux 部署的基础启动方式。根目录 `.env.platform` 是唯一环境配置；真实 Simulator、Benchmark 和 Profile 路径不写入代码。
 
 ## 1. 服务组成
 
@@ -20,14 +20,16 @@
 ```bash
 cd /path/to/simulation_and_benchmark_platform
 cp .env.platform.example .env.platform
-cp backend/.env.example backend/.env
+chmod 600 .env.platform
 ```
 
-修改两个本机配置文件后执行：
+配置完成后执行：
 
 ```bash
+bash scripts/platform.sh setup           # 首次部署或依赖变化
+bash scripts/platform.sh update          # 校验依赖、迁移数据库、构建前端
 bash scripts/platform.sh start dev       # Uvicorn reload + Vite dev
-bash scripts/platform.sh start server    # Uvicorn 常驻 + 前端构建/preview
+bash scripts/platform.sh start server    # Uvicorn 常驻 + 已构建前端 preview
 bash scripts/platform.sh status
 bash scripts/platform.sh logs backend
 bash scripts/platform.sh restart server
@@ -45,26 +47,24 @@ PLATFORM_SESSION_COOKIE_SECURE=true
 
 开发环境没有 HTTPS 时可将 `PLATFORM_SESSION_COOKIE_SECURE` 设为 `false`；公司 HTTPS 环境必须使用 `true`。首次管理员登录会将密码哈希写入数据库，后续管理员在权限中心配置。完整说明见 `../03_Architecture/PERMISSION_MANAGEMENT_V1.md`。
 
-脚本负责依赖检查、PostgreSQL 健康检查、Alembic 迁移、PID/进程组、日志和 HTTP 健康检查。运行状态位于 `runtime/platform/`，不会提交 Git。重复启动不会创建同一服务的第二个实例；端口被外部进程占用时会明确失败。
+`setup` 和 `update` 要求应用进程已经停止；`start` 不安装依赖、不构建前端。脚本负责 PostgreSQL 健康检查、Alembic 迁移、PID/进程组、日志和 HTTP 健康检查。运行状态位于 `runtime/platform/`，不会提交 Git。重复启动不会创建同一服务的第二个实例；端口被外部进程占用时会明确失败。
 
 `stop` 按 Frontend -> Worker -> Backend -> PostgreSQL 顺序停止，只执行容器 stop，不删除容器或 volume。服务器开机启动模板见 `deploy/systemd/`。
 
-## 3. 后端配置
+## 3. 统一配置
 
-进入仓库 `backend` 目录：
+服务器只维护根目录 `.env.platform`，Backend 也直接读取该文件，不再使用 `backend/.env`。数据库连接由 `POSTGRES_*` 自动生成，不重复保存 `DATABASE_URL`：
 
-```bash
-cd /path/to/simulation_and_benchmark_platform/backend
-cp .env.example .env
-```
-
-根据公司服务器修改 `.env`：
-
-```env
+```dotenv
 APP_ENV=production
 TASK_ROOT=/data/ai-chip-platform/simulation_tasks
-DATABASE_URL=postgresql+psycopg://ascend_platform:CHANGE_ME@127.0.0.1:15432/ascend_platform
+POSTGRES_HOST=127.0.0.1
+POSTGRES_PORT=15432
+POSTGRES_USER=ascend_platform
+POSTGRES_PASSWORD=CHANGE_ME
+POSTGRES_DB=ascend_platform
 SIMULATOR_HOME=/path/to/simulator
+SIMULATOR_PROFILES_FILE=/path/to/local/config/simulator_profiles.yml
 SST_EXECUTABLE=/path/to/sst
 AIBENCH_HOME=/path/to/aibench
 CATAPULT_HOME=/path/to/simulation_and_benchmark_platform/tools/catapult
@@ -73,7 +73,16 @@ SIM_TRACE_VIEWER_ENABLED=true
 SIM_TRACE_VIEWER_CONFIG=full
 ```
 
-不要将服务器 `.env` 提交到 Git。
+`SIMULATOR_PROFILES_FILE` 应指向仓库跟踪目录之外的公司真实配置，例如 `deploy/local/config/simulator_profiles.yml`。不要将 `.env.platform` 或 `deploy/local/` 提交到 Git。
+
+离线服务器还需配置：
+
+```dotenv
+UV_OFFLINE=true
+UV_CACHE_DIR=/absolute/path/to/deploy/offline/python/<bundle>/uv-cache
+```
+
+离线包由 `scripts/build-python-offline-cache.sh` 在可联网的 Linux x86_64 Docker 环境生成。压缩包和校验文件存放在 `deploy/offline/python/`，不提交 Git；只有 `uv.lock` 变化时才需重新生成和传输。
 
 ## 4. PostgreSQL
 
@@ -83,7 +92,7 @@ PostgreSQL 由仓库根目录 `compose.yaml` 管理，数据固定写入外部 n
 ascend-platform-postgres-data
 ```
 
-数据库账号、密码和端口来自不提交 Git 的 `.env.platform`：
+数据库账号、密码和端口来自不提交 Git 的 `.env.platform`，与 Backend 共用同一组字段：
 
 ```env
 POSTGRES_USER=ascend_platform
@@ -112,9 +121,8 @@ bash scripts/migrate-postgres-volume.sh
 
 ```bash
 cd /path/to/simulation_and_benchmark_platform/backend
-uv sync --frozen
-uv run alembic upgrade head
-uv run alembic current
+.venv/bin/alembic upgrade head
+.venv/bin/alembic current
 ```
 
 ## 6. Backend
@@ -122,13 +130,13 @@ uv run alembic current
 开发或联调：
 
 ```bash
-uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 服务器常驻部署不使用 `--reload`，进程守护方式由公司环境确定：
 
 ```bash
-uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 验证：
@@ -143,13 +151,13 @@ http://<server-ip>:8000/docs
 新终端进入 `backend`：
 
 ```bash
-PYTHONPATH=$PWD uv run python worker/simulation_worker.py
+PYTHONPATH=$PWD .venv/bin/python worker/simulation_worker.py
 ```
 
 真实任务前必须确认：
 
 - `SIMULATOR_HOME` 和 `SST_EXECUTABLE` 正确；
-- `config/simulator_profiles.yml` 的入口脚本存在；
+- `SIMULATOR_PROFILES_FILE` 指向的入口脚本配置存在；
 - Worker 用户对 `TASK_ROOT` 有读写权限；
 - Simulator 运行依赖和环境变量已加载。
 
@@ -173,21 +181,21 @@ simulation_and_benchmark_platform/
     └── catapult/
 ```
 
-不要把开发机的 `backend/.env`、`.venv`、`node_modules`、`runtime` 打入代码包。服务器上重新创建 `.env`，并将 `CATAPULT_HOME` 指向服务器项目内的绝对路径。WSL 为规避 `/mnt/*` 小文件读取性能问题可能使用 `$HOME/.cache` 副本，这个本机覆盖路径不得复制到公司服务器。
+不要把开发机的 `.env.platform`、`.venv`、`node_modules`、`runtime` 或 `deploy/local` 打入代码包。服务器上单独维护 `.env.platform`，并将 `CATAPULT_HOME` 指向服务器项目内的绝对路径。WSL 为规避 `/mnt/*` 小文件读取性能问题可能使用 `$HOME/.cache` 副本，这个本机覆盖路径不得复制到公司服务器。
 
 部署后验证：
 
 ```bash
 test -f "$CATAPULT_HOME/tracing/tracing_build/trace2html.py"
 cd /path/to/simulation_and_benchmark_platform/backend
-uv run python scripts/test_catapult_trace_viewer.py
-uv run python scripts/build_trace_viewers.py --all --dry-run
+.venv/bin/python scripts/test_catapult_trace_viewer.py
+.venv/bin/python scripts/build_trace_viewers.py --all --dry-run
 ```
 
 平台通过 Python 3 适配入口调用 Catapult，生成 `full` 配置的独立 `trace.html`。生成文件内包含平台集成桥：导入期间隐藏 Catapult 自带的黑色 `Importing...` 弹窗，模型就绪后通过 `postMessage` 通知结果页显示 iframe。已有 `trace.json` 的存量任务升级后需要执行：
 
 ```bash
-uv run python scripts/build_trace_viewers.py --all --force
+.venv/bin/python scripts/build_trace_viewers.py --all --force
 ```
 
 ## 9. Frontend

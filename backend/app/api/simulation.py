@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from fastapi import (
     APIRouter,
     Depends,
@@ -75,8 +73,6 @@ from app.simulation.upload_validator import UploadSessionValidator
 from app.simulation.workspace_manager import TaskWorkspaceManager
 
 
-BACKEND_ROOT = Path(__file__).resolve().parents[2]
-
 router = APIRouter(
     prefix="/api/simulation",
     tags=["simulation"],
@@ -105,9 +101,7 @@ upload_file_service = UploadSessionFileService(
 )
 
 profile_registry = SimulatorProfileRegistry(
-    BACKEND_ROOT
-    / "config"
-    / "simulator_profiles.yml"
+    settings.simulator_profiles_file
 )
 workspace_manager = TaskWorkspaceManager(settings)
 task_management_service = SimulationTaskManagementService(

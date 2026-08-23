@@ -33,7 +33,7 @@ AIBENCH_HOME/
 
 ## 环境变量
 
-在 `backend/.env` 增加：
+在根目录 `.env.platform` 增加：
 
 ```bash
 AIBENCH_HOME=/home/h00517730/code/ascend_workload_modeling_and_simulation/ascend-bench/aibench/aibench

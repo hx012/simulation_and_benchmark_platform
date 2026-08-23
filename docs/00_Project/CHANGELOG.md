@@ -1,5 +1,15 @@
 # AI Chip Platform — Changelog
 
+## 2026-08-23 — Offline uv deployment and one-command startup
+
+### Changed
+
+- 根目录 `.env.platform` 成为数据库、Backend、Worker 和管理员的唯一环境配置；
+- Backend 根据 `POSTGRES_*` 自动构造数据库连接，不再重复维护 `DATABASE_URL`；
+- 公司真实 `simulator_profiles.yml` 可通过 `SIMULATOR_PROFILES_FILE` 放在仓库外；
+- `scripts/platform.sh` 拆分 `setup`、`update` 和 `start`，运行时直接使用 `.venv/bin/*`；
+- 增加 Linux x86_64 / Python 3.10 uv 离线缓存构建和断网验证脚本。
+
 ## 2026-08-22 — Permission Management V1
 
 ### Added
