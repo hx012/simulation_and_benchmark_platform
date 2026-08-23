@@ -2,6 +2,10 @@
 
 ## 2026-08-23 — Community Collaboration V1
 
+### Changed
+
+- 数据库迁移脚本目录由 `backend/alembic/` 统一调整为 `backend/migrations/`，命令行仍使用 Alembic。
+
 ### Added
 
 - 新增生态社区配置入口，社区地址由 `.env.platform` 管理；

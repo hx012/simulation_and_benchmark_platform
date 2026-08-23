@@ -104,7 +104,7 @@ backend/config/simulator_profiles.yml
 backend/config/simulator_profiles.multi.example.yml
 .env.platform.example
 backend/alembic.ini
-backend/alembic/
+backend/migrations/
 ```
 
 通用环境变量由 `app.common.config.Settings` 读取，重要字段包括：
