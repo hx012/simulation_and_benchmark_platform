@@ -15,6 +15,7 @@ import { formatNumber } from '../utils/format';
 interface TraceViewerProps {
   events: TraceEvent[];
   eventCount: number;
+  onAnalyze?: () => void;
 }
 
 type TraceLane = {
@@ -57,7 +58,7 @@ function nearestOptionIndex(options: readonly number[], value: number) {
   return bestIndex;
 }
 
-export function TraceViewer({ events, eventCount }: TraceViewerProps) {
+export function TraceViewer({ events, eventCount, onAnalyze }: TraceViewerProps) {
   const [timeScaleIndex, setTimeScaleIndex] = useState(DEFAULT_TIME_SCALE_INDEX);
   const [laneScaleIndex, setLaneScaleIndex] = useState(DEFAULT_LANE_SCALE_INDEX);
   const [laneQuery, setLaneQuery] = useState('');
@@ -237,6 +238,7 @@ export function TraceViewer({ events, eventCount }: TraceViewerProps) {
             <Button onClick={() => setIsFullscreen((value) => !value)}>
               {isFullscreen ? '退出全屏' : '全屏'}
             </Button>
+            {onAnalyze ? <Button type="primary" onClick={onAnalyze}>分析此结果</Button> : null}
           </div>
         </div>
 

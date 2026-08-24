@@ -1,5 +1,26 @@
 # AI Chip Platform — Changelog
 
+## 2026-08-23 — Community Collaboration V1
+
+### Changed
+
+- 数据库迁移脚本目录由 `backend/alembic/` 统一调整为 `backend/migrations/`，命令行仍使用 Alembic。
+
+### Added
+
+- 新增生态社区配置入口，社区地址由 `.env.platform` 管理；
+- 新增意见反馈落库和管理员受保护读取接口；
+- 新增需求池、需求提交、支持投票和“公开需求 + 我的需求”可见性规则；
+- 新增配置文件驱动的需求审视结论和团队风采内容；
+- 新增 `/performance` 功能建设中页面；
+- 新增社区共建功能范围与后续规划文档。
+
+### Deferred
+
+- 反馈附件、“我的反馈”和管理员反馈管理页面；
+- Web 端需求审视、评论、通知、附件和排期管理；
+- 团队内容管理界面和完整性能分析能力。
+
 ## 2026-08-23 — Offline uv deployment and one-command startup
 
 ### Changed

@@ -32,7 +32,7 @@ backend/app/common/config.py           环境配置
 backend/app/common/database.py         SQLAlchemy Engine/Session
 backend/app/simulation/                Simulation 业务层
 backend/worker/simulation_worker.py    Worker 入口
-backend/alembic/                       数据库迁移
+backend/migrations/                    数据库迁移
 ```
 
 ### Frontend
