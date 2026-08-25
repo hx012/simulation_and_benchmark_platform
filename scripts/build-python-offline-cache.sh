@@ -83,6 +83,7 @@ docker run --rm \
   --workdir /workspace/backend \
   --env UV_CACHE_DIR=/uv-cache \
   --env UV_PROJECT_ENVIRONMENT=/tmp/platform-venv-offline-check \
+  --env DATABASE_URL=postgresql+psycopg://offline:offline@127.0.0.1/offline \
   "$PYTHON_IMAGE" \
   sh -c 'uv build --offline /workspace/analysis_tools --wheel --out-dir /tmp/analysis-wheel-offline && uv sync --frozen --offline --no-dev --no-install-project --link-mode copy && PYTHONPATH=/workspace/backend /tmp/platform-venv-offline-check/bin/python -c "from app.main import app; from chip_performance_analysis import TraceProducer; print(app.title, TraceProducer.MSKPP.value)"'
 
