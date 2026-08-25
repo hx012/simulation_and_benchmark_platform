@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Button, Form, Input, message, Segmented } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { authApi } from '../../api/auth';
+import w3Logo from '../../assets/w3-logo.png';
 import { ArchitectureBackground } from '../../components/ArchitectureBackground';
 import { useAuth } from '../../auth/AuthContext';
 
@@ -13,20 +14,21 @@ interface LoginFormValues {
 export function LoginPage() {
   const [form] = Form.useForm<LoginFormValues>();
   const [submitting, setSubmitting] = useState(false);
+  const [w3Redirecting, setW3Redirecting] = useState(false);
   const [authMode, setAuthMode] = useState<'w3' | 'admin'>('w3');
   const navigate = useNavigate();
   const location = useLocation();
-  const { authenticated, login } = useAuth();
+  const { authenticated, initializing, login } = useAuth();
 
   const defaultEmployeeId = import.meta.env.VITE_DEFAULT_OWNER_ID || '';
   const redirectTo = (location.state as { from?: string } | null)?.from || '/home';
   const oauthError = new URLSearchParams(location.search).get('oauth_error');
 
   useEffect(() => {
-    if (authenticated && !location.state) {
-      navigate('/home', { replace: true });
+    if (!initializing && authenticated) {
+      navigate(redirectTo, { replace: true });
     }
-  }, [authenticated, location.state, navigate]);
+  }, [authenticated, initializing, navigate, redirectTo]);
 
   async function handleSubmit(values: LoginFormValues) {
     setSubmitting(true);
@@ -41,6 +43,8 @@ export function LoginPage() {
   }
 
   function startW3Login() {
+    if (w3Redirecting) return;
+    setW3Redirecting(true);
     window.location.assign(authApi.w3LoginUrl(redirectTo));
   }
 
@@ -67,11 +71,16 @@ export function LoginPage() {
           <Button
             type="primary"
             onClick={startW3Login}
+            loading={w3Redirecting}
+            disabled={w3Redirecting}
+            icon={w3Redirecting ? undefined : (
+              <img className="w3-login-logo" src={w3Logo} alt="" aria-hidden="true" />
+            )}
             block
             size="large"
             className="employee-login-submit"
           >
-            使用 W3 账号登录
+            {w3Redirecting ? '正在前往 W3…' : '使用 W3 账号登录'}
           </Button>
         ) : <Form<LoginFormValues>
           form={form}
