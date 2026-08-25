@@ -26,6 +26,7 @@ usage() {
 Usage:
   bash scripts/platform.sh setup
   bash scripts/platform.sh update
+  bash scripts/platform.sh deploy-static
   bash scripts/platform.sh start [dev|server|static]
   bash scripts/platform.sh stop
   bash scripts/platform.sh stop-apps
@@ -40,6 +41,9 @@ Modes:
   dev     Uvicorn reload and Vite development server (default)
   server  Uvicorn without reload and a built Vite preview server
   static  Uvicorn without reload; frontend served directly by Nginx
+
+Deployment:
+  deploy-static  Build, publish and verify the Nginx static deployment
 EOF
 }
 
@@ -54,6 +58,22 @@ fail() {
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "Required command not found: $1"
+}
+
+run_as_root() {
+  if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+    "$@"
+  else
+    sudo "$@"
+  fi
+}
+
+require_root_access() {
+  if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+    return 0
+  fi
+  require_command sudo
+  sudo -v || fail "Root access is required to publish frontend files and manage Nginx."
 }
 
 configure_user_tools() {
@@ -371,6 +391,118 @@ build_frontend() {
   (cd "$FRONTEND_DIR" && npm run build)
 }
 
+resolved_frontend_deploy_dir() {
+  local resolved
+  require_command realpath
+  resolved="$(realpath -m -- "$FRONTEND_DEPLOY_DIR")"
+  [[ "$resolved" == /var/www/* ]] || \
+    fail "FRONTEND_DEPLOY_DIR must resolve below /var/www, got: $resolved"
+  printf '%s\n' "$resolved"
+}
+
+publish_static_frontend() {
+  local deploy_dir source_hash deployed_hash
+  deploy_dir="$(resolved_frontend_deploy_dir)"
+  [[ -f "$FRONTEND_DIR/dist/index.html" ]] || \
+    fail "Frontend build is missing from $FRONTEND_DIR/dist."
+
+  info "Publishing frontend to $deploy_dir..."
+  run_as_root install -d -m 755 "$deploy_dir"
+  run_as_root cp -a "$FRONTEND_DIR/dist/." "$deploy_dir/"
+  run_as_root chown -R root:root "$deploy_dir"
+  run_as_root find "$deploy_dir" -type d -exec chmod 755 {} +
+  run_as_root find "$deploy_dir" -type f -exec chmod 644 {} +
+
+  source_hash="$(sha256sum "$FRONTEND_DIR/dist/index.html" | awk '{print $1}')"
+  deployed_hash="$(sha256sum "$deploy_dir/index.html" | awk '{print $1}')"
+  [[ "$source_hash" == "$deployed_hash" ]] || \
+    fail "Published index.html does not match the frontend build."
+  info "Frontend published with Nginx-readable permissions."
+}
+
+validate_nginx_deploy_config() {
+  local nginx_config
+  if ! nginx_config="$(run_as_root nginx -T 2>&1)"; then
+    printf '%s\n' "$nginx_config" >&2
+    fail "Nginx configuration could not be loaded."
+  fi
+  if grep -Eq '^[[:space:]]*proxy_pass[[:space:]]+http://(127\.0\.0\.1|localhost):18000' \
+      <<<"$nginx_config"; then
+    fail "Temporary W3 callback proxy to 127.0.0.1:18000 is still configured. Remove it before deployment."
+  fi
+  run_as_root nginx -t
+  info "Nginx configuration check passed and no temporary W3 callback proxy was found."
+}
+
+reload_nginx_for_deploy() {
+  require_command systemctl
+  if run_as_root systemctl reload nginx; then
+    info "Nginx reload completed."
+    return 0
+  fi
+
+  info "Nginx reload failed; restarting Nginx to release stale workers and file descriptors..."
+  run_as_root systemctl restart nginx
+  info "Nginx restart completed."
+}
+
+http_status() {
+  local url="$1"
+  local host="${2:-}"
+  local -a curl_args=(--silent --output /dev/null --write-out '%{http_code}')
+  if [[ -n "$host" ]]; then
+    curl_args+=(--header "Host: $host")
+  fi
+  curl "${curl_args[@]}" "$url" 2>/dev/null || true
+}
+
+verify_static_deployment() {
+  local frontend_status api_status callback_status public_host
+  public_host="${PLATFORM_PUBLIC_URL#*://}"
+  public_host="${public_host%%/*}"
+  frontend_status="$(http_status "http://127.0.0.1/" "$public_host")"
+  api_status="$(http_status "http://127.0.0.1/api/auth/config" "$public_host")"
+  callback_status="$(http_status "http://127.0.0.1/api/auth/w3/callback" "$public_host")"
+
+  info "Deployment checks: frontend=$frontend_status auth-config=$api_status w3-callback=$callback_status"
+  [[ "$frontend_status" == 200 && "$api_status" == 200 ]] || return 1
+  case "$callback_status" in
+    302|303|307|400|401|404|422) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+deploy_static_platform() {
+  load_platform_env
+  [[ "$PLATFORM_MODE" == static ]] || \
+    fail "deploy-static requires PLATFORM_MODE=static in $PLATFORM_ENV_FILE."
+  configure_user_tools
+  require_command curl
+  require_command sha256sum
+  require_root_access
+  resolved_frontend_deploy_dir >/dev/null
+  validate_nginx_deploy_config
+
+  stop_applications
+  require_applications_stopped
+  sync_dependencies
+  start_database
+  run_migrations
+  build_frontend
+  publish_static_frontend
+  start_platform static
+  reload_nginx_for_deploy
+
+  if ! verify_static_deployment; then
+    info "Post-reload checks failed; restarting Nginx once before the final check..."
+    run_as_root systemctl restart nginx
+    sleep 1
+    verify_static_deployment || \
+      fail "Static deployment verification failed. Check Nginx and backend logs."
+  fi
+  info "Static deployment completed successfully: $PLATFORM_PUBLIC_URL"
+}
+
 setup_platform() {
   load_platform_env
   require_applications_stopped
@@ -547,6 +679,9 @@ case "$command" in
     ;;
   update)
     update_platform_files
+    ;;
+  deploy-static)
+    deploy_static_platform
     ;;
   start)
     start_platform "${2:-}"

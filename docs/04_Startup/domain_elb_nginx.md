@@ -54,22 +54,25 @@ sudo systemctl reload nginx
 
 软链接已存在时不要重复创建。修改配置后始终先执行 `sudo nginx -t`。
 
-## 4. 构建与发布前端
+## 4. 一键构建与发布
 
-`platform.sh update`负责同步依赖、迁移数据库并生成 `frontend/dist`，但不会使用sudo覆盖线上目录。发布静态文件单独执行：
+服务器代码更新后执行：
 
 ```bash
-bash scripts/platform.sh stop-apps
-bash scripts/platform.sh update
-
-sudo install -d -m 755 /var/www/mskpp-aibench
-sudo cp -a frontend/dist/. /var/www/mskpp-aibench/
-sudo chown -R root:root /var/www/mskpp-aibench
-
-bash scripts/platform.sh start static
+bash scripts/platform.sh deploy-static
 ```
 
-如果仅更新前端，在复制完成后通常不需要重载Nginx。浏览器可能缓存入口或哈希资源，发布后应至少验证一次无缓存访问。
+`deploy-static`自动停止应用、同步依赖、执行数据库迁移、构建前端、发布到`FRONTEND_DEPLOY_DIR`、修正目录/文件权限、检查Nginx配置、启动Backend和Worker，并验证首页、认证配置接口和W3回调入口。
+
+发布命令会拒绝磁盘配置中仍指向`127.0.0.1:18000`的临时W3探针。它先尝试reload Nginx；reload失败时会restart，以释放旧worker和文件描述符并确保新配置真正生效。当前服务器若同时承载其他Nginx站点，执行前应评估这次短暂重启的影响。
+
+普通启停、仅修改`.env.platform`或服务器重启后恢复服务时，不需要重新发布，使用：
+
+```bash
+bash scripts/platform.sh restart static
+```
+
+浏览器可能缓存入口或哈希资源，发布后应至少验证一次无缓存访问。
 
 ## 5. 启停与验证
 
@@ -116,7 +119,7 @@ database   running
 1. 在新服务器准备代码、Python/Node环境、Docker、Nginx、Simulator、AiBench、SST和Catapult。
 2. 创建新的 `.env.platform`，恢复数据库及任务目录。
 3. 构建并复制前端到 `/var/www/mskpp-aibench`，安装Nginx模板。
-4. 执行 `bash scripts/platform.sh start static` 并完成本机健康检查。
+4. 执行 `bash scripts/platform.sh deploy-static` 并完成本机健康检查。
 5. 申请ELB后端网段到新服务器TCP 80的防火墙策略，旧策略暂不删除。
 6. 将新服务器 `IP:80` 加入ELB，先使用低权重灰度验证。
 7. 验证页面、登录、API、数据库、Trace和仿真任务后，提高新服务器权重并移除旧服务器。

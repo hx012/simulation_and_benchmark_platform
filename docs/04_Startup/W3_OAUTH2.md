@@ -41,9 +41,10 @@ PLATFORM_SESSION_COOKIE_SECURE=false
 ## 发布和验证
 
 ```bash
-bash scripts/platform.sh update
-bash scripts/platform.sh restart server
+bash scripts/platform.sh deploy-static
 ```
+
+该命令会检查并拒绝残留的`127.0.0.1:18000`临时回调代理，发布前端并修正Nginx读取权限；Nginx reload失败时自动restart，最后确认W3 callback入口不再返回502。
 
 验证步骤：
 

@@ -146,7 +146,7 @@ bash scripts/platform.sh status
 bash scripts/platform.sh stop
 ```
 
-工作 Linux 服务器使用Vite Preview时运行 `start server`；Nginx直接托管前端时运行 `start static`。static模式不启动5173，前端构建结果需要单独发布到 `FRONTEND_DEPLOY_DIR`，部署细节见 `docs/04_Startup/domain_elb_nginx.md`。PostgreSQL 必须挂载 external named volume `ascend-platform-postgres-data`；脚本检测到匿名卷时拒绝启动，已有匿名卷通过 `scripts/migrate-postgres-volume.sh` 一次性迁移。
+工作 Linux 服务器使用Vite Preview时运行 `start server`；Nginx直接托管前端时运行 `start static`。static模式不启动5173；代码更新后使用 `deploy-static` 一键构建并发布到 `FRONTEND_DEPLOY_DIR`，普通启停继续使用 `start/restart static`。部署细节见 `docs/04_Startup/domain_elb_nginx.md`。PostgreSQL 必须挂载 external named volume `ascend-platform-postgres-data`；脚本检测到匿名卷时拒绝启动，已有匿名卷通过 `scripts/migrate-postgres-volume.sh` 一次性迁移。
 
 ## 5. Simulation 当前实现
 
