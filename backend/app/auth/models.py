@@ -16,6 +16,7 @@ class User(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     employee_id: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+    w3_global_user_id: Mapped[str | None] = mapped_column(String(255), unique=True)
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(32), nullable=False, default="normal")
     password_hash: Mapped[str | None] = mapped_column(Text)
@@ -46,6 +47,26 @@ class UserSession(Base):
     __table_args__ = (
         Index("ix_user_sessions_user_active", "user_id", "revoked_at"),
         Index("ix_user_sessions_expires", "expires_at"),
+    )
+
+
+class OAuthLoginTransaction(Base):
+    """One-time server-side OAuth state and PKCE verifier."""
+
+    __tablename__ = "oauth_login_transactions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    state_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    code_verifier: Mapped[str] = mapped_column(String(128), nullable=False)
+    next_path: Mapped[str] = mapped_column(String(2048), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_oauth_login_transactions_expires", "expires_at"),
     )
 
 
