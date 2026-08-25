@@ -25,8 +25,10 @@ git log --oneline -5
 ### Backend
 
 ```text
+analysis_tools/                         独立、可复用的性能分析算法包
 backend/app/main.py                    FastAPI 入口
 backend/app/api/simulation.py          Simulation API
+backend/app/api/performance.py         性能分析适配 API
 backend/app/api/benchmark.py           Benchmark API
 backend/app/common/config.py           环境配置
 backend/app/common/database.py         SQLAlchemy Engine/Session
@@ -43,6 +45,7 @@ frontend/src/api/                      API Client
 frontend/src/auth/AuthContext.tsx      开发态身份
 frontend/src/pages/simulation/         Simulation 页面
 frontend/src/pages/benchmark/          Benchmark 页面
+frontend/src/pages/PerformancePage.tsx 性能分析工作台
 frontend/src/components/               通用组件和 Trace Viewer
 ```
 

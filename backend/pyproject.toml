@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Backend for Ascend Simulator and Benchmark Platform"
 requires-python = ">=3.10"
 dependencies = [
+    "chip-performance-analysis",
     "fastapi[standard]",
     "pydantic-settings",
     "SQLAlchemy",
@@ -12,6 +13,9 @@ dependencies = [
     "pyYAML",
     "python-multipart",
 ]
+
+[tool.uv.sources]
+chip-performance-analysis = { path = "../analysis_tools", editable = true }
 
 [tool.fastapi]
 entrypoint = "app.main:app"

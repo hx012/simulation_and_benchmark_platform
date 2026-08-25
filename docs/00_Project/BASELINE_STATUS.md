@@ -18,6 +18,7 @@
 - 双入口登录：普通工号登录，以及需要密码的管理员登录；身份由后端 HttpOnly 会话 Cookie 管理。
 - Simulation 新建任务、我的任务、任务详情、运行日志、结果和 Catapult Trace 页面。
 - Trace Viewer 支持浏览器全屏、`Esc` 退出、新窗口打开、导入弹窗隐藏和存量任务 React Viewer 回退。
+- 性能分析工作台支持选择 Trace 已就绪的 MSKPP 平台任务，或上传用户指定来源的 MSKPP/ESL `trace.json`，并在同页展示 Trace 时间分析结果。
 - Chip Config / Workload 文件树、上传、YAML/JSON 在线编辑和样例载入。
 - Benchmark Vendor / Chip / Benchmark 只读浏览页面。
 - `/api` 通过 Vite 代理访问 FastAPI。
@@ -34,6 +35,7 @@
 - Worker 调用 Catapult `trace2html` 生成独立 `trace.html`，Trace 转换失败不影响 Simulation 终态。
 - Simulator Profile / Capabilities 配置。
 - Benchmark Registry 只读适配。
+- 独立 `analysis_tools` Python 包提供 MSKPP/ESL Trace 时间计算；Backend 仅负责权限、任务文件和上传适配。
 
 ### Local Development
 

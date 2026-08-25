@@ -35,6 +35,7 @@ bash scripts/platform.sh stop
 
 ```text
 simulation_and_benchmark_platform/
+├── analysis_tools/ # 独立、可复用的性能分析算法包
 ├── backend/      # FastAPI、Simulation/Benchmark 业务、Worker、Alembic
 ├── frontend/     # React + TypeScript + Vite + Ant Design
 ├── docs/         # 项目 Source of Truth 和开发记录
