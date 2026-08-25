@@ -41,7 +41,7 @@ PLATFORM_SESSION_COOKIE_SECURE=false
 
 ## 3. 安装Nginx站点
 
-仓库模板位于 `deploy/nginx/mskpp-aibench.conf`。Ubuntu服务器执行：
+仓库模板位于 `deploy/nginx/mskpp-aibench.conf`，并应与当前生产服务器的生效配置保持同步。它包含ELB健康检查、FastAPI代理、Swagger、Vite哈希资源缓存和React Router回退。Ubuntu服务器执行：
 
 ```bash
 sudo cp deploy/nginx/mskpp-aibench.conf /etc/nginx/sites-available/mskpp-aibench
