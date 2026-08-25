@@ -58,7 +58,7 @@ export function LoginPage() {
             { label: '管理员登录', value: 'admin' },
           ]}
           onChange={(value) => {
-            setAuthMode(value as 'normal' | 'admin');
+            setAuthMode(value as 'w3' | 'admin');
             form.setFieldValue('password', '');
           }}
         />
