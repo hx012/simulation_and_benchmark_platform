@@ -13,8 +13,7 @@ interface LoginFormValues {
 export function LoginPage() {
   const [form] = Form.useForm<LoginFormValues>();
   const [submitting, setSubmitting] = useState(false);
-  const [authMode, setAuthMode] = useState<'normal' | 'admin'>('normal');
-  const [w3Enabled, setW3Enabled] = useState(false);
+  const [authMode, setAuthMode] = useState<'w3' | 'admin'>('w3');
   const navigate = useNavigate();
   const location = useLocation();
   const { authenticated, login } = useAuth();
@@ -29,16 +28,10 @@ export function LoginPage() {
     }
   }, [authenticated, location.state, navigate]);
 
-  useEffect(() => {
-    void authApi.getConfig()
-      .then((config) => setW3Enabled(config.w3_oauth_enabled))
-      .catch(() => setW3Enabled(false));
-  }, []);
-
   async function handleSubmit(values: LoginFormValues) {
     setSubmitting(true);
     try {
-      await login(values.employeeId, authMode, values.password);
+      await login(values.employeeId, 'admin', values.password);
       navigate(redirectTo, { replace: true });
     } catch (error) {
       message.error(error instanceof Error ? error.message : String(error));
@@ -61,7 +54,7 @@ export function LoginPage() {
           className="login-mode-switch"
           value={authMode}
           options={[
-            { label: w3Enabled ? 'W3 登录' : '普通登录', value: 'normal' },
+            { label: 'W3 登录', value: 'w3' },
             { label: '管理员登录', value: 'admin' },
           ]}
           onChange={(value) => {
@@ -70,7 +63,7 @@ export function LoginPage() {
           }}
         />
         {oauthError ? <Alert type="error" showIcon message={oauthError} style={{ marginBottom: 16 }} /> : null}
-        {w3Enabled && authMode === 'normal' ? (
+        {authMode === 'w3' ? (
           <Button
             type="primary"
             onClick={startW3Login}
