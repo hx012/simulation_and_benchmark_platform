@@ -1,4 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from urllib.parse import urlencode
+
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -13,6 +17,7 @@ from app.auth.models import (
 from app.auth.schemas import (
     AdminUserResponse,
     AdminUserUpdate,
+    AuthConfigResponse,
     CurrentUserResponse,
     LoginRequest,
     PasswordChangeRequest,
@@ -30,8 +35,11 @@ from app.auth.service import (
     change_admin_password,
     create_permission_request,
     current_user_response,
+    consume_w3_login_transaction,
+    create_w3_login_transaction,
     get_current_user,
     login_user,
+    login_w3_user,
     logout_user,
     request_response,
     require_admin,
@@ -56,6 +64,19 @@ def _set_session_cookie(response: Response, token: str) -> None:
         secure=settings.platform_session_cookie_secure,
         samesite="lax",
         path="/",
+    )
+
+
+def _safe_next_path(value: str | None) -> str:
+    if value and value.startswith("/") and not value.startswith("//"):
+        return value
+    return "/home"
+
+
+def _w3_error_redirect(message: str) -> RedirectResponse:
+    return RedirectResponse(
+        url=f"/login?{urlencode({'oauth_error': message})}",
+        status_code=status.HTTP_303_SEE_OTHER,
     )
 
 
@@ -102,6 +123,102 @@ def login(request: LoginRequest, response: Response, db: Session = Depends(get_d
     current, token = login_user(db, request.employee_id, request.auth_mode, request.password)
     _set_session_cookie(response, token)
     return current_user_response(db, current)
+
+
+@router.get("/auth/config", response_model=AuthConfigResponse)
+def auth_config() -> AuthConfigResponse:
+    return AuthConfigResponse(w3_oauth_enabled=get_settings().platform_w3_oauth_enabled)
+
+
+@router.get("/auth/w3/login")
+def w3_login(
+    next_path: str = Query(default="/home", alias="next"),
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    settings = get_settings()
+    if not settings.platform_w3_oauth_enabled:
+        raise HTTPException(status_code=404, detail="W3 OAuth2 登录未启用")
+
+    state, _, code_challenge = create_w3_login_transaction(db, _safe_next_path(next_path))
+    params = {
+        "response_type": "code",
+        "client_id": settings.platform_w3_client_id,
+        "redirect_uri": settings.platform_w3_redirect_uri,
+        "scope": settings.platform_w3_scope,
+        "state": state,
+        "code_challenge": code_challenge,
+        "code_challenge_method": "S256",
+    }
+    separator = "&" if "?" in settings.platform_w3_authorize_url else "?"
+    return RedirectResponse(
+        url=f"{settings.platform_w3_authorize_url}{separator}{urlencode(params)}",
+        status_code=status.HTTP_302_FOUND,
+    )
+
+
+@router.get("/auth/w3/callback")
+def w3_callback(
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    error_description: str | None = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    settings = get_settings()
+    if not settings.platform_w3_oauth_enabled:
+        raise HTTPException(status_code=404, detail="W3 OAuth2 登录未启用")
+    if error:
+        return _w3_error_redirect(error_description or error)
+    if not code or not state:
+        return _w3_error_redirect("W3 回调缺少授权码或登录状态")
+
+    try:
+        code_verifier, next_path = consume_w3_login_transaction(db, state)
+    except HTTPException as exc:
+        return _w3_error_redirect(str(exc.detail))
+
+    try:
+        with httpx.Client(timeout=settings.platform_w3_http_timeout_seconds) as client:
+            token_response = client.post(settings.platform_w3_token_url, json={
+                "client_id": settings.platform_w3_client_id,
+                "client_secret": settings.platform_w3_client_secret,
+                "redirect_uri": settings.platform_w3_redirect_uri,
+                "grant_type": "authorization_code",
+                "code": code,
+                "code_verifier": code_verifier,
+            })
+            token_response.raise_for_status()
+            token_payload = token_response.json()
+            access_token = token_payload.get("access_token")
+            if not isinstance(access_token, str) or not access_token:
+                return _w3_error_redirect("W3 Token 响应缺少 access_token")
+            userinfo_response = client.post(settings.platform_w3_userinfo_url, json={
+                "client_id": settings.platform_w3_client_id,
+                "access_token": access_token,
+                "scope": settings.platform_w3_scope,
+            })
+            userinfo_response.raise_for_status()
+            userinfo = userinfo_response.json()
+    except (httpx.HTTPError, ValueError):
+        return _w3_error_redirect("W3 认证服务请求失败，请稍后重试")
+
+    global_user_id = userinfo.get("globalUserID") if isinstance(userinfo, dict) else None
+    employee_id = userinfo.get("uid") if isinstance(userinfo, dict) else None
+    display_name = userinfo.get("displayName") if isinstance(userinfo, dict) else None
+    if not isinstance(global_user_id, str) or not global_user_id.strip():
+        return _w3_error_redirect("W3 用户信息缺少 globalUserID")
+    if not isinstance(employee_id, str) or not employee_id.strip():
+        return _w3_error_redirect("W3 用户信息缺少 uid 工号")
+    if not isinstance(display_name, str) or not display_name.strip():
+        return _w3_error_redirect("W3 用户信息缺少 displayName 姓名")
+
+    try:
+        current, session_token = login_w3_user(db, global_user_id, employee_id, display_name)
+    except HTTPException as exc:
+        return _w3_error_redirect(str(exc.detail))
+    response = RedirectResponse(url=_safe_next_path(next_path), status_code=status.HTTP_303_SEE_OTHER)
+    _set_session_cookie(response, session_token)
+    return response
 
 
 @router.post("/auth/logout", status_code=status.HTTP_204_NO_CONTENT)

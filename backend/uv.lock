@@ -62,6 +62,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "alembic" },
     { name = "fastapi", extra = ["standard"] },
+    { name = "httpx" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic-settings" },
     { name = "python-multipart" },
@@ -73,6 +74,7 @@ dependencies = [
 requires-dist = [
     { name = "alembic" },
     { name = "fastapi", extras = ["standard"] },
+    { name = "httpx" },
     { name = "psycopg", extras = ["binary"] },
     { name = "pydantic-settings" },
     { name = "python-multipart" },

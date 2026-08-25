@@ -67,7 +67,8 @@ export function PermissionCenterPage() {
   }
 
   const requestColumns: ColumnsType<PermissionRequestRecord> = [
-    { title: '申请人', dataIndex: 'display_name' },
+    { title: '工号', dataIndex: 'user_id' },
+    { title: '姓名', dataIndex: 'display_name' },
     { title: '申请权限', dataIndex: 'permission_code', render: (value: PermissionCode) => permissionCatalog[value]?.name || value },
     { title: '申请理由', dataIndex: 'reason', render: (value: string) => value || '—' },
     { title: '操作', render: (_, item) => <Space><Button type="primary" size="small" onClick={() => review(item, 'approved')}>批准</Button><Button danger size="small" onClick={() => review(item, 'rejected')}>拒绝</Button></Space> },
@@ -91,7 +92,7 @@ export function PermissionCenterPage() {
 
   const userColumns: ColumnsType<AdminUserRecord> = [
     { title: '工号', dataIndex: 'user_id' },
-    { title: '显示名称', dataIndex: 'display_name' },
+    { title: '姓名', dataIndex: 'display_name' },
     { title: '角色', dataIndex: 'role', render: (value) => <Tag color={value === 'admin' ? 'purple' : 'default'}>{value === 'admin' ? '管理员' : '普通用户'}</Tag> },
     { title: '管理员密码', dataIndex: 'password_configured', render: (value) => value ? '已配置' : '未配置' },
     { title: '操作', render: (_, item) => <Button size="small" onClick={() => { setUserEditing(item); userForm.setFieldsValue({ employeeId: item.user_id, display_name: item.display_name, role: item.role, active: item.active, password: '' }); }}>配置</Button> },

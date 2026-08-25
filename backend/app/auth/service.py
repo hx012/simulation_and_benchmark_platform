@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+import base64
 import hashlib
 import hmac
 import secrets
@@ -21,6 +22,7 @@ from app.auth.models import (
     PermissionSet,
     ProtectedResource,
     ResourcePermissionSet,
+    OAuthLoginTransaction,
     User,
     UserPermissionGrant,
     UserSession,
@@ -150,19 +152,97 @@ def _get_or_create_normal_user(db: Session, employee_id: str) -> User:
     return user
 
 
-def login_user(db: Session, employee_id: str, auth_mode: str, password: str) -> tuple[AuthenticatedUser, str]:
+def create_w3_login_transaction(db: Session, next_path: str) -> tuple[str, str, str]:
+    """Create one short-lived state/PKCE pair; only its hash is exposed in storage."""
+    settings = get_settings()
+    now = _utcnow()
+    db.execute(delete(OAuthLoginTransaction).where(OAuthLoginTransaction.expires_at <= now))
+    state = secrets.token_urlsafe(32)
+    code_verifier = secrets.token_urlsafe(64)
+    item = OAuthLoginTransaction(
+        state_hash=hashlib.sha256(state.encode()).hexdigest(),
+        code_verifier=code_verifier,
+        next_path=next_path,
+        expires_at=now + timedelta(seconds=settings.platform_w3_state_ttl_seconds),
+    )
+    db.add(item)
+    db.commit()
+    code_challenge = base64url_sha256(code_verifier)
+    return state, code_verifier, code_challenge
+
+
+def consume_w3_login_transaction(db: Session, state: str) -> tuple[str, str]:
+    """Consume a state exactly once and return its PKCE verifier and target path."""
+    state_hash = hashlib.sha256(state.encode()).hexdigest()
+    item = db.scalar(select(OAuthLoginTransaction).where(
+        OAuthLoginTransaction.state_hash == state_hash,
+    ).with_for_update())
+    now = _utcnow()
+    if item is None or item.consumed_at is not None or _as_utc(item.expires_at) <= now:
+        raise HTTPException(status_code=400, detail="W3 登录状态已失效，请重新登录")
+    item.consumed_at = now
+    db.commit()
+    return item.code_verifier, item.next_path
+
+
+def base64url_sha256(value: str) -> str:
+    digest = hashlib.sha256(value.encode()).digest()
+    return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+
+
+def parse_w3_display_name(value: str | None, fallback: str) -> str:
+    """Prefer W3's Chinese display name, then English, then the employee ID."""
+    if not value:
+        return fallback
+    names: dict[str, str] = {}
+    for item in value.split(","):
+        key, separator, text = item.partition("=")
+        if separator and key.strip().lower() in {"cn", "en"} and text.strip():
+            names[key.strip().lower()] = text.strip()
+    return names.get("cn") or names.get("en") or fallback
+
+
+def login_w3_user(
+    db: Session,
+    global_user_id: str,
+    employee_id: str,
+    display_name: str | None,
+) -> tuple[AuthenticatedUser, str]:
+    """Bind a W3 identity to a local user and establish an ordinary local session."""
     initialize_auth_data(db)
-    normalized = employee_id.strip()
-    if not normalized:
-        raise HTTPException(status_code=400, detail="请输入工号")
+    global_id = global_user_id.strip()
+    employee = employee_id.strip()
+    if not global_id or not employee:
+        raise HTTPException(status_code=502, detail="W3 用户信息缺少 globalUserID 或 uid")
 
-    if auth_mode == "admin":
-        user = db.scalar(select(User).where(User.employee_id == normalized))
-        if user is None or not user.active or user.role != "admin" or not verify_password(password, user.password_hash):
-            raise HTTPException(status_code=401, detail="管理员账号或密码错误")
+    user = db.scalar(select(User).where(User.w3_global_user_id == global_id))
+    employee_owner = db.scalar(select(User).where(User.employee_id == employee))
+    if user is not None:
+        if employee_owner is not None and employee_owner.id != user.id:
+            raise HTTPException(status_code=409, detail="W3 工号已绑定到其他平台账号，请联系管理员")
+        user.employee_id = employee
+    elif employee_owner is not None:
+        if employee_owner.w3_global_user_id and employee_owner.w3_global_user_id != global_id:
+            raise HTTPException(status_code=409, detail="该工号已绑定其他 W3 账号，请联系管理员")
+        user = employee_owner
+        user.w3_global_user_id = global_id
     else:
-        user = _get_or_create_normal_user(db, normalized)
+        user = User(
+            employee_id=employee,
+            w3_global_user_id=global_id,
+            display_name=parse_w3_display_name(display_name, employee),
+            role="normal",
+        )
+        db.add(user)
+        db.flush()
 
+    if not user.active:
+        raise HTTPException(status_code=403, detail="账号已停用")
+    user.display_name = parse_w3_display_name(display_name, employee)
+    return _create_user_session(db, user, "normal")
+
+
+def _create_user_session(db: Session, user: User, auth_mode: str) -> tuple[AuthenticatedUser, str]:
     now = _utcnow()
     raw_token = secrets.token_urlsafe(48)
     session = UserSession(
@@ -177,6 +257,23 @@ def login_user(db: Session, employee_id: str, auth_mode: str, password: str) -> 
     db.commit()
     db.refresh(session)
     return AuthenticatedUser(user=user, session=session), raw_token
+
+
+def login_user(db: Session, employee_id: str, auth_mode: str, password: str) -> tuple[AuthenticatedUser, str]:
+    initialize_auth_data(db)
+    normalized = employee_id.strip()
+    if not normalized:
+        raise HTTPException(status_code=400, detail="请输入工号")
+
+    if auth_mode == "admin":
+        user = db.scalar(select(User).where(User.employee_id == normalized))
+        if user is None or not user.active or user.role != "admin" or not verify_password(password, user.password_hash):
+            raise HTTPException(status_code=401, detail="管理员账号或密码错误")
+    else:
+        if get_settings().platform_w3_oauth_enabled:
+            raise HTTPException(status_code=403, detail="普通用户请使用 W3 登录")
+        user = _get_or_create_normal_user(db, normalized)
+    return _create_user_session(db, user, auth_mode)
 
 
 def logout_user(db: Session, current: AuthenticatedUser) -> None:

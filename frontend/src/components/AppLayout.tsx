@@ -250,7 +250,7 @@ export function AppLayout() {
                 items: [
                   {
                     key: 'identity',
-                    label: user?.displayName || user?.userId || '当前用户',
+                    label: user?.userId || '当前用户',
                     icon: <UserOutlined />,
                     disabled: true,
                   },
@@ -273,7 +273,7 @@ export function AppLayout() {
             >
               <button type="button" className="header-user-button">
                 <UserOutlined />
-                <span>{user?.displayName || user?.userId}</span>
+                <span>{user?.userId}</span>
                 {user?.authMode === 'admin' ? <span className="admin-mode-badge">管理员</span> : null}
               </button>
             </Dropdown>
