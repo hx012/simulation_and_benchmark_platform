@@ -10,7 +10,7 @@ RemainAfterExit=yes
 User=CHANGE_ME
 WorkingDirectory=/path/to/simulation_and_benchmark_platform
 Environment=PLATFORM_ENV_FILE=/path/to/simulation_and_benchmark_platform/.env.platform
-ExecStart=/usr/bin/bash /path/to/simulation_and_benchmark_platform/scripts/platform.sh start server
+ExecStart=/usr/bin/bash /path/to/simulation_and_benchmark_platform/scripts/platform.sh start
 ExecStop=/usr/bin/bash /path/to/simulation_and_benchmark_platform/scripts/platform.sh stop
 TimeoutStartSec=300
 TimeoutStopSec=120

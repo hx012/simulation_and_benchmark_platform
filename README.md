@@ -16,7 +16,7 @@ bash scripts/platform.sh status
 bash scripts/platform.sh stop
 ```
 
-工作服务器使用 `start server`。脚本会验证 PostgreSQL 必须挂载 named volume，发现旧匿名卷时拒绝启动并提示安全迁移。
+工作服务器由Vite Preview提供前端时使用 `start server`；前端已发布给Nginx直接托管时使用 `start static`。脚本会验证 PostgreSQL 必须挂载 named volume，发现旧匿名卷时拒绝启动并提示安全迁移。
 
 ## 文档入口
 
@@ -25,6 +25,7 @@ bash scripts/platform.sh stop
 - [当前代码基线](docs/00_Project/BASELINE_STATUS.md)
 - [后续开发路线图](docs/00_Project/ROADMAP.md)
 - [Linux 服务器启动](docs/04_Startup/startup.md)
+- [域名、ELB 与 Nginx 静态部署](docs/04_Startup/domain_elb_nginx.md)
 - [WSL 本地启动](docs/04_Startup/wsl_startup.md)
 - [开发接手指南](docs/06_Development/DEVELOPMENT_GUIDE.md)
 

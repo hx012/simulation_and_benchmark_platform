@@ -26,10 +26,10 @@ usage() {
 Usage:
   bash scripts/platform.sh setup
   bash scripts/platform.sh update
-  bash scripts/platform.sh start [dev|server]
+  bash scripts/platform.sh start [dev|server|static]
   bash scripts/platform.sh stop
   bash scripts/platform.sh stop-apps
-  bash scripts/platform.sh restart [dev|server]
+  bash scripts/platform.sh restart [dev|server|static]
   bash scripts/platform.sh status
   bash scripts/platform.sh logs [backend|worker|frontend] [--follow]
   bash scripts/platform.sh db-check
@@ -39,6 +39,7 @@ Usage:
 Modes:
   dev     Uvicorn reload and Vite development server (default)
   server  Uvicorn without reload and a built Vite preview server
+  static  Uvicorn without reload; frontend served directly by Nginx
 EOF
 }
 
@@ -92,8 +93,12 @@ load_platform_env() {
   : "${FRONTEND_HOST:=0.0.0.0}"
   : "${FRONTEND_PORT:=5173}"
   : "${PLATFORM_MODE:=dev}"
+  : "${FRONTEND_DEPLOY_DIR:=/var/www/mskpp-aibench}"
+  : "${NGINX_HEALTH_URL:=http://127.0.0.1/elb-health}"
+  : "${PLATFORM_PUBLIC_URL:=http://127.0.0.1}"
   export POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB POSTGRES_PORT
   export BACKEND_HOST BACKEND_PORT FRONTEND_HOST FRONTEND_PORT PLATFORM_MODE
+  export FRONTEND_DEPLOY_DIR NGINX_HEALTH_URL PLATFORM_PUBLIC_URL
 }
 
 compose() {
@@ -391,7 +396,8 @@ start_platform() {
 
   load_platform_env
   mode="${requested_mode:-$PLATFORM_MODE}"
-  [[ "$mode" == dev || "$mode" == server ]] || fail "Mode must be 'dev' or 'server'."
+  [[ "$mode" == dev || "$mode" == server || "$mode" == static ]] || \
+    fail "Mode must be 'dev', 'server', or 'static'."
   if [[ -f "$MODE_FILE" ]] && \
      { managed_pid backend >/dev/null 2>&1 || managed_pid frontend >/dev/null 2>&1; }; then
     read -r active_mode < "$MODE_FILE"
@@ -402,19 +408,26 @@ start_platform() {
   backend_port="$BACKEND_PORT"
   frontend_port="$FRONTEND_PORT"
   configure_user_tools
-  require_command npm
   require_command curl
   require_backend_environment
-  require_frontend_dependencies
+  if [[ "$mode" != static ]]; then
+    require_command npm
+    require_frontend_dependencies
+  fi
   start_database
   run_migrations
 
   remove_stale_pid backend
   remove_stale_pid frontend
+  if [[ "$mode" == static ]] && managed_pid frontend >/dev/null 2>&1; then
+    stop_process frontend
+  fi
   if ! managed_pid backend >/dev/null 2>&1 && port_in_use "$backend_port"; then
     fail "Backend port $backend_port is already in use by an unmanaged process."
   fi
-  if ! managed_pid frontend >/dev/null 2>&1 && port_in_use "$frontend_port"; then
+  if [[ "$mode" != static ]] && \
+     ! managed_pid frontend >/dev/null 2>&1 && \
+     port_in_use "$frontend_port"; then
     fail "Frontend port $frontend_port is already in use by an unmanaged process."
   fi
 
@@ -422,10 +435,13 @@ start_platform() {
   if [[ "$mode" == dev ]]; then
     backend_command+=(--reload)
     frontend_command=(npm run dev -- --host "$FRONTEND_HOST" --port "$frontend_port" --strictPort)
-  else
+  elif [[ "$mode" == server ]]; then
     [[ -f "$FRONTEND_DIR/dist/index.html" ]] || \
       fail "Frontend build is missing. Run 'bash scripts/platform.sh update'."
     frontend_command=(npm run preview -- --host "$FRONTEND_HOST" --port "$frontend_port" --strictPort)
+  else
+    [[ -f "$FRONTEND_DEPLOY_DIR/index.html" ]] || \
+      fail "Nginx frontend files are missing from $FRONTEND_DEPLOY_DIR."
   fi
 
   start_process backend "$BACKEND_DIR" "${backend_command[@]}"
@@ -436,17 +452,31 @@ start_platform() {
 
   start_process worker "$BACKEND_DIR" \
     env PYTHONPATH="$BACKEND_DIR" PYTHONUNBUFFERED=1 "$BACKEND_PYTHON" worker/simulation_worker.py
-  start_process frontend "$FRONTEND_DIR" "${frontend_command[@]}"
-  if ! wait_for_http frontend "http://127.0.0.1:$frontend_port"; then
-    stop_process frontend
-    stop_process worker
-    stop_process backend
-    fail "Frontend health check failed."
+  if [[ "$mode" == static ]]; then
+    if ! curl --fail --silent --show-error "$NGINX_HEALTH_URL" >/dev/null; then
+      stop_process worker
+      stop_process backend
+      fail "Nginx static frontend health check failed: $NGINX_HEALTH_URL"
+    fi
+    info "Nginx static frontend health check passed: $NGINX_HEALTH_URL"
+  else
+    start_process frontend "$FRONTEND_DIR" "${frontend_command[@]}"
+    if ! wait_for_http frontend "http://127.0.0.1:$frontend_port"; then
+      stop_process frontend
+      stop_process worker
+      stop_process backend
+      fail "Frontend health check failed."
+    fi
   fi
 
   info "Platform started in $mode mode."
   printf '%s\n' "$mode" > "$MODE_FILE"
-  info "Frontend: http://127.0.0.1:$frontend_port"
+  if [[ "$mode" == static ]]; then
+    info "Frontend: served by Nginx from $FRONTEND_DEPLOY_DIR"
+    info "Public URL: $PLATFORM_PUBLIC_URL"
+  else
+    info "Frontend: http://127.0.0.1:$frontend_port"
+  fi
   info "API docs: http://127.0.0.1:$backend_port/docs"
 }
 

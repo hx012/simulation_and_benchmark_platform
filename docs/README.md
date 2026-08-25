@@ -12,7 +12,7 @@
 2. [BASELINE_STATUS.md](00_Project/BASELINE_STATUS.md)：当前已实现能力、验证状态、已知边界。
 3. [ROADMAP.md](00_Project/ROADMAP.md)：下一阶段优先级和推荐任务。
 
-需要运行项目时再读 [wsl_startup.md](04_Startup/wsl_startup.md)，需要修改代码时读 [DEVELOPMENT_GUIDE.md](06_Development/DEVELOPMENT_GUIDE.md)。
+需要运行项目时再读 [wsl_startup.md](04_Startup/wsl_startup.md)；生产域名部署读 [domain_elb_nginx.md](04_Startup/domain_elb_nginx.md)；需要修改代码时读 [DEVELOPMENT_GUIDE.md](06_Development/DEVELOPMENT_GUIDE.md)。
 
 ## 文档目录
 
@@ -37,6 +37,7 @@ docs/
 │   └── PERMISSION_MANAGEMENT_V1.md
 ├── 04_Startup/
 │   ├── startup.md
+│   ├── domain_elb_nginx.md
 │   └── wsl_startup.md
 ├── 05_KnownIssues/
 └── 06_Development/
