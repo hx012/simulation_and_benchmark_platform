@@ -13,6 +13,9 @@ sudo systemctl enable --now ascend-platform.service
 sudo systemctl status ascend-platform.service
 ```
 
+`ExecStart` uses `PLATFORM_MODE` from `.env.platform`. Set it to `server` for
+Vite Preview or `static` when Nginx serves the deployed frontend files.
+
 The unit never removes PostgreSQL volumes. It is a convenient boot-time wrapper
 for the single-host deployment. Environments that require independent restart
 policies for Backend, Worker, and Frontend should split this template into

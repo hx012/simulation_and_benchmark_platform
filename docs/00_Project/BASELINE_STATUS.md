@@ -39,7 +39,7 @@
 
 - Docker PostgreSQL 镜像定义。
 - 根级 Compose 使用 external named volume `ascend-platform-postgres-data` 持久化 PostgreSQL。
-- Linux 通用 `scripts/platform.sh` 统一管理数据库、Alembic、Backend、Worker 和 Frontend，支持 dev/server、启停、状态和日志。
+- Linux 通用 `scripts/platform.sh` 统一管理数据库、Alembic、Backend、Worker 和 Frontend，支持 dev/server/static、启停、状态和日志；static模式由Nginx直接托管已发布前端。
 - 匿名 PostgreSQL volume 检测与一次性逻辑备份/恢复迁移脚本。
 - Linux/WSL 启动文档、systemd 示例、`.env.platform.example` 和后端/前端环境变量示例。
 - V310/default/single_chip 界面样例，共 2 个 Chip Config 和 1 个 Workload 文件。
@@ -73,7 +73,7 @@ DATABASE_URL=postgresql+psycopg://ascend_platform:12345678@127.0.0.1:15432/ascen
 
 - `GET /health` 可用。
 - Alembic `upgrade head` 和 `check` 可用。
-- `platform.sh` 的 dev/server、重复启动、优雅关闭、模式切换保护和前端 `/api` 代理可用。
+- `platform.sh` 的 dev/server/static、重复启动、优雅关闭和模式切换保护可用；static模式不启动5173，并验证Nginx健康地址和已发布入口文件。
 - PostgreSQL named volume 挂载校验及匿名卷迁移前后任务数校验可用。
 - 成功任务可在“我的任务”列表显示。
 - 任务详情可以增量读取 10,000 行日志。

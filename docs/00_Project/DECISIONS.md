@@ -47,6 +47,7 @@
 | A-017 | Catapult 固定使用 commit `1d18f6e11082de030c45fd55b556d15e3aa628a8`，通过离线部署包而非 Git PR 分发 | 公司服务器不能直接下载；`tools/` 不进入 Git；固定验证版本避免上游 HEAD 漂移 | Accepted |
 | A-018 | V1 采用独立 Permission Set + 数据库资源策略，不采用单一权限等级 | Benchmark、日志和后续资产不是单向包含关系；数据库策略支持不改代码调整模块开放范围 | Accepted |
 | A-019 | 普通/管理员双入口共享服务端会话，管理员模式必须验证密码且默认具备全部启用 Permission Set | 允许管理员按最小权限使用普通身份，同时避免前端身份请求头被伪造 | Accepted |
+| A-020 | 生产域名部署使用Nginx直接托管前端，并由 `platform.sh static` 只管理数据库、Backend和Worker；前端发布不隐式写入 `/var/www` | 避免Vite Preview作为正式入口，同时将需要sudo的线上文件覆盖与普通启停、数据库迁移解耦 | Accepted |
 
 ## 变更规则
 
