@@ -3,6 +3,7 @@ import { ArrowLeftOutlined } from '@ant-design/icons';
 import { Button, Card, Collapse, Descriptions, Empty, message, Skeleton } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { benchmarkApi } from '../../api/benchmark';
+import { trackAnalyticsEventQuietly } from '../../api/analytics';
 import { PageHeading } from '../../components/PageHeading';
 import type { BenchmarkDefinition, BenchmarkResultListResponse } from '../../types/benchmark';
 
@@ -48,6 +49,19 @@ export function BenchmarkDetailPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!definition) return;
+    trackAnalyticsEventQuietly({
+      event_name: 'benchmark.detail_view',
+      page_key: 'benchmark.detail',
+      vendor: definition.vendor,
+      chip: definition.chip,
+      benchmark_name: definition.name,
+      benchmark_type: definition.category,
+      test_target: definition.target,
+    });
+  }, [definition?.benchmark_id]);
 
   const backPath = `/benchmark/chips/${encodeURIComponent(vendor)}/${encodeURIComponent(chip)}`;
 

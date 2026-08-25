@@ -8,6 +8,7 @@ from app.common.database import Base
 from app.auth import models as auth_models  # noqa: F401
 from app.simulation import models  # noqa: F401
 from app.collaboration import models as collaboration_models  # noqa: F401
+from app.analytics import models as analytics_models  # noqa: F401
 
 
 config = context.config

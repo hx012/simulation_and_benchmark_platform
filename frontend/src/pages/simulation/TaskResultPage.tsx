@@ -13,6 +13,7 @@ import {
 import { InboxOutlined, ArrowLeftOutlined, RedoOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { simulationApi } from '../../api/simulation';
+import { trackAnalyticsEventQuietly } from '../../api/analytics';
 import { MetricCard } from '../../components/MetricCard';
 import { PageHeading } from '../../components/PageHeading';
 import { TaskStatusTag, TraceStatusTag } from '../../components/StatusTag';
@@ -65,6 +66,17 @@ export function TaskResultPage() {
   }, [load]);
 
   useEffect(() => {
+    if (!task) return;
+    trackAnalyticsEventQuietly({
+      event_name: 'simulation.result_view',
+      page_key: 'simulation.task_result',
+      simulator_version: task.simulator_version,
+      chip_variant: task.chip_variant,
+      simulation_mode: task.simulation_mode,
+    });
+  }, [task?.task_id]);
+
+  useEffect(() => {
     const sourceAvailable = result?.trace_source_available ?? result?.trace_available;
     if (
       !taskId
@@ -115,6 +127,14 @@ export function TaskResultPage() {
     if (!task) return;
     try {
       const response = await simulationApi.rerunTask(task.task_id);
+      trackAnalyticsEventQuietly({
+        event_name: 'simulation.task_rerun',
+        page_key: 'simulation.task_result',
+        result: 'success',
+        simulator_version: task.simulator_version,
+        chip_variant: task.chip_variant,
+        simulation_mode: task.simulation_mode,
+      });
       message.success('已复用原输入创建新任务');
       navigate(`/simulation/tasks/${response.task.task_id}`);
     } catch (err) {

@@ -22,6 +22,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { simulationApi } from '../../api/simulation';
+import { trackAnalyticsEventQuietly } from '../../api/analytics';
 import { PageHeading } from '../../components/PageHeading';
 import { RemoteBundleEditor } from '../../components/RemoteBundleEditor';
 import type {
@@ -308,6 +309,7 @@ export function CreateTaskPage() {
   }
 
   async function handleSubmit() {
+    let submissionAttempted = false;
     if (!validationReady || !uploadSessionId) {
       message.warning('请先完成配置校验');
       return;
@@ -320,8 +322,18 @@ export function CreateTaskPage() {
     try {
       const values = await form.validateFields();
       setSubmitting(true);
+      submissionAttempted = true;
       const response = await simulationApi.submitUploadSession(uploadSessionId, {
         task_name: values.taskName,
+        simulator_version: selectedSimulator.key,
+        chip_variant: selectedVariant.key,
+        simulation_mode: selectedMode.key,
+      });
+
+      trackAnalyticsEventQuietly({
+        event_name: 'simulation.task_create_success',
+        page_key: 'simulation.create',
+        result: 'success',
         simulator_version: selectedSimulator.key,
         chip_variant: selectedVariant.key,
         simulation_mode: selectedMode.key,
@@ -330,6 +342,16 @@ export function CreateTaskPage() {
       message.success(`任务已提交，前方 ${response.queued_ahead} 个任务`);
       navigate(`/simulation/tasks/${response.task.task_id}`);
     } catch (error) {
+      if (submissionAttempted) {
+        trackAnalyticsEventQuietly({
+          event_name: 'simulation.task_create_failed',
+          page_key: 'simulation.create',
+          result: 'failed',
+          simulator_version: selectedSimulator?.key,
+          chip_variant: selectedVariant?.key,
+          simulation_mode: selectedMode?.key,
+        });
+      }
       message.error(error instanceof Error ? error.message : String(error));
     } finally {
       setSubmitting(false);
