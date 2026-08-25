@@ -85,7 +85,7 @@ UV_OFFLINE=true
 UV_CACHE_DIR=/absolute/path/to/deploy/offline/python/<bundle>/uv-cache
 ```
 
-离线包由 `scripts/build-python-offline-cache.sh` 在可联网的 Linux x86_64 Docker 环境生成。压缩包和校验文件存放在 `deploy/offline/python/`，不提交 Git；只有 `uv.lock` 变化时才需重新生成和传输。
+离线包由 `scripts/build-python-offline-cache.sh` 在可联网的 Linux x86_64 Docker 环境生成。脚本同时构建本地 `analysis_tools` 包，将 Hatchling 等构建依赖写入缓存，并在禁网容器中验证本地包可以重新构建和导入。压缩包和校验文件存放在 `deploy/offline/python/`，不提交 Git；`backend/uv.lock` 或 `analysis_tools/pyproject.toml` 变化时需要重新生成和传输。
 
 ## 4. PostgreSQL
 
