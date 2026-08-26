@@ -119,6 +119,8 @@ backend/migrations/
 - `SIM_MAX_CONCURRENT_TASKS`
 - `SIM_USER_TASK_LIMIT`
 - `SIM_SAMPLE_TEMPLATE_ROOT`
+- `ANALYTICS_EVENT_RETENTION_DAYS`（原始用户行为保留天数，`0` 表示永久保留）
+- `ANALYTICS_CLEANUP_INTERVAL_HOURS`（Worker 自动清理检查间隔）
 
 Benchmark 使用 `AIBENCH_HOME` 读取现有 aibench registry。
 

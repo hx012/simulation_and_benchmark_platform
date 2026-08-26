@@ -7,6 +7,9 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from sqlalchemy.exc import SQLAlchemyError
+
+from app.analytics.service import delete_expired_events
 from app.common.config import get_settings
 from app.common.database import SessionLocal
 from app.simulation.enums import TaskStatus
@@ -95,6 +98,11 @@ class SimulationWorker:
             self.settings.sim_worker_recovery_grace_seconds
         )
 
+        self.analytics_cleanup_interval_seconds = (
+            self.settings.analytics_cleanup_interval_hours * 60 * 60
+        )
+        self._next_analytics_cleanup_at = 0.0
+
         self.trace_runner = TraceRunner(
             settings=self.settings,
         )
@@ -118,6 +126,7 @@ class SimulationWorker:
 
         try:
             while True:
+                self._cleanup_expired_analytics_events_if_due()
                 self._poll_running_tasks()
 
                 made_progress = self._fill_available_slots()
@@ -135,6 +144,32 @@ class SimulationWorker:
         except KeyboardInterrupt:
             print("\n[worker] interrupted")
             self._shutdown_running_tasks()
+
+    def _cleanup_expired_analytics_events_if_due(self) -> None:
+        now = time.monotonic()
+        if now < self._next_analytics_cleanup_at:
+            return
+
+        self._next_analytics_cleanup_at = now + self.analytics_cleanup_interval_seconds
+        retention_days = self.settings.analytics_event_retention_days
+        if retention_days == 0:
+            return
+
+        try:
+            with SessionLocal.begin() as db:
+                deleted = delete_expired_events(db, retention_days)
+            if deleted:
+                print(
+                    f"[worker] analytics cleanup deleted={deleted} "
+                    f"retention_days={retention_days}"
+                )
+        except SQLAlchemyError as error:
+            retry_seconds = min(self.analytics_cleanup_interval_seconds, 300.0)
+            self._next_analytics_cleanup_at = now + retry_seconds
+            print(
+                f"[worker] analytics cleanup failed: {error}",
+                file=sys.stderr,
+            )
 
     def _fill_available_slots(self) -> bool:
         made_progress = False

@@ -4,7 +4,7 @@ from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -80,6 +80,22 @@ def create_event(db: Session, user: User, payload: AnalyticsEventCreate) -> None
     except IntegrityError:
         db.rollback()
         # Client retries are idempotent by event_id.
+
+
+def delete_expired_events(
+    db: Session,
+    retention_days: int,
+    *,
+    now: datetime | None = None,
+) -> int:
+    """Delete raw behavior events older than the configured retention period."""
+    if retention_days < 1:
+        return 0
+    cutoff = _as_utc(now or datetime.now(timezone.utc)) - timedelta(days=retention_days)
+    result = db.execute(
+        delete(AnalyticsEvent).where(AnalyticsEvent.occurred_at < cutoff)
+    )
+    return max(int(result.rowcount or 0), 0)
 
 
 def _events_in_range(db: Session, start_at: datetime, end_at: datetime) -> list[AnalyticsEvent]:

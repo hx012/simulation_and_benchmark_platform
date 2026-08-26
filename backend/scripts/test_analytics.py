@@ -1,10 +1,11 @@
 """Usage analytics aggregation and dimension checks."""
 
+from datetime import datetime, timedelta, timezone
 import os
 from pathlib import Path
 import sys
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
 
@@ -14,7 +15,13 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
 from app.analytics.models import AnalyticsEvent
 from app.analytics.schemas import AnalyticsEventCreate
-from app.analytics.service import create_event, get_overview, get_user_detail, list_users
+from app.analytics.service import (
+    create_event,
+    delete_expired_events,
+    get_overview,
+    get_user_detail,
+    list_users,
+)
 from app.auth.models import User
 from app.collaboration.models import Demand, FeedbackEntry
 from app.common.database import Base
@@ -134,6 +141,24 @@ def main() -> None:
         assert detail.pages[0].page_key == "benchmark.detail"
         assert detail.pages[0].active_seconds == 125
         assert detail.recent_events[0].event_name == "benchmark.detail_view"
+
+        event_count = db.scalar(select(func.count()).select_from(AnalyticsEvent)) or 0
+        db.add(AnalyticsEvent(
+            event_id="event-expired-analytics-001",
+            user_id=alice.id,
+            session_id="session-expired-analytics-001",
+            event_name="page_view",
+            page_key="home",
+            occurred_at=datetime.now(timezone.utc) - timedelta(days=181),
+        ))
+        db.commit()
+
+        deleted = delete_expired_events(db, 180)
+        db.commit()
+        remaining_count = db.scalar(select(func.count()).select_from(AnalyticsEvent)) or 0
+        assert deleted == 1
+        assert remaining_count == event_count
+        assert delete_expired_events(db, 0) == 0
 
     print("Analytics tests passed")
 

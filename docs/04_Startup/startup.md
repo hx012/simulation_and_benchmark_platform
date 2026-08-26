@@ -225,4 +225,13 @@ bash scripts/platform.sh logs worker
 test -f "$CATAPULT_HOME/tracing/tracing_build/trace2html.py"
 ```
 
+用户行为原始明细默认保留 180 天，由 Worker 启动时及运行期间定期清理。可在
+`.env.platform` 中通过 `ANALYTICS_EVENT_RETENTION_DAYS` 调整，设置为 `0` 表示
+永久保留。需要立即手工执行清理时运行：
+
+```bash
+cd backend
+.venv/bin/python scripts/cleanup_analytics_events.py
+```
+
 数据库记录与任务文件必须同时保留：PostgreSQL 保存任务元数据，`TASK_ROOT` 保存日志、summary 和 Trace。只恢复其中一部分会造成页面和文件系统状态不一致。

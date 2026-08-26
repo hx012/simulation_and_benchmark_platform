@@ -74,6 +74,11 @@ class Settings(BaseSettings):
     upload_cleanup_batch_size: int = 100
     upload_submit_lock_stale_seconds: float = 600.0
 
+    # Raw analytics events are periodically removed by the simulation worker.
+    # Set retention to 0 to keep events indefinitely.
+    analytics_event_retention_days: int = 180
+    analytics_cleanup_interval_hours: float = 24.0
+
     model_config = SettingsConfigDict(
         env_file=DEFAULT_PLATFORM_ENV_FILE,
         env_file_encoding="utf-8",
@@ -105,6 +110,14 @@ class Settings(BaseSettings):
         missing = [name for name, value in required.items() if not value.strip()]
         if missing:
             raise ValueError(f"W3 OAuth2 is enabled but settings are missing: {', '.join(missing)}")
+        return self
+
+    @model_validator(mode="after")
+    def validate_analytics_retention(self) -> "Settings":
+        if self.analytics_event_retention_days < 0:
+            raise ValueError("ANALYTICS_EVENT_RETENTION_DAYS must be 0 or greater")
+        if self.analytics_cleanup_interval_hours <= 0:
+            raise ValueError("ANALYTICS_CLEANUP_INTERVAL_HOURS must be greater than 0")
         return self
 
 
