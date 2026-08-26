@@ -16,7 +16,7 @@ class RecentActivityHomeConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     storage_limit: int = Field(default=5, ge=1, le=100)
-    display_limit: int = Field(default=3, ge=1, le=20)
+    display_limit: int = Field(default=5, ge=1, le=20)
     title: str = "近期工作"
     description: str = "当前用户最近访问和操作"
     empty_text: str = "暂无近期工作"

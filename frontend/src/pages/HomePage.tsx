@@ -162,7 +162,7 @@ export function HomePage() {
           title="团队最新成果"
           extra={<Button type="link" onClick={() => navigate('/team')}>进入团队风采</Button>}
         >
-          {team?.achievements.length ? team.achievements.slice(0, 3).map((item) => (
+          {team?.achievements.length ? team.achievements.slice(0, 5).map((item) => (
             <div className="platform-home-list-row" key={`${item.title}-${item.date}`}>
               <span>{item.title}</span><em>{item.category}</em>
             </div>

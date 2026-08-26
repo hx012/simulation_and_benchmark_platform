@@ -2,7 +2,7 @@ version: 1
 
 home:
   storage_limit: 5
-  display_limit: 3
+  display_limit: 5
   title: 近期工作
   description: 当前用户最近访问和操作
   empty_text: 暂无近期工作
@@ -29,7 +29,7 @@ events:
     dedupe_key: "simulation-task:{target_id}"
 
   simulation.result_view:
-    enabled: false
+    enabled: true
     domain: simulation
     icon: M
     title_template: "{target_name}"

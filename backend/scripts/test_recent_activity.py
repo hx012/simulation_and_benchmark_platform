@@ -72,7 +72,7 @@ def main() -> None:
         assert raw_events == 6
 
         response = list_recent_activities(db, current, get_settings())
-        assert len(response.items) == 3
+        assert len(response.items) == 5
         assert response.items[0].title == "Recent task 5"
         assert response.items[0].href == "/simulation/tasks/SIM-RECENT-5"
 
@@ -86,6 +86,20 @@ def main() -> None:
             target_id="SIM-RECENT-5",
             target_name="Recent task 5",
         ))
+        assert (db.scalar(select(func.count()).select_from(RecentActivity)) or 0) == 5
+
+        create_event(db, user, AnalyticsEventCreate(
+            event_id="recent-event-result-view",
+            session_id="recent-session-0001",
+            event_name="simulation.result_view",
+            page_key="simulation.task_result",
+            target_type="simulation_task",
+            target_id="SIM-RECENT-5",
+            target_name="Recent task 5",
+        ))
+        result_response = list_recent_activities(db, current, get_settings())
+        assert len(result_response.items) == 5
+        assert result_response.items[0].href == "/simulation/tasks/SIM-RECENT-5/result"
         assert (db.scalar(select(func.count()).select_from(RecentActivity)) or 0) == 5
 
     print("Recent activity tests passed")
