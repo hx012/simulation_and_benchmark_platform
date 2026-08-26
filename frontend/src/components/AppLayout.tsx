@@ -7,7 +7,6 @@ import {
   BulbOutlined,
   CommentOutlined,
   ExperimentOutlined,
-  GlobalOutlined,
   HomeOutlined,
   LogoutOutlined,
   MenuOutlined,
@@ -22,7 +21,7 @@ import {
 } from '@ant-design/icons';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { collaborationApi, type CommunityLink, type FeedbackPayload } from '../api/collaboration';
+import { collaborationApi, type FeedbackPayload } from '../api/collaboration';
 import { trackAnalyticsEventQuietly } from '../api/analytics';
 import { AnalyticsTracker } from './AnalyticsTracker';
 import { SupportGroupModal } from './SupportGroupModal';
@@ -105,7 +104,6 @@ export function AppLayout() {
     demands: true,
     management: true,
   });
-  const [communities, setCommunities] = useState<CommunityLink[]>([]);
   const [supportOpen, setSupportOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
@@ -130,12 +128,6 @@ export function AppLayout() {
     if (location.pathname.startsWith('/usage-analytics')) return '使用分析';
     return 'AI Chip Platform';
   }, [location.pathname]);
-
-  useEffect(() => {
-    void collaborationApi.getPlatformConfig()
-      .then((config) => setCommunities(config.communities))
-      .catch(() => setCommunities([]));
-  }, []);
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -263,16 +255,6 @@ export function AppLayout() {
           <div className="header-user">
             <Dropdown trigger={['click']} menu={{
               items: [
-                ...communities.map((item) => ({
-                  key: item.key,
-                  label: item.enabled ? item.name : `${item.name}（暂未配置）`,
-                  disabled: !item.enabled,
-                  icon: <GlobalOutlined />,
-                  onClick: () => {
-                    if (item.enabled) window.open(item.url, '_blank', 'noopener,noreferrer');
-                  },
-                })),
-                { type: 'divider' as const },
                 { key: 'support-group', label: 'MSKPP 技术支撑群', icon: <QuestionCircleOutlined />, onClick: () => setSupportOpen(true) },
                 { key: 'feedback', label: '意见反馈', icon: <CommentOutlined />, onClick: () => setFeedbackOpen(true) },
               ],

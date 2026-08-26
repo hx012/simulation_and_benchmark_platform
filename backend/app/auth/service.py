@@ -478,16 +478,55 @@ def review_permission_request(db: Session, reviewer: AuthenticatedUser, request_
 def update_resource_policy(db: Session, resource: ProtectedResource, access_mode: str, permission_codes: list[str]) -> None:
     codes = list(dict.fromkeys(permission_codes))
     if access_mode == "permission" and not codes:
-        raise HTTPException(status_code=400, detail="权限访问模式至少需要一个 Permission Set")
+        codes = list(db.scalars(select(ResourcePermissionSet.permission_code).where(
+            ResourcePermissionSet.resource_code == resource.code
+        )).all())
+    if access_mode == "permission" and not codes:
+        generated_code = f"resource_{hashlib.sha1(resource.code.encode()).hexdigest()[:16]}"
+        permission = db.get(PermissionSet, generated_code)
+        if permission is None:
+            permission = PermissionSet(
+                code=generated_code,
+                name=f"{resource.name}访问权限",
+                description=resource.description,
+                requestable=True,
+                active=True,
+                system_managed=False,
+            )
+            db.add(permission)
+            db.flush()
+        codes = [generated_code]
     existing = set(db.scalars(select(PermissionSet.code).where(
         PermissionSet.code.in_(codes), PermissionSet.active.is_(True)
     )).all()) if codes else set()
     if existing != set(codes):
         raise HTTPException(status_code=400, detail="包含不存在或已停用的 Permission Set")
-    db.execute(delete(ResourcePermissionSet).where(ResourcePermissionSet.resource_code == resource.code))
     if access_mode == "permission":
+        db.execute(delete(ResourcePermissionSet).where(ResourcePermissionSet.resource_code == resource.code))
         for code in codes:
             db.add(ResourcePermissionSet(resource_code=resource.code, permission_code=code))
+        permissions = db.scalars(select(PermissionSet).where(PermissionSet.code.in_(codes))).all()
+        for permission in permissions:
+            permission.requestable = True
+            permission.active = True
+            permission.name = f"{resource.name}访问权限"
+            permission.description = resource.description
+    else:
+        retained_codes = db.scalars(select(ResourcePermissionSet.permission_code).where(
+            ResourcePermissionSet.resource_code == resource.code
+        )).all()
+        for code in retained_codes:
+            used_elsewhere = db.scalar(select(func.count()).select_from(ResourcePermissionSet).join(
+                ProtectedResource,
+                ProtectedResource.code == ResourcePermissionSet.resource_code,
+            ).where(
+                ResourcePermissionSet.permission_code == code,
+                ResourcePermissionSet.resource_code != resource.code,
+                ProtectedResource.access_mode == "permission",
+            )) or 0
+            permission = db.get(PermissionSet, code)
+            if permission is not None and used_elsewhere == 0 and code != NORMAL_PERMISSION:
+                permission.requestable = False
     resource.access_mode = access_mode
     db.commit()
 

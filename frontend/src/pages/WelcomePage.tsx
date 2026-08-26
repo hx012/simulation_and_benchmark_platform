@@ -14,9 +14,9 @@ const communityFallback: CommunityLink[] = [
 ];
 
 const capabilities = [
-  { index: '01 / BENCHMARK', title: 'Benchmark', description: '浏览芯片档案、负载定义及可复现的性能基线。', tone: 'blue' },
-  { index: '02 / SIMULATION', title: 'MSKPP芯片仿真器', description: '统一管理芯片配置、Workload和仿真任务生命周期。', tone: 'cyan' },
-  { index: '03 / ANALYSIS', title: '性能分析', description: '基于仿真结果、指标和Trace定位性能瓶颈。', tone: 'violet' },
+  { index: '01 / BENCHMARK', title: 'Benchmark', description: '浏览芯片档案、负载定义及可复现的性能基线。', tone: 'blue', path: '/benchmark' },
+  { index: '02 / SIMULATION', title: 'MSKPP芯片仿真器', description: '统一管理芯片配置、Workload和仿真任务生命周期。', tone: 'cyan', path: '/simulation/tasks' },
+  { index: '03 / ANALYSIS', title: '性能分析', description: '基于仿真结果、指标和Trace定位性能瓶颈。', tone: 'violet', path: '/performance' },
 ];
 
 const communityDescriptions: Record<string, string> = {
@@ -43,6 +43,7 @@ export function WelcomePage() {
 
   const enterPlatform = () => navigate(authenticated ? '/home' : '/login');
   const enterTeam = () => navigate(authenticated ? '/team' : '/login', { state: { from: '/team' } });
+  const enterCapability = (path: string) => navigate(authenticated ? path : '/login', { state: { from: path } });
 
   return (
     <div className="portal-page">
@@ -87,9 +88,10 @@ export function WelcomePage() {
           <div className="portal-section-heading"><span className="portal-kicker">CORE CAPABILITIES</span><h2>三项核心能力</h2></div>
           <div className="portal-capability-grid">
             {capabilities.map((item) => (
-              <article key={item.index} className={`portal-capability-card is-${item.tone}`}>
+              <button type="button" key={item.index} className={`portal-capability-card is-${item.tone}`} onClick={() => enterCapability(item.path)}>
                 <div className="portal-capability-top"><em>{item.index}</em></div><h3>{item.title}</h3><p>{item.description}</p>
-              </article>
+                <span className="portal-capability-action">进入能力 <ArrowRightOutlined /></span>
+              </button>
             ))}
           </div>
         </section>
