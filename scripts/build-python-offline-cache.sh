@@ -4,6 +4,7 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 BACKEND_DIR="$PROJECT_ROOT/backend"
+ANALYSIS_TOOLS_DIR="$PROJECT_ROOT/analysis_tools"
 OFFLINE_ROOT="${OFFLINE_ROOT:-$PROJECT_ROOT/deploy/offline/python}"
 UV_VERSION="${UV_VERSION:-0.10.9}"
 UV_LINUX_BIN="${UV_LINUX_BIN:-}"
@@ -23,6 +24,7 @@ docker info >/dev/null 2>&1 || fail "Docker daemon is not available."
 command -v sha256sum >/dev/null 2>&1 || fail "sha256sum is required."
 [[ -f "$BACKEND_DIR/pyproject.toml" ]] || fail "Missing backend/pyproject.toml."
 [[ -f "$BACKEND_DIR/uv.lock" ]] || fail "Missing backend/uv.lock."
+[[ -f "$ANALYSIS_TOOLS_DIR/pyproject.toml" ]] || fail "Missing analysis_tools/pyproject.toml."
 [[ -n "$UV_LINUX_BIN" ]] || fail "Set UV_LINUX_BIN to the Linux x86_64 uv $UV_VERSION executable."
 [[ -x "$UV_LINUX_BIN" ]] || fail "UV_LINUX_BIN is not executable: $UV_LINUX_BIN"
 
@@ -34,7 +36,9 @@ mkdir -p "$OFFLINE_ROOT"
 build_dir="$(mktemp -d "$OFFLINE_ROOT/build.XXXXXX")"
 cache_dir="$build_dir/uv-cache"
 lock_sha256="$(sha256sum "$BACKEND_DIR/uv.lock" | awk '{print $1}')"
-artifact_name="uv-cache-linux-x86_64-py310-uv${UV_VERSION}-${lock_sha256:0:12}.tar.gz"
+analysis_tools_sha256="$(sha256sum "$ANALYSIS_TOOLS_DIR/pyproject.toml" | awk '{print $1}')"
+bundle_sha256="$(printf '%s\n%s\n' "$lock_sha256" "$analysis_tools_sha256" | sha256sum | awk '{print $1}')"
+artifact_name="uv-cache-linux-x86_64-py310-uv${UV_VERSION}-${bundle_sha256:0:12}.tar.gz"
 artifact_path="$OFFLINE_ROOT/$artifact_name"
 
 cleanup() {
@@ -60,31 +64,35 @@ done
 info "Downloading locked Linux/Python 3.10 dependencies into an isolated cache..."
 docker run --rm \
   --mount "type=bind,src=$BACKEND_DIR,dst=/workspace/backend,readonly" \
+  --mount "type=bind,src=$ANALYSIS_TOOLS_DIR,dst=/workspace/analysis_tools,readonly" \
   --mount "type=bind,src=$cache_dir,dst=/uv-cache" \
   --mount "type=bind,src=$UV_LINUX_BIN,dst=/usr/local/bin/uv,readonly" \
   --workdir /workspace/backend \
   --env UV_CACHE_DIR=/uv-cache \
   --env UV_PROJECT_ENVIRONMENT=/tmp/platform-venv \
   "$PYTHON_IMAGE" \
-  uv sync --frozen --no-dev --no-install-project --link-mode copy
+  sh -c 'uv build /workspace/analysis_tools --wheel --out-dir /tmp/analysis-wheel && uv sync --frozen --no-dev --no-install-project --link-mode copy'
 
 info "Verifying that the cache can recreate the environment with networking disabled..."
 docker run --rm \
   --network none \
   --mount "type=bind,src=$BACKEND_DIR,dst=/workspace/backend,readonly" \
+  --mount "type=bind,src=$ANALYSIS_TOOLS_DIR,dst=/workspace/analysis_tools,readonly" \
   --mount "type=bind,src=$cache_dir,dst=/uv-cache" \
   --mount "type=bind,src=$UV_LINUX_BIN,dst=/usr/local/bin/uv,readonly" \
   --workdir /workspace/backend \
   --env UV_CACHE_DIR=/uv-cache \
   --env UV_PROJECT_ENVIRONMENT=/tmp/platform-venv-offline-check \
+  --env DATABASE_URL=postgresql+psycopg://offline:offline@127.0.0.1/offline \
   "$PYTHON_IMAGE" \
-  sh -c 'uv sync --frozen --offline --no-dev --no-install-project --link-mode copy && PYTHONPATH=/workspace/backend /tmp/platform-venv-offline-check/bin/python -c "from app.main import app; print(app.title)"'
+  sh -c 'uv build --offline /workspace/analysis_tools --wheel --out-dir /tmp/analysis-wheel-offline && uv sync --frozen --offline --no-dev --no-install-project --link-mode copy && PYTHONPATH=/workspace/backend /tmp/platform-venv-offline-check/bin/python -c "from app.main import app; from chip_performance_analysis import TraceProducer; print(app.title, TraceProducer.MSKPP.value)"'
 
 printf '%s\n' \
   "uv_version=$UV_VERSION" \
   "python_image=$PYTHON_IMAGE" \
   "target=linux_x86_64_python_3.10" \
   "uv_lock_sha256=$lock_sha256" \
+  "analysis_tools_pyproject_sha256=$analysis_tools_sha256" \
   >"$build_dir/MANIFEST.txt"
 
 info "Creating $artifact_name..."

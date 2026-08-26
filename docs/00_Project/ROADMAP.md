@@ -49,7 +49,8 @@
 2. 实现意见反馈落库和管理员受保护读取接口。
 3. 实现需求提交、可见性控制和配置文件驱动的审视结论。
 4. 实现配置文件驱动的团队风采页面。
-5. 增加 `/performance` 功能建设中页面。
+5. 已实现 `/performance` 性能分析工作台第一版：平台 MSKPP 任务、本地 MSKPP/ESL Trace 上传和 Trace 时间分析。
+6. 后续在独立 `analysis_tools` 包中增加 Roofline、Arithmetic / Memory Bandwidth、Memory Access Pattern 和 Communication Matrix。
 
 本期边界、数据可见性以及已规划但暂不开发的功能，统一记录在
 [`../01_Product/COMMUNITY_FEATURE_BACKLOG.md`](../01_Product/COMMUNITY_FEATURE_BACKLOG.md)。

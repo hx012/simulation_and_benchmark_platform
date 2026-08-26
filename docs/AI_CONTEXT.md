@@ -375,6 +375,7 @@ frontend/src/App.tsx
 - `/simulation/tasks`：任务列表。
 - `/simulation/tasks/:taskId`：任务详情和实时日志。
 - `/simulation/tasks/:taskId/result`：仿真结果和 Trace。
+- `/performance`：性能分析工作台；支持平台任务和本地 Trace 文件。
 - `/benchmark`：Benchmark 芯片浏览。
 - `/benchmark/chips/:vendor/:chip`：芯片 Benchmark 页面。
 - `/benchmark/chips/:vendor/:chip/benchmarks/:benchmarkName`：Benchmark 详情。
@@ -427,6 +428,26 @@ GET /api/simulation/tasks/{task_id}/trace/viewer
 - 支持缩放和搜索。
 - 支持事件详情查看。
 - 后续更容易扩展多 Trace 对比。
+
+### Trace 时间分析
+
+性能分析算法位于独立顶层包 `analysis_tools/`，不依赖 FastAPI、SQLAlchemy 或平台任务模型。Backend 的 `app/performance/` 只负责权限、任务 Trace 读取、本地上传大小限制和 API 响应转换。
+
+当前支持：
+
+- 平台仿真任务固定按 MSKPP Trace 分析。
+- 本地 `trace.json` 由用户选择 MSKPP 或 ESL，Backend 同时校验对应结构。
+- 前端 `/performance` 展示 Trace 时间分析，以及 Roofline、Metric、Memory Access Pattern 和 Communication Matrix 的后续能力占位。
+
+相关入口：
+
+```text
+analysis_tools/src/chip_performance_analysis/trace_time/
+backend/app/api/performance.py
+frontend/src/pages/PerformancePage.tsx
+GET  /api/performance/tasks/{task_id}/trace-time
+POST /api/performance/trace-time
+```
 
 ## 12. 当前开发状态
 
