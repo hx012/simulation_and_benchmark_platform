@@ -40,6 +40,7 @@ from app.auth.service import (
     consume_w3_login_transaction,
     create_w3_login_transaction,
     get_current_user,
+    initialize_auth_data,
     login_user,
     login_w3_user,
     logout_user,
@@ -258,6 +259,8 @@ def me(
     current: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CurrentUserResponse:
+    # Reconcile newly registered modules for sessions that survived a deployment.
+    initialize_auth_data(db)
     return current_user_response(db, current)
 
 

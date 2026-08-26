@@ -25,6 +25,19 @@ const accessModeColors: Record<ProtectedResourceRecord['access_mode'], string> =
   normal: 'success', permission: 'processing', admin: 'purple', disabled: 'default',
 };
 
+const fixedAdminResources = new Set(['admin.manage', 'permission.manage', 'analytics.usage']);
+const resourceDisplayOrder = [
+  'simulation.task',
+  'simulation.log',
+  'benchmark.view',
+  'performance.view',
+  'team.view',
+  'demand.view',
+  'analytics.usage',
+  'permission.manage',
+  'admin.manage',
+];
+
 type AdminFormValues = {
   display_name: string;
   password?: string;
@@ -62,6 +75,15 @@ export function PermissionCenterPage() {
     () => users.filter((item) => item.role === 'admin'),
     [users],
   );
+
+  const orderedResources = useMemo(() => {
+    const order = new Map(resourceDisplayOrder.map((code, index) => [code, index]));
+    return [...resources].sort((left, right) => (
+      (order.get(left.code) ?? resourceDisplayOrder.length)
+      - (order.get(right.code) ?? resourceDisplayOrder.length)
+      || left.name.localeCompare(right.name, 'zh-CN')
+    ));
+  }, [resources]);
 
   const filteredUsers = useMemo(() => {
     const keyword = adminSearch.trim().toLocaleLowerCase();
@@ -190,7 +212,7 @@ export function PermissionCenterPage() {
       render: (_, item) => (
         <Select
           value={(resourceDrafts[item.code] || item).access_mode}
-          disabled={['admin.manage', 'permission.manage'].includes(item.code)}
+          disabled={fixedAdminResources.has(item.code)}
           options={Object.entries(accessModeLabels).map(([value, label]) => ({ value, label }))}
           onChange={(value) => changeAccessMode(item, value)}
         />
@@ -203,7 +225,7 @@ export function PermissionCenterPage() {
     {
       title: '操作', width: 100,
       render: (_, item) => (
-        <Button size="small" icon={<SettingOutlined />} disabled={['admin.manage', 'permission.manage'].includes(item.code)} onClick={() => expandResource(item)}>配置</Button>
+        <Button size="small" icon={<SettingOutlined />} disabled={fixedAdminResources.has(item.code)} onClick={() => expandResource(item)}>配置</Button>
       ),
     },
   ];
@@ -253,7 +275,7 @@ export function PermissionCenterPage() {
       <Table
         rowKey="code"
         columns={resourceColumns}
-        dataSource={resources}
+        dataSource={orderedResources}
         loading={loading}
         pagination={false}
         expandable={{

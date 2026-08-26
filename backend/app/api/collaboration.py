@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from app.auth.service import AuthenticatedUser, get_current_user, require_admin
+from app.auth.constants import DEMAND_VIEW_RESOURCE, TEAM_VIEW_RESOURCE
+from app.auth.service import AuthenticatedUser, get_current_user, require_admin, require_resource
 from app.collaboration.content import community_links, load_team_config, platform_support
 from app.collaboration.schemas import (
     DemandCreate,
@@ -41,7 +42,7 @@ def platform_config(
 
 @router.get("/team", response_model=TeamConfigResponse)
 def team_config(
-    _: AuthenticatedUser = Depends(get_current_user),
+    _: AuthenticatedUser = Depends(require_resource(TEAM_VIEW_RESOURCE)),
     settings: Settings = Depends(get_settings),
 ) -> TeamConfigResponse:
     return load_team_config(settings)
@@ -67,7 +68,7 @@ def admin_feedback(
 @router.get("/demands", response_model=DemandListResponse)
 def demands(
     db: Session = Depends(get_db),
-    current: AuthenticatedUser = Depends(get_current_user),
+    current: AuthenticatedUser = Depends(require_resource(DEMAND_VIEW_RESOURCE)),
     settings: Settings = Depends(get_settings),
 ) -> DemandListResponse:
     items = list_demands(db, current, settings)
@@ -78,7 +79,7 @@ def demands(
 def submit_demand(
     payload: DemandCreate,
     db: Session = Depends(get_db),
-    current: AuthenticatedUser = Depends(get_current_user),
+    current: AuthenticatedUser = Depends(require_resource(DEMAND_VIEW_RESOURCE)),
     settings: Settings = Depends(get_settings),
 ) -> DemandResponse:
     item = create_demand(db, current, payload)
@@ -89,7 +90,7 @@ def submit_demand(
 def vote_demand(
     demand_id: str,
     db: Session = Depends(get_db),
-    current: AuthenticatedUser = Depends(get_current_user),
+    current: AuthenticatedUser = Depends(require_resource(DEMAND_VIEW_RESOURCE)),
     settings: Settings = Depends(get_settings),
 ) -> DemandVoteResponse:
     item, _ = get_visible_demand(db, demand_id, current, settings)
@@ -100,7 +101,7 @@ def vote_demand(
 def unvote_demand(
     demand_id: str,
     db: Session = Depends(get_db),
-    current: AuthenticatedUser = Depends(get_current_user),
+    current: AuthenticatedUser = Depends(require_resource(DEMAND_VIEW_RESOURCE)),
     settings: Settings = Depends(get_settings),
 ) -> DemandVoteResponse:
     item, _ = get_visible_demand(db, demand_id, current, settings)

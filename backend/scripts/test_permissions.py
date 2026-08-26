@@ -63,7 +63,10 @@ admin = admin_client.post("/api/auth/login", json={
 })
 assert admin.status_code == 200, admin.text
 assert admin.json()["role"] == "admin"
-assert set(admin.json()["permissions"]) == {"normal", "benchmark_access", "simulation_log"}
+assert set(admin.json()["permissions"]) == {
+    "normal", "benchmark_access", "simulation_log",
+    "performance_access", "team_access", "demand_access",
+}
 
 pending = admin_client.get("/api/admin/permission-requests")
 assert pending.status_code == 200, pending.text
@@ -79,6 +82,18 @@ assert set(refreshed.json()["permissions"]) == {"normal", "benchmark_access", "s
 assert alice_client.get("/api/benchmark/status").status_code == 200
 
 resources = admin_client.get("/api/admin/resources").json()
+resource_modes = {item["code"]: item["access_mode"] for item in resources}
+assert resource_modes == {
+    "admin.manage": "admin",
+    "analytics.usage": "admin",
+    "benchmark.view": "permission",
+    "demand.view": "normal",
+    "performance.view": "normal",
+    "permission.manage": "admin",
+    "simulation.log": "permission",
+    "simulation.task": "normal",
+    "team.view": "normal",
+}
 benchmark_resource = next(item for item in resources if item["code"] == "benchmark.view")
 assert benchmark_resource["authorized_users"] == [{
     "user_id": "permission-alice", "display_name": "permission-alice",

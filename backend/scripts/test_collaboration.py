@@ -49,6 +49,13 @@ def main() -> None:
 
     with TemporaryDirectory() as directory:
         config_path = Path(directory) / "platform_content.yml"
+        extra_members = "".join(
+            "    - employee_id: extra-{index}\n"
+            "      name: Extra {index}\n"
+            "      order: {order}\n"
+            "      enabled: true\n".format(index=index, order=20 + index)
+            for index in range(1, 9)
+        )
         config_path.write_text(
             "team:\n"
             "  name: Test Team\n"
@@ -66,7 +73,8 @@ def main() -> None:
             "    - employee_id: hidden\n"
             "      name: Hidden\n"
             "      enabled: false\n"
-            "  achievements:\n"
+            + extra_members
+            + "  achievements:\n"
             "    - id: featured\n"
             "      title: Featured\n"
             "      featured: true\n"
@@ -88,7 +96,9 @@ def main() -> None:
             platform_community_w3_url="https://w3.example.com",
         )
         team = load_team_config(settings)
-        assert [member.employee_id for member in team.members] == ["h1", "h2"]
+        assert [member.employee_id for member in team.members] == [
+            "h1", "h2", *(f"extra-{index}" for index in range(1, 9)),
+        ]
         assert team.members[1].tags == ["Trace", "Tooling"]
         assert team.achievements[0].featured
         links = community_links(settings)
