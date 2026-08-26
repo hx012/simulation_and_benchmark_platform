@@ -7,10 +7,8 @@ import {
   Select,
   Space,
   Spin,
-  Table,
   Tag,
 } from 'antd';
-import type { TableColumnsType } from 'antd';
 import {
   BarChartOutlined,
   ClockCircleOutlined,
@@ -25,7 +23,6 @@ import { PageHeading } from '../components/PageHeading';
 import type {
   TraceProducer,
   TraceTimeAnalysisResponse,
-  TraceTimeItem,
 } from '../types/performance';
 import type { SimulationTask } from '../types/simulation';
 import { formatNumber } from '../utils/format';
@@ -157,22 +154,6 @@ export function PerformancePage() {
     () => Math.max(...(result?.items.map((item) => item.cycles) || [0]), 1),
     [result],
   );
-
-  const columns: TableColumnsType<TraceTimeItem> = [
-    { title: result?.producer === 'esl' ? 'TID' : 'Pipe', dataIndex: 'name' },
-    {
-      title: 'Time dur (cycle)',
-      dataIndex: 'cycles',
-      align: 'right',
-      render: (value: number) => formatNumber(value),
-    },
-    {
-      title: '相对总时长',
-      dataIndex: 'ratio_percent',
-      align: 'right',
-      render: (value: number) => `${value.toFixed(2)}%`,
-    },
-  ];
 
   return (
     <div className="page-container performance-page">
@@ -350,30 +331,27 @@ export function PerformancePage() {
                 description={result.warnings.join('；')}
               />
             ) : null}
-            <Card title="周期分布" className="clean-card performance-chart-card">
+            <Card
+              title="周期分布"
+              extra={`共 ${result.items.length} 个${result.producer === 'esl' ? ' TID' : ' Pipe'}`}
+              className="clean-card performance-chart-card"
+            >
               <div className="performance-bars">
                 {result.items.map((item) => (
                   <div className="performance-bar-row" key={item.name}>
-                    <strong>{item.name}</strong>
+                    <strong title={item.name}>{item.name}</strong>
                     <div className="performance-bar-track">
                       <div
                         className="performance-bar-fill"
                         style={{ width: `${Math.max(item.cycles / maxCycles * 100, 1)}%` }}
                       />
                     </div>
-                    <span>{formatNumber(item.cycles)}</span>
+                    <span>
+                      {formatNumber(item.cycles)} / {item.ratio_percent.toFixed(2)}%
+                    </span>
                   </div>
                 ))}
               </div>
-            </Card>
-            <Card title="周期明细" className="clean-card performance-table-card">
-              <Table<TraceTimeItem>
-                rowKey="name"
-                columns={columns}
-                dataSource={result.items}
-                pagination={false}
-                size="small"
-              />
             </Card>
           </>
         ) : null}

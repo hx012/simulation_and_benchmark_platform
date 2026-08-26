@@ -1216,15 +1216,12 @@ button, input, textarea, select { font: inherit; }
 .performance-result-loading .ant-card-body { min-height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #6b7280; }
 .performance-result-metrics { margin-bottom: 14px; }
 .performance-chart-card { margin-top: 14px; }
-.performance-bars { display: flex; flex-direction: column; gap: 13px; }
-.performance-bar-row { display: grid; grid-template-columns: minmax(90px, 180px) minmax(160px, 1fr) 110px; align-items: center; gap: 14px; }
+.performance-bars { display: flex; flex-direction: column; gap: 13px; max-height: 360px; overflow-y: auto; padding-right: 8px; scrollbar-gutter: stable; }
+.performance-bar-row { display: grid; grid-template-columns: minmax(90px, 180px) minmax(160px, 1fr) 165px; align-items: center; gap: 14px; }
 .performance-bar-row strong { overflow: hidden; color: #384152; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.performance-bar-row > span { color: #566172; font: 12px ui-monospace, SFMono-Regular, Consolas, monospace; text-align: right; }
+.performance-bar-row > span { color: #566172; font: 12px ui-monospace, SFMono-Regular, Consolas, monospace; text-align: right; white-space: nowrap; }
 .performance-bar-track { height: 10px; overflow: hidden; border-radius: 999px; background: #edf0f4; }
 .performance-bar-fill { height: 100%; border-radius: inherit; background: #4f78b8; }
-.performance-table-card { margin-top: 14px; }
-.performance-table-card .ant-card-body { padding: 0; }
-.performance-table-card .ant-table { border-radius: 0 0 8px 8px; overflow: hidden; }
 .team-intro-card { border: 1px solid #d5dae1; background: #243247; color: #fff; box-shadow: none; }
 .team-intro-card h2 { margin: 0 0 10px; color: #fff; font-size: 23px; }
 .team-intro-card p { margin: 0; max-width: 850px; color: #d8e0eb; line-height: 1.8; }
@@ -1661,12 +1658,12 @@ button, input, textarea, select { font: inherit; }
   .performance-input-card .ant-card-extra { margin-inline-start: 0; }
   .performance-input-grid { grid-template-columns: 1fr; }
   .performance-capability-grid { grid-template-columns: 1fr; }
-  .performance-bar-row { grid-template-columns: minmax(80px, 130px) minmax(100px, 1fr) 90px; gap: 9px; }
+  .performance-bar-row { grid-template-columns: minmax(80px, 130px) minmax(100px, 1fr) 145px; gap: 9px; }
 }
 
 @media (max-width: 560px) {
   .performance-input-actions { align-items: stretch; flex-direction: column; }
   .performance-input-actions .ant-btn { width: 100%; }
-  .performance-bar-row { grid-template-columns: minmax(0, 1fr) 82px; }
+  .performance-bar-row { grid-template-columns: minmax(0, 1fr) 130px; }
   .performance-bar-row strong { grid-column: 1 / -1; }
 }
