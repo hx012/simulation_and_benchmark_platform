@@ -1217,7 +1217,9 @@ button, input, textarea, select { font: inherit; }
 .performance-result-metrics { margin-bottom: 14px; }
 .performance-chart-card { margin-top: 14px; }
 .performance-bars { display: flex; flex-direction: column; gap: 13px; max-height: 360px; overflow-y: auto; padding-right: 8px; scrollbar-gutter: stable; }
-.performance-bar-row { display: grid; grid-template-columns: minmax(90px, 180px) minmax(160px, 1fr) 165px; align-items: center; gap: 14px; }
+.performance-bars-header, .performance-bar-row { display: grid; grid-template-columns: minmax(90px, 180px) minmax(160px, 1fr) 165px; align-items: center; gap: 14px; }
+.performance-bars-header { margin: -3px 8px 12px 0; padding-bottom: 8px; border-bottom: 1px solid #edf0f4; color: #7b8491; font-size: 12px; }
+.performance-bars-header span:last-child { text-align: right; }
 .performance-bar-row strong { overflow: hidden; color: #384152; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .performance-bar-row > span { color: #566172; font: 12px ui-monospace, SFMono-Regular, Consolas, monospace; text-align: right; white-space: nowrap; }
 .performance-bar-track { height: 10px; overflow: hidden; border-radius: 999px; background: #edf0f4; }
@@ -1658,12 +1660,13 @@ button, input, textarea, select { font: inherit; }
   .performance-input-card .ant-card-extra { margin-inline-start: 0; }
   .performance-input-grid { grid-template-columns: 1fr; }
   .performance-capability-grid { grid-template-columns: 1fr; }
-  .performance-bar-row { grid-template-columns: minmax(80px, 130px) minmax(100px, 1fr) 145px; gap: 9px; }
+  .performance-bars-header, .performance-bar-row { grid-template-columns: minmax(80px, 130px) minmax(100px, 1fr) 145px; gap: 9px; }
 }
 
 @media (max-width: 560px) {
   .performance-input-actions { align-items: stretch; flex-direction: column; }
   .performance-input-actions .ant-btn { width: 100%; }
-  .performance-bar-row { grid-template-columns: minmax(0, 1fr) 130px; }
+  .performance-bars-header, .performance-bar-row { grid-template-columns: minmax(0, 1fr) 130px; }
+  .performance-bars-header span:first-child { display: none; }
   .performance-bar-row strong { grid-column: 1 / -1; }
 }

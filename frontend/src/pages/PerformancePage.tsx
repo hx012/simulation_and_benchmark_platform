@@ -336,6 +336,11 @@ export function PerformancePage() {
               extra={`共 ${result.items.length} 个${result.producer === 'esl' ? ' TID' : ' Pipe'}`}
               className="clean-card performance-chart-card"
             >
+              <div className="performance-bars-header">
+                <span>{result.producer === 'esl' ? 'TID' : 'Pipe'}</span>
+                <span>周期分布</span>
+                <span>时长 (cycle) / 占比</span>
+              </div>
               <div className="performance-bars">
                 {result.items.map((item) => (
                   <div className="performance-bar-row" key={item.name}>
