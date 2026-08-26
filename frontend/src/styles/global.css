@@ -1224,6 +1224,17 @@ button, input, textarea, select { font: inherit; }
 .performance-bar-row > span { color: #566172; font: 12px ui-monospace, SFMono-Regular, Consolas, monospace; text-align: right; white-space: nowrap; }
 .performance-bar-track { height: 10px; overflow: hidden; border-radius: 999px; background: #edf0f4; }
 .performance-bar-fill { height: 100%; border-radius: inherit; background: #4f78b8; }
+.performance-cycle-modal .ant-modal-content { display: flex; flex-direction: column; height: calc(100vh - 48px); }
+.performance-cycle-modal .ant-modal-body { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+.performance-cycle-modal-toolbar { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 14px; }
+.performance-cycle-modal-toolbar .ant-input-search { width: min(420px, 70vw); }
+.performance-cycle-modal-toolbar > span { color: #7b8491; font-size: 12px; white-space: nowrap; }
+.performance-cycle-distribution.is-fullscreen { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+.performance-cycle-distribution.is-fullscreen .performance-bars { flex: 1 1 auto; max-height: none; min-height: 0; }
+.performance-cycle-distribution.is-fullscreen .performance-bars-header,
+.performance-cycle-distribution.is-fullscreen .performance-bar-row { grid-template-columns: minmax(240px, 340px) minmax(240px, 1fr) 180px; }
+.performance-cycle-distribution.is-fullscreen .performance-bar-row strong { overflow: visible; white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
+.performance-cycle-empty { display: grid; flex: 1 1 auto; place-items: center; color: #7b8491; }
 .team-intro-card { border: 1px solid #d5dae1; background: #243247; color: #fff; box-shadow: none; }
 .team-intro-card h2 { margin: 0 0 10px; color: #fff; font-size: 23px; }
 .team-intro-card p { margin: 0; max-width: 850px; color: #d8e0eb; line-height: 1.8; }
@@ -1666,7 +1677,12 @@ button, input, textarea, select { font: inherit; }
 @media (max-width: 560px) {
   .performance-input-actions { align-items: stretch; flex-direction: column; }
   .performance-input-actions .ant-btn { width: 100%; }
+  .performance-cycle-modal { max-width: calc(100vw - 16px); }
+  .performance-cycle-modal-toolbar { align-items: stretch; flex-direction: column; gap: 8px; }
+  .performance-cycle-modal-toolbar .ant-input-search { width: 100%; }
   .performance-bars-header, .performance-bar-row { grid-template-columns: minmax(0, 1fr) 130px; }
+  .performance-cycle-distribution.is-fullscreen .performance-bars-header,
+  .performance-cycle-distribution.is-fullscreen .performance-bar-row { grid-template-columns: minmax(0, 1fr) 130px; }
   .performance-bars-header span:first-child { display: none; }
   .performance-bar-row strong { grid-column: 1 / -1; }
 }

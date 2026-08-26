@@ -3,6 +3,8 @@ import {
   Alert,
   Button,
   Card,
+  Input,
+  Modal,
   Segmented,
   Select,
   Space,
@@ -13,6 +15,7 @@ import {
   BarChartOutlined,
   ClockCircleOutlined,
   DatabaseOutlined,
+  FullscreenOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
@@ -23,6 +26,7 @@ import { PageHeading } from '../components/PageHeading';
 import type {
   TraceProducer,
   TraceTimeAnalysisResponse,
+  TraceTimeItem,
 } from '../types/performance';
 import type { SimulationTask } from '../types/simulation';
 import { formatNumber } from '../utils/format';
@@ -48,6 +52,46 @@ const capabilityPlaceholders = [
   },
 ];
 
+type CycleDistributionProps = {
+  items: TraceTimeItem[];
+  producer: TraceProducer;
+  maxCycles: number;
+  fullscreen?: boolean;
+};
+
+function CycleDistribution({
+  items,
+  producer,
+  maxCycles,
+  fullscreen = false,
+}: CycleDistributionProps) {
+  return (
+    <div className={`performance-cycle-distribution${fullscreen ? ' is-fullscreen' : ''}`}>
+      <div className="performance-bars-header">
+        <span>{producer === 'esl' ? 'TID' : 'Pipe'}</span>
+        <span>周期分布</span>
+        <span>时长 (cycle) / 占比</span>
+      </div>
+      <div className="performance-bars">
+        {items.map((item) => (
+          <div className="performance-bar-row" key={item.name}>
+            <strong title={item.name}>{item.name}</strong>
+            <div className="performance-bar-track">
+              <div
+                className="performance-bar-fill"
+                style={{ width: `${Math.max(item.cycles / maxCycles * 100, 1)}%` }}
+              />
+            </div>
+            <span>
+              {formatNumber(item.cycles)} / {item.ratio_percent.toFixed(2)}%
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function PerformancePage() {
   const [searchParams] = useSearchParams();
   const initialTaskId = searchParams.get('taskId') || '';
@@ -65,6 +109,8 @@ export function PerformancePage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<TraceTimeAnalysisResponse | null>(null);
+  const [cycleFullscreen, setCycleFullscreen] = useState(false);
+  const [cycleSearch, setCycleSearch] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -154,6 +200,17 @@ export function PerformancePage() {
     () => Math.max(...(result?.items.map((item) => item.cycles) || [0]), 1),
     [result],
   );
+
+  const fullscreenItems = useMemo(() => {
+    const query = cycleSearch.trim().toLowerCase();
+    if (!query) return result?.items || [];
+    return result?.items.filter((item) => item.name.toLowerCase().includes(query)) || [];
+  }, [cycleSearch, result]);
+
+  function openCycleFullscreen() {
+    setCycleSearch('');
+    setCycleFullscreen(true);
+  }
 
   return (
     <div className="page-container performance-page">
@@ -322,42 +379,68 @@ export function PerformancePage() {
               <div className="metric-card"><div className="metric-label">Analyzed Events</div><div className="metric-value">{formatNumber(result.analyzed_event_count)}</div></div>
               <div className="metric-card"><div className="metric-label">Filtered Sync Events</div><div className="metric-value">{formatNumber(result.sync_event_count)}</div></div>
             </div>
-            {result.warnings.length ? (
+            {result.skipped_event_count ? (
               <Alert
                 className="performance-alert"
                 type="warning"
                 showIcon
-                message="部分事件未参与分析"
-                description={result.warnings.join('；')}
+                message={`已跳过 ${formatNumber(result.skipped_event_count)} 个不参与周期统计的事件`}
+                description={result.producer === 'esl'
+                  ? '这些事件缺少有效的时间字段，或 pid 不符合 core.subcore 格式，因此无法归入 ESL 周期统计。'
+                  : '这些事件缺少有效的 ts/dur，或 tid 无法映射到 Pipe；通常属于 Trace 元数据或标记事件。同步事件已单独统计。'}
               />
             ) : null}
             <Card
               title="周期分布"
-              extra={`共 ${result.items.length} 个${result.producer === 'esl' ? ' TID' : ' Pipe'}`}
+              extra={(
+                <Space size={10}>
+                  <span className="muted-text">
+                    共 {result.items.length} 个{result.producer === 'esl' ? ' TID' : ' Pipe'}
+                  </span>
+                  <Button size="small" icon={<FullscreenOutlined />} onClick={openCycleFullscreen}>
+                    全屏查看
+                  </Button>
+                </Space>
+              )}
               className="clean-card performance-chart-card"
             >
-              <div className="performance-bars-header">
-                <span>{result.producer === 'esl' ? 'TID' : 'Pipe'}</span>
-                <span>周期分布</span>
-                <span>时长 (cycle) / 占比</span>
-              </div>
-              <div className="performance-bars">
-                {result.items.map((item) => (
-                  <div className="performance-bar-row" key={item.name}>
-                    <strong title={item.name}>{item.name}</strong>
-                    <div className="performance-bar-track">
-                      <div
-                        className="performance-bar-fill"
-                        style={{ width: `${Math.max(item.cycles / maxCycles * 100, 1)}%` }}
-                      />
-                    </div>
-                    <span>
-                      {formatNumber(item.cycles)} / {item.ratio_percent.toFixed(2)}%
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <CycleDistribution
+                items={result.items}
+                producer={result.producer}
+                maxCycles={maxCycles}
+              />
             </Card>
+            <Modal
+              className="performance-cycle-modal"
+              title={`周期分布 · ${result.source_name}`}
+              open={cycleFullscreen}
+              footer={null}
+              width="calc(100vw - 48px)"
+              style={{ top: 24 }}
+              onCancel={() => setCycleFullscreen(false)}
+            >
+              <div className="performance-cycle-modal-toolbar">
+                <Input.Search
+                  allowClear
+                  value={cycleSearch}
+                  placeholder={`搜索 ${result.producer === 'esl' ? 'TID' : 'Pipe'} 名称`}
+                  onChange={(event) => setCycleSearch(event.target.value)}
+                />
+                <span>
+                  显示 {fullscreenItems.length} / {result.items.length}
+                </span>
+              </div>
+              {fullscreenItems.length ? (
+                <CycleDistribution
+                  items={fullscreenItems}
+                  producer={result.producer}
+                  maxCycles={maxCycles}
+                  fullscreen
+                />
+              ) : (
+                <div className="performance-cycle-empty">没有匹配的 Pipe/TID</div>
+              )}
+            </Modal>
           </>
         ) : null}
       </div>
