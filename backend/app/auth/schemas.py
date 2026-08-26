@@ -13,6 +13,10 @@ class LoginRequest(BaseModel):
     password: str = Field(default="", max_length=256)
 
 
+class AuthConfigResponse(BaseModel):
+    w3_oauth_enabled: bool
+
+
 class PasswordChangeRequest(BaseModel):
     current_password: str = Field(min_length=1, max_length=256)
     new_password: str = Field(min_length=8, max_length=256)

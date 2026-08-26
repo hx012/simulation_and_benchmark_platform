@@ -28,6 +28,7 @@ chmod 600 .env.platform
 ```bash
 bash scripts/platform.sh setup           # 首次部署或依赖变化
 bash scripts/platform.sh update          # 校验依赖、迁移数据库、构建前端
+bash scripts/platform.sh deploy-static   # 构建并一键发布到Nginx静态目录
 bash scripts/platform.sh start dev       # Uvicorn reload + Vite dev
 bash scripts/platform.sh start server    # Uvicorn 常驻 + 已构建前端 preview
 bash scripts/platform.sh start static    # Uvicorn 常驻 + Nginx直接托管前端
@@ -50,7 +51,7 @@ PLATFORM_SESSION_COOKIE_SECURE=true
 
 `setup` 和 `update` 要求应用进程已经停止；`start` 不安装依赖、不构建前端。脚本负责 PostgreSQL 健康检查、Alembic 迁移、PID/进程组、日志和 HTTP 健康检查。运行状态位于 `runtime/platform/`，不会提交 Git。重复启动不会创建同一服务的第二个实例；端口被外部进程占用时会明确失败。
 
-`static` 模式不要求npm或前端运行时依赖，不启动5173端口，而是检查 `FRONTEND_DEPLOY_DIR/index.html` 和 `NGINX_HEALTH_URL`。构建结果仍由 `update` 生成在 `frontend/dist`，复制到Nginx目录属于独立发布步骤。当前域名部署见 [domain_elb_nginx.md](domain_elb_nginx.md)。
+`static` 模式不要求npm或前端运行时依赖，不启动5173端口，而是检查 `FRONTEND_DEPLOY_DIR/index.html` 和 `NGINX_HEALTH_URL`。服务器代码更新后使用`deploy-static`完成构建、发布、权限修正、Nginx生效检查和端到端健康验证；普通启停仍使用`start/restart static`。当前域名部署见 [domain_elb_nginx.md](domain_elb_nginx.md)。
 
 `stop` 按 Frontend -> Worker -> Backend -> PostgreSQL 顺序停止，只执行容器 stop，不删除容器或 volume。服务器开机启动模板见 `deploy/systemd/`。
 

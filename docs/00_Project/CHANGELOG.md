@@ -5,12 +5,13 @@
 ### Added
 
 - `platform.sh` 新增 `static` 模式，由Nginx托管已发布前端且不启动Vite 5173；
+- `platform.sh` 新增 `deploy-static`，自动构建、发布、修正静态文件权限、检查Nginx并执行端到端健康验证；
 - 新增Nginx站点模板以及域名、ELB、静态发布和服务器迁移文档；
 - systemd示例改为从 `.env.platform` 读取启动模式。
 
 ### Deployment
 
-- 前端仍由 `platform.sh update` 构建，写入 `/var/www` 的发布动作保持独立；
+- 服务器代码更新后使用 `platform.sh deploy-static` 一键发布，普通启停继续使用 `start/restart static`；
 - 当前HTTP部署继续使用非Secure会话Cookie，取得证书并启用HTTPS后必须切换为Secure。
 
 ## 2026-08-23 — Community Collaboration V1

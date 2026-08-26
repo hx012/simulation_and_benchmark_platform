@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Button, Form, Input, message, Segmented } from 'antd';
+import { Alert, Button, Form, Input, message, Segmented } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { authApi } from '../../api/auth';
+import w3Logo from '../../assets/w3-logo.png';
 import { ArchitectureBackground } from '../../components/ArchitectureBackground';
 import { useAuth } from '../../auth/AuthContext';
 
@@ -12,30 +14,38 @@ interface LoginFormValues {
 export function LoginPage() {
   const [form] = Form.useForm<LoginFormValues>();
   const [submitting, setSubmitting] = useState(false);
-  const [authMode, setAuthMode] = useState<'normal' | 'admin'>('normal');
+  const [w3Redirecting, setW3Redirecting] = useState(false);
+  const [authMode, setAuthMode] = useState<'w3' | 'admin'>('w3');
   const navigate = useNavigate();
   const location = useLocation();
-  const { authenticated, login } = useAuth();
+  const { authenticated, initializing, login } = useAuth();
 
   const defaultEmployeeId = import.meta.env.VITE_DEFAULT_OWNER_ID || '';
   const redirectTo = (location.state as { from?: string } | null)?.from || '/home';
+  const oauthError = new URLSearchParams(location.search).get('oauth_error');
 
   useEffect(() => {
-    if (authenticated && !location.state) {
-      navigate('/home', { replace: true });
+    if (!initializing && authenticated) {
+      navigate(redirectTo, { replace: true });
     }
-  }, [authenticated, location.state, navigate]);
+  }, [authenticated, initializing, navigate, redirectTo]);
 
   async function handleSubmit(values: LoginFormValues) {
     setSubmitting(true);
     try {
-      await login(values.employeeId, authMode, values.password);
+      await login(values.employeeId, 'admin', values.password);
       navigate(redirectTo, { replace: true });
     } catch (error) {
       message.error(error instanceof Error ? error.message : String(error));
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function startW3Login() {
+    if (w3Redirecting) return;
+    setW3Redirecting(true);
+    window.location.assign(authApi.w3LoginUrl(redirectTo));
   }
 
   return (
@@ -48,15 +58,31 @@ export function LoginPage() {
           className="login-mode-switch"
           value={authMode}
           options={[
-            { label: '普通登录', value: 'normal' },
+            { label: 'W3 登录', value: 'w3' },
             { label: '管理员登录', value: 'admin' },
           ]}
           onChange={(value) => {
-            setAuthMode(value as 'normal' | 'admin');
+            setAuthMode(value as 'w3' | 'admin');
             form.setFieldValue('password', '');
           }}
         />
-        <Form<LoginFormValues>
+        {oauthError ? <Alert type="error" showIcon message={oauthError} style={{ marginBottom: 16 }} /> : null}
+        {authMode === 'w3' ? (
+          <Button
+            type="primary"
+            onClick={startW3Login}
+            loading={w3Redirecting}
+            disabled={w3Redirecting}
+            icon={w3Redirecting ? undefined : (
+              <img className="w3-login-logo" src={w3Logo} alt="" aria-hidden="true" />
+            )}
+            block
+            size="large"
+            className="employee-login-submit"
+          >
+            {w3Redirecting ? '正在前往 W3…' : '使用 W3 账号登录'}
+          </Button>
+        ) : <Form<LoginFormValues>
           form={form}
           layout="vertical"
           requiredMark={false}
@@ -98,7 +124,7 @@ export function LoginPage() {
           >
             {authMode === 'admin' ? '以管理员身份登录' : '进入平台'}
           </Button>
-        </Form>
+        </Form>}
       </main>
     </div>
   );

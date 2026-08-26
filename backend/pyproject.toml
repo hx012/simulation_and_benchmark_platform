@@ -12,6 +12,7 @@ dependencies = [
     "alembic",
     "pyYAML",
     "python-multipart",
+    "httpx",
 ]
 
 [tool.uv.sources]

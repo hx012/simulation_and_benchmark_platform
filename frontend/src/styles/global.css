@@ -1532,6 +1532,19 @@ button, input, textarea, select { font: inherit; }
   background: #262626 !important;
   border-color: #262626 !important;
 }
+.w3-login-logo {
+  display: block;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  object-fit: contain;
+}
+.auth-route-loading {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcfd 100%);
+}
 @media (max-width: 760px) {
   .welcome-main { width: calc(100% - 32px); }
   .welcome-main h1 { font-size: clamp(32px, 10vw, 48px); }

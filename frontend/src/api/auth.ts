@@ -1,4 +1,4 @@
-import { apiRequest } from './client';
+import { apiRequest, apiResourceUrl } from './client';
 import type {
   CurrentUserApiResponse,
   AdminUserRecord,
@@ -10,6 +10,14 @@ import type {
 } from '../auth/types';
 
 export const authApi = {
+  getConfig() {
+    return apiRequest<{ w3_oauth_enabled: boolean }>('/api/auth/config');
+  },
+
+  w3LoginUrl(nextPath: string) {
+    return apiResourceUrl('/api/auth/w3/login', { next: nextPath });
+  },
+
   login(employeeId: string, authMode: AuthMode, password = '') {
     return apiRequest<CurrentUserApiResponse>('/api/auth/login', {
       method: 'POST',

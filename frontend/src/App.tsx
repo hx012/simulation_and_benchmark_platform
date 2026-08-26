@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import { Spin } from 'antd';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './auth/AuthContext';
 import { AppLayout } from './components/AppLayout';
@@ -20,9 +21,16 @@ import { TeamPage } from './pages/TeamPage';
 import { UsageAnalyticsPage } from './pages/UsageAnalyticsPage';
 
 function RequireAuth({ children }: { children: ReactElement }) {
-  const { authenticated } = useAuth();
+  const { authenticated, initializing } = useAuth();
   const location = useLocation();
 
+  if (initializing) {
+    return (
+      <div className="auth-route-loading" role="status" aria-label="正在验证登录状态">
+        <Spin size="large" />
+      </div>
+    );
+  }
   if (!authenticated) {
     return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
   }
