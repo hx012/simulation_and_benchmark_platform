@@ -1,0 +1,69 @@
+version: 1
+
+home:
+  storage_limit: 5
+  display_limit: 3
+  title: 近期工作
+  description: 当前用户最近访问和操作
+  empty_text: 暂无近期工作
+
+events:
+  simulation.task_create_success:
+    enabled: true
+    domain: simulation
+    icon: M
+    title_template: "{target_name}"
+    description_template: "新建仿真任务 · {relative_time}"
+    action_label: 查看任务
+    route: "/simulation/tasks/{target_id}"
+    dedupe_key: "simulation-task:{target_id}"
+
+  simulation.task_rerun:
+    enabled: true
+    domain: simulation
+    icon: M
+    title_template: "{target_name}"
+    description_template: "重新运行仿真任务 · {relative_time}"
+    action_label: 查看任务
+    route: "/simulation/tasks/{target_id}"
+    dedupe_key: "simulation-task:{target_id}"
+
+  simulation.result_view:
+    enabled: false
+    domain: simulation
+    icon: M
+    title_template: "{target_name}"
+    description_template: "查看仿真结果 · {relative_time}"
+    action_label: 查看结果
+    route: "/simulation/tasks/{target_id}/result"
+    dedupe_key: "simulation-result:{target_id}"
+
+  benchmark.chip_view:
+    enabled: false
+    domain: benchmark
+    icon: B
+    title_template: "{target_name}"
+    description_template: "浏览芯片 Benchmark · {relative_time}"
+    action_label: 打开
+    route: "/benchmark/chips/{vendor}/{chip}"
+    dedupe_key: "benchmark-chip:{vendor}:{chip}"
+
+  benchmark.detail_view:
+    enabled: true
+    domain: benchmark
+    icon: B
+    title_template: "{chip} / {benchmark_name}"
+    description_template: "Benchmark · {relative_time}"
+    action_label: 打开
+    route: "/benchmark/chips/{vendor}/{chip}/benchmarks/{benchmark_name}"
+    dedupe_key: "benchmark:{vendor}:{chip}:{benchmark_name}"
+
+  performance.trace_analyze_success:
+    enabled: true
+    domain: performance
+    icon: P
+    title_template: "{target_name}"
+    description_template: "性能分析 · {relative_time}"
+    action_label: 继续分析
+    route: "/performance?taskId={target_id}"
+    dedupe_key: "performance-trace:{target_id}"

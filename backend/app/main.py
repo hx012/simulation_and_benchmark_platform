@@ -8,6 +8,7 @@ from app.common.config import get_settings
 from app.api.health import router as health_router
 from app.api.performance import router as performance_router
 from app.api.analytics import router as analytics_router
+from app.api.recent_activity import router as recent_activity_router
 
 def create_app() -> FastAPI:
     settings = get_settings()
@@ -22,6 +23,7 @@ def create_app() -> FastAPI:
     app.include_router(performance_router)
     app.include_router(collaboration_router)
     app.include_router(analytics_router)
+    app.include_router(recent_activity_router)
     return app
 
 app = create_app()

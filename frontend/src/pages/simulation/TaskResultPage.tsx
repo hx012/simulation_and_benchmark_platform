@@ -73,6 +73,9 @@ export function TaskResultPage() {
       simulator_version: task.simulator_version,
       chip_variant: task.chip_variant,
       simulation_mode: task.simulation_mode,
+      target_type: 'simulation_task',
+      target_id: task.task_id,
+      target_name: task.task_name,
     });
   }, [task?.task_id]);
 
@@ -134,6 +137,9 @@ export function TaskResultPage() {
         simulator_version: task.simulator_version,
         chip_variant: task.chip_variant,
         simulation_mode: task.simulation_mode,
+        target_type: 'simulation_task',
+        target_id: response.task.task_id,
+        target_name: response.task.task_name,
       });
       message.success('已复用原输入创建新任务');
       navigate(`/simulation/tasks/${response.task.task_id}`);

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
+import logging
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, func, select
@@ -24,11 +25,14 @@ from app.analytics.schemas import (
 )
 from app.auth.models import User
 from app.collaboration.models import Demand, FeedbackEntry
+from app.common.config import get_settings
+from app.recent_activity.service import project_recent_activity
 from app.simulation.enums import TaskStatus
 from app.simulation.models import SimulationTask
 
 
 SHANGHAI = ZoneInfo("Asia/Shanghai")
+logger = logging.getLogger(__name__)
 
 PAGE_LABELS = {
     "home": "首页",
@@ -55,6 +59,7 @@ EVENT_LABELS = {
     "simulation.result_view": "查看仿真结果",
     "benchmark.chip_view": "查看芯片 Benchmark",
     "benchmark.detail_view": "查看 Benchmark 详情",
+    "performance.trace_analyze_success": "Trace 时间分析",
     "demand.create": "提交需求",
     "demand.vote": "需求投票",
     "feedback.submit": "提交反馈",
@@ -76,6 +81,13 @@ def create_event(db: Session, user: User, payload: AnalyticsEventCreate) -> None
     event = AnalyticsEvent(user_id=user.id, **payload.model_dump())
     db.add(event)
     try:
+        try:
+            with db.begin_nested():
+                project_recent_activity(db, user, payload, get_settings())
+        except Exception:
+            # Recent work is a convenience projection; its configuration or write
+            # failure must never discard the source analytics event.
+            logger.exception("Failed to project recent activity event=%s", payload.event_name)
         db.commit()
     except IntegrityError:
         db.rollback()

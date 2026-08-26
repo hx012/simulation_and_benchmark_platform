@@ -21,6 +21,7 @@ import {
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { performanceApi } from '../api/performance';
+import { trackAnalyticsEventQuietly } from '../api/analytics';
 import { simulationApi } from '../api/simulation';
 import { PageHeading } from '../components/PageHeading';
 import type {
@@ -155,7 +156,16 @@ export function PerformancePage() {
     setError(null);
     setResult(null);
     try {
-      setResult(await performanceApi.analyzeTaskTrace(taskId));
+      const analysis = await performanceApi.analyzeTaskTrace(taskId);
+      setResult(analysis);
+      trackAnalyticsEventQuietly({
+        event_name: 'performance.trace_analyze_success',
+        page_key: 'performance.workspace',
+        result: 'success',
+        target_type: 'simulation_task',
+        target_id: taskId,
+        target_name: analysis.source_name,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

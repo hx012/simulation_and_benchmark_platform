@@ -11,6 +11,9 @@ export interface AnalyticsEventPayload {
   simulator_version?: string | null;
   chip_variant?: string | null;
   simulation_mode?: string | null;
+  target_type?: string | null;
+  target_id?: string | null;
+  target_name?: string | null;
 }
 
 export interface AnalyticsSummary {
