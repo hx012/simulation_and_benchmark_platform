@@ -16,7 +16,7 @@ class User(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     employee_id: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
-    w3_global_user_id: Mapped[str | None] = mapped_column(String(255), unique=True)
+    w3_global_user_id: Mapped[str | None] = mapped_column(String(255))
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(32), nullable=False, default="normal")
     password_hash: Mapped[str | None] = mapped_column(Text)
@@ -26,6 +26,10 @@ class User(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_users_w3_global_user_id", "w3_global_user_id", unique=True),
+    )
 
 
 class UserSession(Base):

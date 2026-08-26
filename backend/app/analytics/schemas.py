@@ -19,10 +19,14 @@ class AnalyticsEventCreate(BaseModel):
     simulator_version: str | None = Field(default=None, max_length=128)
     chip_variant: str | None = Field(default=None, max_length=128)
     simulation_mode: str | None = Field(default=None, max_length=64)
+    target_type: str | None = Field(default=None, max_length=64)
+    target_id: str | None = Field(default=None, max_length=512)
+    target_name: str | None = Field(default=None, max_length=255)
 
     @field_validator(
         "page_key", "result", "vendor", "chip", "benchmark_name", "benchmark_type",
         "test_target", "simulator_version", "chip_variant", "simulation_mode",
+        "target_type", "target_id", "target_name",
     )
     @classmethod
     def strip_optional_text(cls, value: str | None) -> str | None:

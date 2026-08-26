@@ -252,7 +252,7 @@ export function RemoteBundleEditor({
                   <Alert
                     type="info"
                     showIcon
-                    message="该文件为只读资产"
+                    title="该文件为只读资产"
                     description="如需调整，请重新上传对应配置目录。"
                   />
                 )}

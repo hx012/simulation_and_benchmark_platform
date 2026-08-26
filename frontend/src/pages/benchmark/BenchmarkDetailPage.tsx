@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import { Button, Card, Collapse, Descriptions, Empty, message, Skeleton } from 'antd';
+import { Button, Card, Descriptions, Empty, message, Skeleton } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { benchmarkApi } from '../../api/benchmark';
 import { trackAnalyticsEventQuietly } from '../../api/analytics';
@@ -60,6 +60,9 @@ export function BenchmarkDetailPage() {
       benchmark_name: definition.name,
       benchmark_type: definition.category,
       test_target: definition.target,
+      target_type: 'benchmark',
+      target_id: `${definition.vendor}/${definition.chip}/${definition.name}`,
+      target_name: definition.name,
     });
   }, [definition?.benchmark_id]);
 
@@ -88,20 +91,6 @@ export function BenchmarkDetailPage() {
     );
   }
 
-  const implementationItems = [
-    {
-      key: 'implementation',
-      label: '实现信息',
-      children: (
-        <Descriptions column={1} size="small" className="benchmark-implementation-info">
-          <Descriptions.Item label="Module">{definition.module}</Descriptions.Item>
-          <Descriptions.Item label="Class">{definition.class_name}</Descriptions.Item>
-          <Descriptions.Item label="Benchmark ID">{definition.benchmark_id}</Descriptions.Item>
-        </Descriptions>
-      ),
-    },
-  ];
-
   return (
     <div className="page-container benchmark-page">
       <PageHeading
@@ -110,21 +99,24 @@ export function BenchmarkDetailPage() {
         actions={<Button icon={<ArrowLeftOutlined />} onClick={() => navigate(backPath)}>返回</Button>}
       />
 
-      <Card title="基本信息" className="clean-card benchmark-detail-card">
-        <Descriptions column={{ xs: 1, sm: 2 }} size="small">
-          <Descriptions.Item label="Vendor">{displayVendor(definition.vendor)}</Descriptions.Item>
-          <Descriptions.Item label="Chip">{displayChip(definition.chip)}</Descriptions.Item>
-          <Descriptions.Item label="说明" span={2}>{definition.description || '—'}</Descriptions.Item>
-          {definition.category ? <Descriptions.Item label="类别">{definition.category}</Descriptions.Item> : null}
-          {definition.target ? <Descriptions.Item label="Target">{definition.target}</Descriptions.Item> : null}
-        </Descriptions>
-
-        <Collapse
-          ghost
-          className="benchmark-implementation-collapse"
-          items={implementationItems}
-        />
-      </Card>
+      <div className="benchmark-detail-grid">
+        <Card title="基本信息" className="clean-card benchmark-detail-card">
+          <Descriptions column={{ xs: 1, sm: 2 }} size="small">
+            <Descriptions.Item label="Vendor">{displayVendor(definition.vendor)}</Descriptions.Item>
+            <Descriptions.Item label="Chip">{displayChip(definition.chip)}</Descriptions.Item>
+            <Descriptions.Item label="说明" span={2}>{definition.description || '—'}</Descriptions.Item>
+            {definition.category ? <Descriptions.Item label="类别">{definition.category}</Descriptions.Item> : null}
+            {definition.target ? <Descriptions.Item label="Target">{definition.target}</Descriptions.Item> : null}
+          </Descriptions>
+        </Card>
+        <Card title="实现定义" className="clean-card benchmark-detail-card">
+          <Descriptions column={1} size="small" className="benchmark-implementation-info">
+            <Descriptions.Item label="Module">{definition.module}</Descriptions.Item>
+            <Descriptions.Item label="Class">{definition.class_name}</Descriptions.Item>
+            <Descriptions.Item label="Benchmark ID">{definition.benchmark_id}</Descriptions.Item>
+          </Descriptions>
+        </Card>
+      </div>
 
       <h2 className="section-title">Benchmark 结果</h2>
       <Card className="clean-card benchmark-result-card">

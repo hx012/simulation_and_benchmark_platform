@@ -105,6 +105,9 @@ tracked = alice_client.post("/api/analytics/events", json={
     "page_key": "home",
 })
 assert tracked.status_code == 202, tracked.text
+recent = alice_client.get("/api/recent-activities")
+assert recent.status_code == 200, recent.text
+assert recent.json()["items"] == []
 assert alice_client.get("/api/admin/analytics/overview").status_code == 403
 assert admin_client.get("/api/admin/analytics/overview").status_code == 200
 

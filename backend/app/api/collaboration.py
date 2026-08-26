@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.auth.service import AuthenticatedUser, get_current_user, require_admin
-from app.collaboration.content import community_links, load_team_config
+from app.collaboration.content import community_links, load_team_config, platform_support
 from app.collaboration.schemas import (
     DemandCreate,
     DemandListResponse,
@@ -31,10 +31,12 @@ router = APIRouter(prefix="/api", tags=["collaboration"])
 
 @router.get("/platform-config", response_model=PlatformConfigResponse)
 def platform_config(
-    _: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ) -> PlatformConfigResponse:
-    return PlatformConfigResponse(communities=community_links(settings))
+    return PlatformConfigResponse(
+        communities=community_links(settings),
+        support=platform_support(settings),
+    )
 
 
 @router.get("/team", response_model=TeamConfigResponse)

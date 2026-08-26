@@ -165,7 +165,7 @@ export function TraceViewer({ events, eventCount, onAnalyze }: TraceViewerProps)
   }, [isFullscreen]);
 
   if (!model.lanes.length) {
-    return <Alert type="warning" showIcon message="Trace 中没有可渲染的 Lane" />;
+    return <Alert type="warning" showIcon title="Trace 中没有可渲染的 Lane" />;
   }
 
   const duration = model.maxTs - model.minTs;
@@ -284,7 +284,7 @@ export function TraceViewer({ events, eventCount, onAnalyze }: TraceViewerProps)
           className="trace-limit-alert"
           type="info"
           showIcon
-          message={`Trace 较大，为保证浏览器流畅仅渲染前 ${MAX_RENDER_EVENTS} 个 Complete Event`}
+          title={`Trace 较大，为保证浏览器流畅仅渲染前 ${MAX_RENDER_EVENTS} 个 Complete Event`}
         />
       ) : null}
 
@@ -292,7 +292,7 @@ export function TraceViewer({ events, eventCount, onAnalyze }: TraceViewerProps)
         <Alert
           type="info"
           showIcon
-          message="当前筛选条件下没有 Lane"
+          title="当前筛选条件下没有 Lane"
           description="清空搜索条件或关闭“隐藏空 Lane”后重试。"
         />
       ) : (

@@ -73,6 +73,9 @@ export function TaskResultPage() {
       simulator_version: task.simulator_version,
       chip_variant: task.chip_variant,
       simulation_mode: task.simulation_mode,
+      target_type: 'simulation_task',
+      target_id: task.task_id,
+      target_name: task.task_name,
     });
   }, [task?.task_id]);
 
@@ -134,6 +137,9 @@ export function TaskResultPage() {
         simulator_version: task.simulator_version,
         chip_variant: task.chip_variant,
         simulation_mode: task.simulation_mode,
+        target_type: 'simulation_task',
+        target_id: response.task.task_id,
+        target_name: response.task.task_name,
       });
       message.success('已复用原输入创建新任务');
       navigate(`/simulation/tasks/${response.task.task_id}`);
@@ -144,7 +150,7 @@ export function TaskResultPage() {
 
   if (loading) return <div className="center-state"><Spin size="large" /></div>;
   if (error || !task || !result) {
-    return <div className="page-container"><Alert type="error" showIcon message="结果读取失败" description={error || 'Result unavailable'} /></div>;
+    return <div className="page-container"><Alert type="error" showIcon title="结果读取失败" description={error || 'Result unavailable'} /></div>;
   }
 
   if (!isTerminalStatus(task.status)) {
@@ -153,7 +159,7 @@ export function TaskResultPage() {
         <Alert
           type="info"
           showIcon
-          message="任务尚未结束"
+          title="任务尚未结束"
           description="运行中的任务请进入任务详情页查看 Cycle 和日志。"
           action={<Button type="primary" onClick={() => navigate(`/simulation/tasks/${task.task_id}`)}>查看任务详情</Button>}
         />
@@ -180,7 +186,7 @@ export function TaskResultPage() {
           className="result-alert"
           type="error"
           showIcon
-          message={`任务${task.status === 'FAILED' ? '失败' : '未正常完成'}`}
+          title={`任务${task.status === 'FAILED' ? '失败' : '未正常完成'}`}
           description={task.error_message || task.error_code || '没有更多错误信息'}
         />
       ) : null}
@@ -225,7 +231,7 @@ export function TaskResultPage() {
         ) : traceLoading ? (
           <div className="trace-loading"><Spin /><span>正在加载 Trace…</span></div>
         ) : traceError ? (
-          <Alert type="error" showIcon message="Trace 加载失败" description={traceError} />
+          <Alert type="error" showIcon title="Trace 加载失败" description={traceError} />
         ) : (result.trace_source_available ?? result.trace_available) && trace ? (
           <TraceViewer
             events={trace.events}
@@ -236,7 +242,7 @@ export function TaskResultPage() {
           <Alert
             type={result.trace_status === 'FAILED' ? 'error' : 'info'}
             showIcon
-            message={result.trace_status === 'FAILED' ? 'Trace 生成失败' : 'Trace 暂不可用'}
+            title={result.trace_status === 'FAILED' ? 'Trace 生成失败' : 'Trace 暂不可用'}
             description="Trace 只在仿真结果页展示；生成成功后会直接加载到此卡片。"
           />
         )}
@@ -256,7 +262,7 @@ export function TaskResultPage() {
             children: result.summary_available && result.summary ? (
               <pre className="json-viewer">{JSON.stringify(result.summary, null, 2)}</pre>
             ) : (
-              <Alert type="warning" showIcon message="summary.json 不可用" description={result.summary_error || 'No summary'} />
+              <Alert type="warning" showIcon title="summary.json 不可用" description={result.summary_error || 'No summary'} />
             ),
           },
         ]}

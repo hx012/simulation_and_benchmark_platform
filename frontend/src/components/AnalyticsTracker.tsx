@@ -60,7 +60,13 @@ export function AnalyticsTracker() {
       lastPageViewAt = now;
       trackAnalyticsEventQuietly({ event_name: 'page_view', ...context });
       if (context.page_key === 'benchmark.chip') {
-        trackAnalyticsEventQuietly({ event_name: 'benchmark.chip_view', ...context });
+        trackAnalyticsEventQuietly({
+          event_name: 'benchmark.chip_view',
+          target_type: 'benchmark_chip',
+          target_id: `${context.vendor}/${context.chip}`,
+          target_name: context.chip,
+          ...context,
+        });
       }
     }
 

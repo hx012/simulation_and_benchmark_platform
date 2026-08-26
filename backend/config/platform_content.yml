@@ -1,42 +1,113 @@
 team:
   name: 芯片仿真与性能分析团队
-  description: 面向 AI 芯片架构研究与工程验证，提供仿真、Benchmark、Trace 与性能分析能力。
-  team_size: 18 人
-  specialties:
-    - 架构仿真
-    - 负载建模
-    - 性能分析
+  description: 团队面向芯片架构研究与负载建模，围绕 Benchmark 筛选、MSKPP 芯片仿真、Trace 与性能分析开展平台和工具建设，持续沉淀可复用的仿真能力、Benchmark 和性能分析工具，为芯片性能看护、瓶颈定位、需求分析和微架构优化提供支撑。
+  team_size: ""
+  specialties: []
+  members:
+    - employee_id: h00517730
+      name: 郝雪桐
+      direction: 性能分析 · Trace 工具
+      description: 负责 Trace 分析工具与性能报告建设，重点关注执行流水和关键路径瓶颈。
+      tags: [Trace, 性能瓶颈]
+      order: 10
+      enabled: true
+    - employee_id: h00000002
+      name: 陈晨
+      direction: 架构仿真 · 调度优化
+      description: 负责 MSKPP 调度模型和仿真验证，研究任务粒度、流水并行与预取优化。
+      tags: [MSKPP, 调度优化]
+      order: 20
+      enabled: true
+    - employee_id: h00000003
+      name: 李林
+      direction: 内存系统 · 分析工具
+      description: 负责内存热力图和数据聚合组件，关注 HBM、Cache 与访存行为分析。
+      tags: [Memory, 热力图]
+      order: 30
+      enabled: true
+    - employee_id: h00000004
+      name: 赵冉
+      direction: 负载建模 · Benchmark
+      description: 负责典型业务负载建模和性能基线建设，推动 Benchmark 规范化沉淀。
+      tags: [Workload, Benchmark]
+      order: 40
+      enabled: true
+    - employee_id: h00000005
+      name: 王博
+      direction: 微架构分析 · 性能看护
+      description: 负责芯片性能看护和跨配置对比分析，沉淀微架构瓶颈定位方法。
+      tags: [微架构, 性能看护]
+      order: 50
+      enabled: true
+    - employee_id: h00000006
+      name: 周宁
+      direction: 平台工程 · 数据集成
+      description: 负责仿真、Benchmark 与分析数据的流程集成和平台工程能力建设。
+      tags: [平台工程, 数据集成]
+      order: 60
+      enabled: true
   achievements:
-    - title: STARS 调度优化：端到端性能提升 12.4%
-      category: 性能优化
+    - id: stars-scheduling-optimization
+      title: STARS 调度优化：端到端性能提升 12.4%
+      category: MSKPP 芯片仿真器
       summary: 通过关键路径分析调整任务粒度与预取时机，形成可复核的优化结论。
       contributors: 陈晨等 4 人
       date: "2026-08"
-    - title: 内存热力图分析组件
-      category: 工具与平台
+      featured: true
+      featured_order: 10
+      enabled: true
+      detail_url: ""
+    - id: memory-heatmap-analysis
+      title: 内存热力图分析组件
+      category: 性能分析
       summary: 支持按地址、Core 和时间窗口聚合，为仿真结果分析提供基础能力。
       contributors: 团队共建
       date: "2026-08"
-    - title: Trace 自动归因方法验证
+      featured: true
+      featured_order: 30
+      enabled: true
+      detail_url: ""
+    - id: trace-attribution
+      title: Trace 自动归因方法验证
       category: 分析方法
       summary: 围绕关键路径与等待事件建立可复核的分析方法。
       contributors: 性能分析组
       date: "2026-08"
-    - title: V310 Memory System 性能分析
+      featured: false
+      featured_order: 40
+      enabled: true
+      detail_url: ""
+    - id: v310-memory-system
+      title: V310 Memory System 性能分析
       category: 分析报告
       summary: 综合 HBM、L2 与 Trace 数据，沉淀配置建议和后续验证方向。
       contributors: 王博等 3 人
       date: "2026-08"
-    - title: 面向芯片仿真的负载特征抽取方法
+      featured: false
+      featured_order: 50
+      enabled: true
+      detail_url: ""
+    - id: workload-feature-extraction
+      title: 面向芯片仿真的负载特征抽取方法
       category: 专利 / 论文
       summary: 形成统一负载描述和特征抽取流程，支持跨版本 Benchmark 复用。
       contributors: 周宁等 3 人
       date: "2026-06"
-    - title: V300 与 V310 Cube 性能对比
-      category: 分析报告
+      featured: false
+      featured_order: 60
+      enabled: true
+      detail_url: ""
+    - id: v300-v310-cube-comparison
+      title: V300 与 V310 Cube 性能对比
+      category: Benchmark
       summary: 对比两代芯片的 Cube 吞吐、利用率和访存行为，形成回归基线。
       contributors: 赵冉等 2 人
       date: "2026-05"
+      featured: true
+      featured_order: 20
+      enabled: true
+      detail_url: ""
+  all_achievements_url: ""
   contributions:
     - member: 林晓
       contribution: Trace 分析工具、性能报告
@@ -53,6 +124,27 @@ team:
       achievement_count: 3
       contribution_score: 610
       views: 1428
+
+communities:
+  - key: jiaxian
+    name: 稼先社区
+    enabled: true
+    order: 10
+  - key: w3
+    name: W3 负载建模社区
+    enabled: true
+    order: 20
+  - key: benchmark_wiki
+    name: Benchmark Wiki
+    url: ""
+    enabled: false
+    order: 30
+
+support:
+  key: mskpp_support
+  name: MSKPP 技术支撑群
+  resource: welink_support_group
+  enabled: true
 
 # 新需求默认仅提交人和管理员可见。审视后按需求编号添加配置。
 demand_reviews: {}

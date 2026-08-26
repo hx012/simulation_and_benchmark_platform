@@ -15,6 +15,7 @@ from app.auth.models import User, UserSession
 from app.auth.service import AuthenticatedUser
 from app.collaboration.models import Demand, DemandVote, FeedbackEntry
 from app.collaboration.schemas import DemandCreate, FeedbackCreate
+from app.collaboration.content import community_links, load_team_config, platform_support
 from app.collaboration.service import (
     create_demand,
     create_feedback,
@@ -48,8 +49,52 @@ def main() -> None:
 
     with TemporaryDirectory() as directory:
         config_path = Path(directory) / "platform_content.yml"
-        config_path.write_text("team: {}\ndemand_reviews: {}\n", encoding="utf-8")
-        settings = Settings(platform_content_config=config_path)
+        config_path.write_text(
+            "team:\n"
+            "  name: Test Team\n"
+            "  description: Config driven\n"
+            "  members:\n"
+            "    - employee_id: h2\n"
+            "      name: Two\n"
+            "      tags: [Trace, Tooling]\n"
+            "      order: 20\n"
+            "      enabled: true\n"
+            "    - employee_id: h1\n"
+            "      name: One\n"
+            "      order: 10\n"
+            "      enabled: true\n"
+            "    - employee_id: hidden\n"
+            "      name: Hidden\n"
+            "      enabled: false\n"
+            "  achievements:\n"
+            "    - id: featured\n"
+            "      title: Featured\n"
+            "      featured: true\n"
+            "      featured_order: 10\n"
+            "      enabled: true\n"
+            "communities:\n"
+            "  - key: benchmark_wiki\n"
+            "    name: Benchmark Wiki\n"
+            "    enabled: false\n"
+            "    order: 30\n"
+            "support:\n"
+            "  name: Test Support\n"
+            "demand_reviews: {}\n",
+            encoding="utf-8",
+        )
+        settings = Settings(
+            platform_content_config=config_path,
+            platform_community_jiaxian_url="https://jiaxian.example.com",
+            platform_community_w3_url="https://w3.example.com",
+        )
+        team = load_team_config(settings)
+        assert [member.employee_id for member in team.members] == ["h1", "h2"]
+        assert team.members[1].tags == ["Trace", "Tooling"]
+        assert team.achievements[0].featured
+        links = community_links(settings)
+        assert [link.key for link in links] == ["jiaxian", "w3", "benchmark_wiki"]
+        assert links[0].enabled and not links[-1].enabled
+        assert platform_support(settings).name == "Test Support"
 
         with Session(engine) as db:
             owner = User(employee_id="owner", display_name="Owner", role="normal")

@@ -33,6 +33,9 @@ class AnalyticsEvent(Base):
     simulator_version: Mapped[str | None] = mapped_column(String(128))
     chip_variant: Mapped[str | None] = mapped_column(String(128))
     simulation_mode: Mapped[str | None] = mapped_column(String(64))
+    target_type: Mapped[str | None] = mapped_column(String(64))
+    target_id: Mapped[str | None] = mapped_column(String(512))
+    target_name: Mapped[str | None] = mapped_column(String(255))
 
     occurred_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
