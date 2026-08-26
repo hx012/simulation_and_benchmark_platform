@@ -54,7 +54,7 @@ export function WelcomePage() {
             <span><strong>AI Chip Platform</strong><small>Simulation · Benchmark · Analysis</small></span>
           </button>
           <nav className="portal-nav" aria-label="门户导航">
-            <a href="#team">关于平台</a><a href="#capabilities">核心能力</a><a href="#support">社区生态</a>
+            <a href="#capabilities">核心能力</a><a href="#support">社区生态</a>
             <Button type="primary" onClick={enterPlatform}>进入平台</Button>
           </nav>
         </div>
