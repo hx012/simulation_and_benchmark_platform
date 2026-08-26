@@ -8,6 +8,7 @@ import type { AuthMode, PermissionCatalogItem, PermissionCode, PlatformUser } fr
 interface AuthContextValue {
   user: PlatformUser | null;
   authenticated: boolean;
+  initializing: boolean;
   login: (employeeId: string, authMode: AuthMode, password?: string) => Promise<PlatformUser>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<PlatformUser | null>;
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<PlatformUser | null>(() => readStoredUser());
+  const [initializing, setInitializing] = useState(true);
   const [permissionCatalog, setPermissionCatalog] = useState<Record<string, PermissionCatalogItem>>({});
 
   async function refreshPermissionCatalog() {
@@ -45,9 +47,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    void refreshUser();
+    let active = true;
+    void refreshUser().finally(() => {
+      if (active) {
+        setInitializing(false);
+      }
+    });
     // Reconcile the server-side session once on startup.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      active = false;
+    };
   }, []);
 
   async function login(employeeId: string, authMode: AuthMode, password = ''): Promise<PlatformUser> {
@@ -85,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(() => ({
     user,
     authenticated: Boolean(user),
+    initializing,
     login,
     logout,
     refreshUser,
@@ -92,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     hasResource,
     permissionCatalog,
     refreshPermissionCatalog,
-  }), [user, permissionCatalog]);
+  }), [user, initializing, permissionCatalog]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

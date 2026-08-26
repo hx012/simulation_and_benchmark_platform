@@ -21,6 +21,16 @@ class Settings(BaseSettings):
     platform_bootstrap_admin_password: str = ""
     platform_session_hours: float = 12.0
     platform_session_cookie_secure: bool = False
+    platform_w3_oauth_enabled: bool = False
+    platform_w3_client_id: str = ""
+    platform_w3_client_secret: str = ""
+    platform_w3_authorize_url: str = "https://uniportal.huawei.com/saaslogin1/oauth2/authorize"
+    platform_w3_token_url: str = "https://uniportal.huawei.com/saaslogin1/oauth2/accesstoken"
+    platform_w3_userinfo_url: str = "https://uniportal.huawei.com/saaslogin1/oauth2/userinfo"
+    platform_w3_redirect_uri: str = ""
+    platform_w3_scope: str = "base.profile"
+    platform_w3_http_timeout_seconds: float = 15.0
+    platform_w3_state_ttl_seconds: int = 600
     platform_community_w3_name: str = "W3 负载建模社区"
     platform_community_w3_url: str = ""
     platform_community_jiaxian_name: str = "稼先社区"
@@ -64,6 +74,11 @@ class Settings(BaseSettings):
     upload_cleanup_batch_size: int = 100
     upload_submit_lock_stale_seconds: float = 600.0
 
+    # Raw analytics events are periodically removed by the simulation worker.
+    # Set retention to 0 to keep events indefinitely.
+    analytics_event_retention_days: int = 180
+    analytics_cleanup_interval_hours: float = 24.0
+
     model_config = SettingsConfigDict(
         env_file=DEFAULT_PLATFORM_ENV_FILE,
         env_file_encoding="utf-8",
@@ -81,6 +96,28 @@ class Settings(BaseSettings):
             f"postgresql+psycopg://{user}:{password}"
             f"@{self.postgres_host}:{self.postgres_port}/{database}"
         )
+        return self
+
+    @model_validator(mode="after")
+    def validate_w3_oauth(self) -> "Settings":
+        if not self.platform_w3_oauth_enabled:
+            return self
+        required = {
+            "PLATFORM_W3_CLIENT_ID": self.platform_w3_client_id,
+            "PLATFORM_W3_CLIENT_SECRET": self.platform_w3_client_secret,
+            "PLATFORM_W3_REDIRECT_URI": self.platform_w3_redirect_uri,
+        }
+        missing = [name for name, value in required.items() if not value.strip()]
+        if missing:
+            raise ValueError(f"W3 OAuth2 is enabled but settings are missing: {', '.join(missing)}")
+        return self
+
+    @model_validator(mode="after")
+    def validate_analytics_retention(self) -> "Settings":
+        if self.analytics_event_retention_days < 0:
+            raise ValueError("ANALYTICS_EVENT_RETENTION_DAYS must be 0 or greater")
+        if self.analytics_cleanup_interval_hours <= 0:
+            raise ValueError("ANALYTICS_CLEANUP_INTERVAL_HOURS must be greater than 0")
         return self
 
 

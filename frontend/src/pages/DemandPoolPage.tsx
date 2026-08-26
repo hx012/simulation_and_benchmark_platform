@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Form, Input, message, Modal, Select, Skeleton, Tag } from 'antd';
 import { LikeOutlined, PlusOutlined } from '@ant-design/icons';
 import { collaborationApi, type DemandItem, type DemandPayload } from '../api/collaboration';
+import { trackAnalyticsEventQuietly } from '../api/analytics';
 import { PageHeading } from '../components/PageHeading';
 
 const statusLabels: Record<string, { label: string; color: string }> = {
@@ -43,6 +44,7 @@ export function DemandPoolPage() {
     setSubmitting(true);
     try {
       const created = await collaborationApi.submitDemand(values);
+      trackAnalyticsEventQuietly({ event_name: 'demand.create', page_key: 'demands', result: 'success' });
       setItems((current) => [created, ...(current || [])]);
       message.success(`需求 ${created.request_no} 已提交，审视前仅你和管理员可见`);
       form.resetFields();
@@ -57,6 +59,9 @@ export function DemandPoolPage() {
   async function toggleVote(item: DemandItem) {
     try {
       const result = await collaborationApi.setDemandVote(item.demand_id, !item.voted_by_me);
+      if (result.voted_by_me) {
+        trackAnalyticsEventQuietly({ event_name: 'demand.vote', page_key: 'demands', result: 'success' });
+      }
       setItems((current) => (current || []).map((candidate) => candidate.demand_id === item.demand_id
         ? { ...candidate, support_count: result.support_count, voted_by_me: result.voted_by_me }
         : candidate));

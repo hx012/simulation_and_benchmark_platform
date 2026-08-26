@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Button, Dropdown, Form, Input, Layout, message, Modal, Select, Typography } from 'antd';
 import {
   BarChartOutlined,
+  LineChartOutlined,
   BulbOutlined,
   CommentOutlined,
   ExperimentOutlined,
@@ -20,6 +21,8 @@ import {
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { collaborationApi, type CommunityLink, type FeedbackPayload } from '../api/collaboration';
+import { trackAnalyticsEventQuietly } from '../api/analytics';
+import { AnalyticsTracker } from './AnalyticsTracker';
 
 const { Header, Sider, Content } = Layout;
 
@@ -33,6 +36,7 @@ type NavGroup = {
   key: string;
   label: string;
   items: NavItem[];
+  adminOnly?: boolean;
 };
 
 const navGroups: NavGroup[] = [
@@ -68,6 +72,12 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
+    key: 'operations',
+    label: '运营管理',
+    adminOnly: true,
+    items: [{ path: '/usage-analytics', label: '使用分析', icon: <LineChartOutlined /> }],
+  },
+  {
     key: 'account',
     label: '账户',
     items: [{ path: '/permissions', label: '权限中心', icon: <SafetyCertificateOutlined /> }],
@@ -88,6 +98,7 @@ export function AppLayout() {
     benchmark: true,
     performance: true,
     collaboration: true,
+    operations: true,
     account: true,
   });
   const [communities, setCommunities] = useState<CommunityLink[]>([]);
@@ -111,6 +122,7 @@ export function AppLayout() {
     if (location.pathname.startsWith('/team')) return '团队风采';
     if (location.pathname.startsWith('/demands')) return '需求池';
     if (location.pathname.startsWith('/permissions')) return '权限中心';
+    if (location.pathname.startsWith('/usage-analytics')) return '使用分析';
     return 'AI Chip Platform';
   }, [location.pathname]);
 
@@ -127,6 +139,10 @@ export function AppLayout() {
         ...values,
         page_title: pageTitle,
         page_path: `${location.pathname}${location.search}`,
+      });
+      trackAnalyticsEventQuietly({
+        event_name: 'feedback.submit',
+        result: 'success',
       });
       message.success('反馈已提交，感谢你的建议');
       feedbackForm.resetFields();
@@ -169,7 +185,7 @@ export function AppLayout() {
         </button>
 
         <nav className="sidebar-nav" aria-label="主导航">
-          {navGroups.map((group) => {
+          {navGroups.filter((group) => !group.adminOnly || user?.authMode === 'admin').map((group) => {
             const opened = openGroups[group.key] !== false;
             return (
               <div className="sidebar-group" key={group.key}>
@@ -250,7 +266,7 @@ export function AppLayout() {
                 items: [
                   {
                     key: 'identity',
-                    label: user?.displayName || user?.userId || '当前用户',
+                    label: user?.userId || '当前用户',
                     icon: <UserOutlined />,
                     disabled: true,
                   },
@@ -273,13 +289,14 @@ export function AppLayout() {
             >
               <button type="button" className="header-user-button">
                 <UserOutlined />
-                <span>{user?.displayName || user?.userId}</span>
+                <span>{user?.userId}</span>
                 {user?.authMode === 'admin' ? <span className="admin-mode-badge">管理员</span> : null}
               </button>
             </Dropdown>
           </div>
         </Header>
         <Content className="app-content">
+          <AnalyticsTracker />
           <Outlet />
         </Content>
       </Layout>

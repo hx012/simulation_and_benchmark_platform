@@ -97,4 +97,15 @@ assert ordinary_admin.json()["role"] == "normal"
 assert ordinary_admin.json()["account_role"] == "admin"
 assert ordinary_admin_client.get("/api/admin/users").status_code == 403
 
+# Usage events are available to authenticated users, while reports remain admin-only.
+tracked = alice_client.post("/api/analytics/events", json={
+    "event_id": "permission-test-event-0001",
+    "session_id": "permission-test-session-01",
+    "event_name": "page_view",
+    "page_key": "home",
+})
+assert tracked.status_code == 202, tracked.text
+assert alice_client.get("/api/admin/analytics/overview").status_code == 403
+assert admin_client.get("/api/admin/analytics/overview").status_code == 200
+
 print("permission and administrator workflow checks passed")
