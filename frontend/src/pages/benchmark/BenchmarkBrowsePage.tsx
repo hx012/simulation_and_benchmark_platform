@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Empty, message, Select, Skeleton } from 'antd';
+import { Alert, Empty, Select, Skeleton } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { benchmarkApi } from '../../api/benchmark';
 import { PageHeading } from '../../components/PageHeading';
@@ -26,9 +26,11 @@ export function BenchmarkBrowsePage() {
   const [loading, setLoading] = useState(true);
   const [vendor, setVendor] = useState(ALL);
   const [chipGeneration, setChipGeneration] = useState(ALL);
+  const [loadError, setLoadError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const response = await benchmarkApi.listChips();
       const details = await Promise.allSettled(
@@ -45,7 +47,7 @@ export function BenchmarkBrowsePage() {
         };
       }));
     } catch (error) {
-      message.error(error instanceof Error ? error.message : String(error));
+      setLoadError(error instanceof Error ? error.message : String(error));
       setItems([]);
     } finally {
       setLoading(false);
@@ -92,6 +94,8 @@ export function BenchmarkBrowsePage() {
         title="Benchmark"
         subtitle="按厂商和芯片代次筛选，点击芯片进入 Benchmark 主页"
       />
+
+      {loadError ? <Alert className="benchmark-load-error" type="error" showIcon title="Benchmark 数据暂不可用" description={loadError} /> : null}
 
       <div className="benchmark-browser-panel">
         <div className="benchmark-filter-grid">

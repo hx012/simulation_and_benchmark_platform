@@ -165,7 +165,7 @@ export function TaskDetailPage() {
   if (error || !task) {
     return (
       <div className="page-container">
-        <Alert type="error" showIcon message="任务读取失败" description={error?.message || 'Task not found'} />
+        <Alert type="error" showIcon title="任务读取失败" description={error?.message || 'Task not found'} />
       </div>
     );
   }
@@ -196,7 +196,7 @@ export function TaskDetailPage() {
           className="terminal-banner"
           showIcon
           type={terminalSuccess ? 'success' : task.status === 'FAILED' ? 'error' : 'warning'}
-          message={terminalSuccess ? '仿真执行完成' : `任务已结束：${task.status}`}
+          title={terminalSuccess ? '仿真执行完成' : `任务已结束：${task.status}`}
           description={
             terminalSuccess
               ? (canViewLog

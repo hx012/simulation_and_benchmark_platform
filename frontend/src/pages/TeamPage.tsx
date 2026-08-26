@@ -1,76 +1,116 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Empty, Skeleton, Table, Tag } from 'antd';
+import { ArrowRightOutlined } from '@ant-design/icons';
+import { Button, Empty, Skeleton, Table, Tabs } from 'antd';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { collaborationApi, type TeamConfig } from '../api/collaboration';
 import { PageHeading } from '../components/PageHeading';
+import { SupportGroupModal } from '../components/SupportGroupModal';
+
+function openConfiguredUrl(url: string, navigate: (path: string) => void) {
+  if (url.startsWith('/')) navigate(url);
+  else window.open(url, '_blank', 'noopener,noreferrer');
+}
 
 export function TeamPage() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [team, setTeam] = useState<TeamConfig | null>(null);
-  const [showAll, setShowAll] = useState(false);
+  const [supportEnabled, setSupportEnabled] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const activeTab = searchParams.get('tab') === 'results' ? 'results' : 'intro';
 
   useEffect(() => {
     void collaborationApi.getTeam().then(setTeam).catch(() => setTeam({
-      name: '芯片仿真与性能分析团队',
-      description: '团队内容暂时无法加载。',
-      team_size: '',
-      specialties: [],
-      achievements: [],
-      contributions: [],
+      name: '芯片仿真与性能分析团队', description: '团队内容暂时无法加载。', team_size: '', specialties: [], members: [], achievements: [], contributions: [], all_achievements_url: '',
     }));
+    void collaborationApi.getPlatformConfig()
+      .then((config) => setSupportEnabled(config.support.enabled))
+      .catch(() => setSupportEnabled(false));
   }, []);
 
-  if (!team) {
-    return <div className="page-container"><Skeleton active /></div>;
-  }
+  if (!team) return <div className="page-container"><Skeleton active /></div>;
 
   return (
     <div className="page-container team-page">
       <PageHeading title="团队风采" />
-      <Card className="team-intro-card">
-        <h2>{team.name}</h2>
-        <p>{team.description}</p>
-        <div className="team-specialties">
-          {team.team_size ? <Tag>团队规模 {team.team_size}</Tag> : null}
-          {team.specialties.map((item) => <Tag key={item}>{item}</Tag>)}
-        </div>
-      </Card>
+      <Tabs
+        className="team-tabs"
+        activeKey={activeTab}
+        onChange={(key) => setSearchParams(key === 'results' ? { tab: 'results' } : {}, { replace: true })}
+        items={[
+          { key: 'intro', label: '团队介绍' },
+          { key: 'results', label: '成果与贡献' },
+        ]}
+      />
 
-      <Card
-        className="team-section-card"
-        title="重点成果"
-        extra={team.achievements.length > 3 ? (
-          <Button onClick={() => setShowAll((value) => !value)}>{showAll ? '收起' : '查看全部成果 →'}</Button>
-        ) : null}
-      >
-        {team.achievements.length ? (
-          <div className="achievement-grid">
-            {(showAll ? team.achievements : team.achievements.slice(0, 3)).map((item) => (
-              <div key={`${item.title}-${item.date}`} className="achievement-card">
-                <Tag color="blue">{item.category}</Tag>
-                <h3>{item.title}</h3>
-                <p>{item.summary}</p>
-                <div className="achievement-meta">{item.contributors}{item.date ? ` · ${item.date}` : ''}</div>
-              </div>
-            ))}
+      {activeTab === 'intro' ? (
+        <>
+          <section className="team-intro-panel">
+            <h2>{team.name}</h2>
+            <p>{team.description}</p>
+          </section>
+          <div className="team-section-heading"><h2>团队成员</h2><span>成员信息由配置统一维护</span></div>
+          {team.members.length ? (
+            <div className="team-member-grid">
+              {team.members.map((member) => (
+                <article className="team-member-card" key={member.employee_id}>
+                  <h3>{member.name} <span>{member.employee_id}</span></h3>
+                  <strong>{member.direction}</strong>
+                  <p>{member.description}</p>
+                  {member.tags?.length ? <div className="team-member-tags">{member.tags.map((tag) => <span key={tag}>{tag}</span>)}</div> : null}
+                </article>
+              ))}
+            </div>
+          ) : <div className="team-empty"><Empty description="团队成员配置待补充" /></div>}
+          {supportEnabled ? (
+            <div className="team-contact-row">
+              <span>需要团队协作或技术支持？</span>
+              <button type="button" onClick={() => setSupportOpen(true)}>联系团队 / 进入 MSKPP 技术支撑群 →</button>
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <div className="team-section-heading team-results-heading">
+            <h2>重点成果</h2>
+            <Button type="link" disabled={!team.all_achievements_url} onClick={() => team.all_achievements_url && openConfiguredUrl(team.all_achievements_url, navigate)}>
+              查看全部成果 <ArrowRightOutlined />
+            </Button>
           </div>
-        ) : <Empty description="暂无团队成果" />}
-      </Card>
+          {team.achievements.length ? (
+            <div className="team-achievement-grid">
+              {team.achievements.slice(0, 3).map((item) => (
+                <button
+                  type="button"
+                  className="team-achievement-card"
+                  key={item.id || `${item.title}-${item.date}`}
+                  disabled={!item.detail_url}
+                  onClick={() => item.detail_url && openConfiguredUrl(item.detail_url, navigate)}
+                >
+                  <span>{item.category}</span><h3>{item.title}</h3><p>{item.summary}</p>
+                  <small>{item.contributors}{item.date ? ` · ${item.date}` : ''}</small>
+                  {item.detail_url ? <em>查看成果 →</em> : null}
+                </button>
+              ))}
+            </div>
+          ) : <div className="team-empty"><Empty description="暂无团队成果" /></div>}
 
-      <Card className="team-section-card contribution-card" title="贡献榜 · 本季度">
-        <Table
-          rowKey="member"
-          pagination={false}
-          dataSource={team.contributions}
-          locale={{ emptyText: '暂无贡献数据' }}
-          columns={[
-            { title: '成员', dataIndex: 'member', render: (value: string) => <strong>{value}</strong> },
-            { title: '主要贡献', dataIndex: 'contribution' },
-            { title: '成果数', dataIndex: 'achievement_count', width: 100 },
-            { title: '贡献值 ⓘ', dataIndex: 'contribution_score', width: 120 },
-            { title: '浏览量', dataIndex: 'views', width: 120, render: (value: number) => value.toLocaleString() },
-          ]}
-        />
-      </Card>
-      <div className="config-hint">本页内容由 backend/config/platform_content.yml 维护。</div>
+          <div className="team-section-heading"><h2>贡献榜 · 本季度</h2><span>贡献值用于鼓励协作与成果沉淀</span></div>
+          <div className="team-contribution-table">
+            <Table
+              rowKey="member" pagination={false} dataSource={team.contributions} locale={{ emptyText: '暂无贡献数据' }}
+              columns={[
+                { title: '成员', dataIndex: 'member', render: (value: string) => <strong>{value}</strong> },
+                { title: '主要贡献', dataIndex: 'contribution' },
+                { title: '成果数', dataIndex: 'achievement_count', width: 100 },
+                { title: '贡献值', dataIndex: 'contribution_score', width: 110 },
+                { title: '浏览量', dataIndex: 'views', width: 110, render: (value: number) => value.toLocaleString() },
+              ]}
+            />
+          </div>
+        </>
+      )}
+      <SupportGroupModal open={supportOpen} onClose={() => setSupportOpen(false)} />
     </div>
   );
 }

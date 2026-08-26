@@ -9,18 +9,43 @@ class CommunityLink(BaseModel):
     name: str
     url: str
     enabled: bool
+    group: Literal["ecosystem", "support"] = "ecosystem"
+    order: int = 0
+
+
+class PlatformSupport(BaseModel):
+    key: str = "mskpp_support"
+    name: str = "MSKPP 技术支撑群"
+    resource: str = "welink_support_group"
+    enabled: bool = True
 
 
 class PlatformConfigResponse(BaseModel):
     communities: list[CommunityLink]
+    support: PlatformSupport = Field(default_factory=PlatformSupport)
 
 
 class TeamAchievement(BaseModel):
+    id: str = ""
     title: str
     category: str = "团队成果"
     summary: str = ""
     contributors: str = ""
     date: str = ""
+    featured: bool = False
+    featured_order: int = 0
+    enabled: bool = True
+    detail_url: str = ""
+
+
+class TeamMember(BaseModel):
+    employee_id: str
+    name: str
+    direction: str = ""
+    description: str = ""
+    tags: list[str] = Field(default_factory=list)
+    order: int = 0
+    enabled: bool = True
 
 
 class TeamContribution(BaseModel):
@@ -35,9 +60,11 @@ class TeamConfigResponse(BaseModel):
     name: str
     description: str
     team_size: str = ""
-    specialties: list[str]
-    achievements: list[TeamAchievement]
+    specialties: list[str] = Field(default_factory=list)
+    members: list[TeamMember] = Field(default_factory=list)
+    achievements: list[TeamAchievement] = Field(default_factory=list)
     contributions: list[TeamContribution] = Field(default_factory=list)
+    all_achievements_url: str = ""
 
 
 class FeedbackCreate(BaseModel):

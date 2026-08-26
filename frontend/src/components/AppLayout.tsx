@@ -10,9 +10,11 @@ import {
   GlobalOutlined,
   HomeOutlined,
   LogoutOutlined,
+  MenuOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   PlusSquareOutlined,
+  QuestionCircleOutlined,
   SafetyCertificateOutlined,
   UnorderedListOutlined,
   TeamOutlined,
@@ -23,6 +25,7 @@ import { useAuth } from '../auth/AuthContext';
 import { collaborationApi, type CommunityLink, type FeedbackPayload } from '../api/collaboration';
 import { trackAnalyticsEventQuietly } from '../api/analytics';
 import { AnalyticsTracker } from './AnalyticsTracker';
+import { SupportGroupModal } from './SupportGroupModal';
 
 const { Header, Sider, Content } = Layout;
 
@@ -30,6 +33,7 @@ type NavItem = {
   path: string;
   label: string;
   icon: ReactNode;
+  adminOnly?: boolean;
 };
 
 type NavGroup = {
@@ -47,7 +51,7 @@ const navGroups: NavGroup[] = [
   },
   {
     key: 'simulation',
-    label: '仿真',
+    label: '仿真器',
     items: [
       { path: '/simulation/new', label: '新建仿真任务', icon: <PlusSquareOutlined /> },
       { path: '/simulation/tasks', label: '我的任务', icon: <UnorderedListOutlined /> },
@@ -64,23 +68,22 @@ const navGroups: NavGroup[] = [
     items: [{ path: '/performance', label: '分析工作台', icon: <BulbOutlined /> }],
   },
   {
-    key: 'collaboration',
-    label: '团队与共建',
+    key: 'team',
+    label: '团队风采',
+    items: [{ path: '/team', label: '团队风采', icon: <TeamOutlined /> }],
+  },
+  {
+    key: 'demands',
+    label: '需求池',
+    items: [{ path: '/demands', label: '需求列表', icon: <CommentOutlined /> }],
+  },
+  {
+    key: 'management',
+    label: '管理中心',
     items: [
-      { path: '/team', label: '团队风采', icon: <TeamOutlined /> },
-      { path: '/demands', label: '需求池', icon: <CommentOutlined /> },
+      { path: '/permissions', label: '权限中心', icon: <SafetyCertificateOutlined /> },
+      { path: '/usage-analytics', label: '使用分析', icon: <LineChartOutlined />, adminOnly: true },
     ],
-  },
-  {
-    key: 'operations',
-    label: '运营管理',
-    adminOnly: true,
-    items: [{ path: '/usage-analytics', label: '使用分析', icon: <LineChartOutlined /> }],
-  },
-  {
-    key: 'account',
-    label: '账户',
-    items: [{ path: '/permissions', label: '权限中心', icon: <SafetyCertificateOutlined /> }],
   },
 ];
 
@@ -92,16 +95,18 @@ function isActivePath(current: string, target: string) {
 
 export function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     overview: true,
     simulation: true,
     benchmark: true,
     performance: true,
-    collaboration: true,
-    operations: true,
-    account: true,
+    team: true,
+    demands: true,
+    management: true,
   });
   const [communities, setCommunities] = useState<CommunityLink[]>([]);
+  const [supportOpen, setSupportOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
   const [feedbackForm] = Form.useForm<FeedbackPayload>();
@@ -110,7 +115,7 @@ export function AppLayout() {
   const { user, logout } = useAuth();
 
   const pageTitle = useMemo(() => {
-    if (location.pathname === '/home') return '首页';
+    if (location.pathname === '/home') return '平台总览';
     if (location.pathname === '/simulation/new') return '新建仿真任务';
     if (/^\/simulation\/tasks\/[^/]+\/result$/.test(location.pathname)) return '仿真结果';
     if (/^\/simulation\/tasks\/[^/]+$/.test(location.pathname)) return '任务详情';
@@ -131,6 +136,10 @@ export function AppLayout() {
       .then((config) => setCommunities(config.communities))
       .catch(() => setCommunities([]));
   }, []);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
 
   async function submitFeedback(values: FeedbackPayload) {
     setFeedbackSubmitting(true);
@@ -166,7 +175,7 @@ export function AppLayout() {
         collapsedWidth={76}
         collapsed={collapsed}
         theme="light"
-        className="app-sider"
+        className={mobileNavOpen ? 'app-sider mobile-open' : 'app-sider'}
       >
         <button
           type="button"
@@ -205,7 +214,7 @@ export function AppLayout() {
 
                 {(collapsed || opened) ? (
                   <div className="sidebar-group-items">
-                    {group.items.map((item) => {
+                    {group.items.filter((item) => !item.adminOnly || user?.authMode === 'admin').map((item) => {
                       const active = isActivePath(location.pathname, item.path);
                       return (
                         <button
@@ -213,7 +222,10 @@ export function AppLayout() {
                           type="button"
                           title={collapsed ? item.label : undefined}
                           className={active ? 'sidebar-item active' : 'sidebar-item'}
-                          onClick={() => navigate(item.path)}
+                          onClick={() => {
+                            navigate(item.path);
+                            setMobileNavOpen(false);
+                          }}
                         >
                           <span className="sidebar-item-icon">{item.icon}</span>
                           {!collapsed ? <span>{item.label}</span> : null}
@@ -238,14 +250,20 @@ export function AppLayout() {
         </button>
       </Sider>
 
+      {mobileNavOpen ? (
+        <button type="button" className="mobile-nav-backdrop" aria-label="关闭导航" onClick={() => setMobileNavOpen(false)} />
+      ) : null}
+
       <Layout>
         <Header className="app-header">
-          <Typography.Text className="header-page-title">{pageTitle}</Typography.Text>
+          <div className="header-leading">
+            <Button className="mobile-nav-trigger" type="text" icon={<MenuOutlined />} aria-label="打开导航" onClick={() => setMobileNavOpen(true)} />
+            <Typography.Text className="header-page-title">{pageTitle}</Typography.Text>
+          </div>
           <div className="header-user">
-            <Dropdown
-              trigger={['click']}
-              menu={{
-                items: communities.map((item) => ({
+            <Dropdown trigger={['click']} menu={{
+              items: [
+                ...communities.map((item) => ({
                   key: item.key,
                   label: item.enabled ? item.name : `${item.name}（暂未配置）`,
                   disabled: !item.enabled,
@@ -254,11 +272,13 @@ export function AppLayout() {
                     if (item.enabled) window.open(item.url, '_blank', 'noopener,noreferrer');
                   },
                 })),
-              }}
-            >
-              <Button type="text" icon={<GlobalOutlined />}>生态社区</Button>
+                { type: 'divider' as const },
+                { key: 'support-group', label: 'MSKPP 技术支撑群', icon: <QuestionCircleOutlined />, onClick: () => setSupportOpen(true) },
+                { key: 'feedback', label: '意见反馈', icon: <CommentOutlined />, onClick: () => setFeedbackOpen(true) },
+              ],
+            }}>
+              <Button type="text" icon={<QuestionCircleOutlined />}>帮助与反馈</Button>
             </Dropdown>
-            <Button type="text" icon={<CommentOutlined />} onClick={() => setFeedbackOpen(true)}>意见反馈</Button>
             <span className="internal-badge">内部平台</span>
             <Dropdown
               trigger={['click']}
@@ -329,6 +349,7 @@ export function AppLayout() {
           <div className="feedback-attachment-note">截图和附件将在后续版本支持。</div>
         </Form>
       </Modal>
+      <SupportGroupModal open={supportOpen} onClose={() => setSupportOpen(false)} />
     </Layout>
   );
 }

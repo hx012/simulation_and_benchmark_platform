@@ -302,7 +302,7 @@ export function UsageAnalyticsPage() {
         )}
       />
 
-      {overviewError ? <Alert className="analytics-error" type="error" showIcon message="统计数据加载失败" description={overviewError} action={<a onClick={() => void loadOverview()}>重试</a>} /> : null}
+      {overviewError ? <Alert className="analytics-error" type="error" showIcon title="统计数据加载失败" description={overviewError} action={<a onClick={() => void loadOverview()}>重试</a>} /> : null}
 
       <Tabs
         items={[
@@ -321,12 +321,12 @@ export function UsageAnalyticsPage() {
                   ))}
                 </Row>
                 <Row gutter={[16, 16]}>
-                  <Col xs={24} xl={15}>
+                  <Col xs={24} xl={12}>
                     <Card title="访问趋势" extra="每日活跃用户（北京时间）" className="clean-card analytics-panel-card">
                       <TrendChart points={overview?.trend || []} />
                     </Card>
                   </Col>
-                  <Col xs={24} xl={9}>
+                  <Col xs={24} xl={12}>
                     <Card title="页面访问排行" extra="按 PV" className="clean-card analytics-panel-card">
                       <RankingTable data={overview?.pages || []} kind="page" />
                     </Card>
@@ -386,7 +386,7 @@ export function UsageAnalyticsPage() {
         ]}
       />
 
-      <Drawer title="用户行为详情" width={760} open={detailOpen} onClose={() => setDetailOpen(false)}>
+      <Drawer title="用户行为详情" size={760} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {detailLoading ? <Skeleton active /> : userDetail ? (
           <div className="analytics-user-detail">
             <Descriptions column={2} size="small" bordered>

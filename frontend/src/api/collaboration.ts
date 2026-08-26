@@ -5,18 +5,43 @@ export interface CommunityLink {
   name: string;
   url: string;
   enabled: boolean;
+  group: 'ecosystem' | 'support';
+  order: number;
+}
+
+export interface PlatformSupport {
+  key: string;
+  name: string;
+  resource: string;
+  enabled: boolean;
 }
 
 export interface PlatformConfig {
   communities: CommunityLink[];
+  support: PlatformSupport;
 }
 
 export interface TeamAchievement {
+  id: string;
   title: string;
   category: string;
   summary: string;
   contributors: string;
   date: string;
+  featured: boolean;
+  featured_order: number;
+  enabled: boolean;
+  detail_url: string;
+}
+
+export interface TeamMember {
+  employee_id: string;
+  name: string;
+  direction: string;
+  description: string;
+  tags: string[];
+  order: number;
+  enabled: boolean;
 }
 
 export interface TeamConfig {
@@ -24,7 +49,9 @@ export interface TeamConfig {
   description: string;
   team_size: string;
   specialties: string[];
+  members: TeamMember[];
   achievements: TeamAchievement[];
+  all_achievements_url: string;
   contributions: Array<{
     member: string;
     contribution: string;

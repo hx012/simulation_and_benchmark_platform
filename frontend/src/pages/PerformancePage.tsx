@@ -13,7 +13,6 @@ import {
 } from 'antd';
 import {
   BarChartOutlined,
-  ClockCircleOutlined,
   DatabaseOutlined,
   FullscreenOutlined,
   UploadOutlined,
@@ -36,20 +35,12 @@ type InputMode = 'task' | 'file';
 
 const capabilityPlaceholders = [
   {
-    name: 'Roofline',
-    description: '分析算术强度与计算、带宽上限之间的关系。',
+    name: '指令分布',
+    description: '指令类型统计能力开发中。',
   },
   {
-    name: 'Arithmetic / Memory Bandwidth',
-    description: '分析计算单元利用率、访存吞吐和带宽瓶颈。',
-  },
-  {
-    name: 'Memory Access Pattern',
-    description: '识别地址分布、访问热点、步长与缓存局部性。',
-  },
-  {
-    name: 'Communication Matrix',
-    description: '分析节点、Core 或 Rank 间的通信量与热点路径。',
+    name: '内存访问热力图',
+    description: '地址与时间窗口聚合能力开发中。',
   },
 ];
 
@@ -332,43 +323,25 @@ export function PerformancePage() {
           className="performance-alert"
           type="error"
           showIcon
-          message="数据无法分析"
+          title="数据无法分析"
           description={error}
         />
       ) : null}
 
       <div className="performance-section-heading">
-        <div><h2>分析能力</h2><span>根据当前接入的数据更新状态</span></div>
+        <div><h2>分析状态与导航</h2><span>系统自动运行当前数据支持且已经开放的全部分析</span></div>
       </div>
-      <div className="performance-capability-grid">
-        <Card className={`performance-capability-card ${result ? 'is-ready' : ''}`}>
-          <div className="performance-capability-head">
-            <ClockCircleOutlined />
-            <Tag color={result ? 'success' : analyzing ? 'processing' : 'default'}>
-              {result ? '可分析' : analyzing ? '分析中' : '等待数据'}
-            </Tag>
-          </div>
-          <h3>Trace 时间分析</h3>
-          <p>统计 MSKPP/ESL Pipe 或 TID 耗时、周期占比和同步事件过滤情况。</p>
-          <Button
-            disabled={!result}
-            onClick={() => resultRef.current?.scrollIntoView({ behavior: 'smooth' })}
-          >
-            查看结果 ↓
-          </Button>
-        </Card>
+      <nav className="performance-analysis-nav" aria-label="分析结果导航">
+        <button type="button" className="is-open" disabled={!result} onClick={() => resultRef.current?.scrollIntoView({ behavior: 'smooth' })}>
+          <span><strong>Trace 时间分析</strong><small>统计 Pipe / TID 耗时与周期占比</small></span>
+          <Tag color={result ? 'success' : analyzing ? 'processing' : 'blue'}>{result ? '查看结果' : analyzing ? '分析中' : '已开放'}</Tag>
+        </button>
         {capabilityPlaceholders.map((capability) => (
-          <Card key={capability.name} className="performance-capability-card is-planned">
-            <div className="performance-capability-head">
-              <BarChartOutlined />
-              <Tag>开发中</Tag>
-            </div>
-            <h3>{capability.name}</h3>
-            <p>{capability.description}</p>
-            <Button disabled>能力预留</Button>
-          </Card>
+          <button type="button" key={capability.name} disabled>
+            <span><strong>{capability.name}</strong><small>{capability.description}</small></span><Tag>能力开发中</Tag>
+          </button>
         ))}
-      </div>
+      </nav>
 
       <div ref={resultRef} className="performance-result-anchor">
         {analyzing ? (
@@ -394,7 +367,7 @@ export function PerformancePage() {
                 className="performance-alert"
                 type="warning"
                 showIcon
-                message={`已跳过 ${formatNumber(result.skipped_event_count)} 个不参与周期统计的事件`}
+                title={`已跳过 ${formatNumber(result.skipped_event_count)} 个不参与周期统计的事件`}
                 description={result.producer === 'esl'
                   ? '这些事件缺少有效的时间字段，或 pid 不符合 core.subcore 格式，因此无法归入 ESL 周期统计。'
                   : '这些事件缺少有效的 ts/dur，或 tid 无法映射到 Pipe；通常属于 Trace 元数据或标记事件。同步事件已单独统计。'}

@@ -403,7 +403,7 @@ export function CreateTaskPage() {
           className="task-quota-alert"
           type="warning"
           showIcon
-          message={`已达到任务保留上限（${quota?.retained_count} / ${quota?.limit}）`}
+          title={`已达到任务保留上限（${quota?.retained_count} / ${quota?.limit}）`}
           description="请先在“我的任务”中删除不再需要的任务，再创建新的仿真任务。"
           action={<Button onClick={() => navigate('/simulation/tasks')}>管理任务</Button>}
         />
@@ -442,7 +442,7 @@ export function CreateTaskPage() {
         {capabilitiesLoading ? (
           <div className="simulator-capability-loading"><Spin size="small" /> 正在读取仿真能力…</div>
         ) : capabilitiesError ? (
-          <Alert type="error" showIcon message="仿真能力读取失败" description={capabilitiesError} />
+          <Alert type="error" showIcon title="仿真能力读取失败" description={capabilitiesError} />
         ) : (
           <div className="simulator-capability-grid">
             <div className="simulator-capability-field">
@@ -515,7 +515,7 @@ export function CreateTaskPage() {
                   : 'info'
           }
           showIcon
-          message={validationState.title}
+          title={validationState.title}
         />
 
         {validation?.valid === false && validation.errors.length ? (

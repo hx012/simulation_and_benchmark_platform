@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Form, Input, message, Segmented } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { authApi } from '../../api/auth';
@@ -13,6 +13,7 @@ interface LoginFormValues {
 
 export function LoginPage() {
   const [form] = Form.useForm<LoginFormValues>();
+  const submitLockRef = useRef(false);
   const [submitting, setSubmitting] = useState(false);
   const [w3Redirecting, setW3Redirecting] = useState(false);
   const [authMode, setAuthMode] = useState<'w3' | 'admin'>('w3');
@@ -31,13 +32,20 @@ export function LoginPage() {
   }, [authenticated, initializing, navigate, redirectTo]);
 
   async function handleSubmit(values: LoginFormValues) {
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
     setSubmitting(true);
+    message.destroy('admin-login-error');
     try {
       await login(values.employeeId, 'admin', values.password);
       navigate(redirectTo, { replace: true });
     } catch (error) {
-      message.error(error instanceof Error ? error.message : String(error));
+      message.error({
+        key: 'admin-login-error',
+        content: error instanceof Error ? error.message : String(error),
+      });
     } finally {
+      submitLockRef.current = false;
       setSubmitting(false);
     }
   }
@@ -52,7 +60,12 @@ export function LoginPage() {
     <div className="employee-login-page">
       <ArchitectureBackground variant="login" />
       <main className="employee-login-card">
+        <div className="employee-login-brand">
+          <span className="employee-login-brand-mark">AI</span>
+          <div><strong>AI Chip Platform</strong><small>Internal Engineering Workspace</small></div>
+        </div>
         <h1>登录平台</h1>
+        <p className="employee-login-intro">使用 W3 统一认证，或通过管理员账号进入内部工程平台。</p>
         <Segmented
           block
           className="login-mode-switch"
@@ -66,7 +79,7 @@ export function LoginPage() {
             form.setFieldValue('password', '');
           }}
         />
-        {oauthError ? <Alert type="error" showIcon message={oauthError} style={{ marginBottom: 16 }} /> : null}
+        {oauthError ? <Alert type="error" showIcon title={oauthError} style={{ marginBottom: 16 }} /> : null}
         {authMode === 'w3' ? (
           <Button
             type="primary"
@@ -118,6 +131,7 @@ export function LoginPage() {
             type="primary"
             htmlType="submit"
             loading={submitting}
+            disabled={submitting}
             block
             size="large"
             className="employee-login-submit"
@@ -125,6 +139,7 @@ export function LoginPage() {
             {authMode === 'admin' ? '以管理员身份登录' : '进入平台'}
           </Button>
         </Form>}
+        <Button type="text" className="employee-login-back" onClick={() => navigate('/')}>← 返回门户页</Button>
       </main>
     </div>
   );
