@@ -1203,6 +1203,25 @@ button, input, textarea, select { font: inherit; }
 .platform-home-list-card .ant-card-head-title { font-size: 16px; font-weight: 720; }
 .platform-home-list-card .ant-card-body { padding: 4px 18px 18px; }
 .platform-home-list-card .ant-card-extra .ant-btn-link { padding-inline: 0; }
+.platform-recent-work-description { color: #8a929d; font-size: 12px; font-weight: 400; }
+.platform-recent-work-row {
+  width: 100%; min-height: 58px; padding: 8px 0; border: 0; border-top: 1px solid #e2e5e9;
+  background: transparent; display: grid; grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center; gap: 12px; color: #374151; text-align: left; cursor: pointer;
+}
+.platform-recent-work-row:last-child { border-bottom: 1px solid #e2e5e9; }
+.platform-recent-work-row:hover .platform-recent-work-copy strong,
+.platform-recent-work-row:hover .platform-recent-work-action { color: #2563eb; }
+.platform-recent-work-icon {
+  width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
+  background: #edf3ff; color: #2563eb; font-size: 14px;
+}
+.platform-recent-work-icon.is-benchmark { background: #ecf8ff; color: #087ea4; }
+.platform-recent-work-icon.is-performance { background: #f4efff; color: #6d4ad0; }
+.platform-recent-work-copy { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.platform-recent-work-copy strong { overflow: hidden; color: #1f2937; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.platform-recent-work-copy small { overflow: hidden; color: #8a929d; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.platform-recent-work-action { color: #667085; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .platform-home-list-row {
   min-height: 42px; border-top: 1px solid #e2e5e9; display: flex;
   align-items: center; justify-content: space-between; gap: 18px; color: #374151; font-size: 13px;

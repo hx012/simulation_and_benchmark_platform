@@ -337,6 +337,9 @@ export function CreateTaskPage() {
         simulator_version: selectedSimulator.key,
         chip_variant: selectedVariant.key,
         simulation_mode: selectedMode.key,
+        target_type: 'simulation_task',
+        target_id: response.task.task_id,
+        target_name: response.task.task_name,
       });
 
       message.success(`任务已提交，前方 ${response.queued_ahead} 个任务`);

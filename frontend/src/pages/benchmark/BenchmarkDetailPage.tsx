@@ -60,6 +60,9 @@ export function BenchmarkDetailPage() {
       benchmark_name: definition.name,
       benchmark_type: definition.category,
       test_target: definition.target,
+      target_type: 'benchmark',
+      target_id: `${definition.vendor}/${definition.chip}/${definition.name}`,
+      target_name: definition.name,
     });
   }, [definition?.benchmark_id]);
 

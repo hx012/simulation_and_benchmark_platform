@@ -4,13 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { benchmarkApi } from '../api/benchmark';
 import { useAuth } from '../auth/AuthContext';
 import { PageHeading } from '../components/PageHeading';
-import { PermissionRequestButton } from '../components/PermissionRequestButton';
 import { collaborationApi, type CommunityLink, type TeamConfig } from '../api/collaboration';
+import { recentActivityApi } from '../api/recentActivity';
+import type { RecentActivityList } from '../types/recentActivity';
 
 interface PlatformAssetStats {
   chips: number | null;
   benchmarks: number | null;
-  recentBenchmarks: Array<{ name: string; category: string }>;
 }
 
 export function HomePage() {
@@ -20,6 +20,7 @@ export function HomePage() {
   const [stats, setStats] = useState<PlatformAssetStats | null>(null);
   const [communities, setCommunities] = useState<CommunityLink[]>([]);
   const [team, setTeam] = useState<TeamConfig | null>(null);
+  const [recentWork, setRecentWork] = useState<RecentActivityList | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,7 +29,6 @@ export function HomePage() {
       try {
         let chipCount: number | null = null;
         let benchmarkCount: number | null = null;
-        let recentBenchmarks: Array<{ name: string; category: string }> = [];
         if (canViewBenchmark) {
           const chips = await benchmarkApi.listChips();
           const benchmarkLists = await Promise.all(
@@ -36,22 +36,17 @@ export function HomePage() {
           );
           chipCount = chips.total;
           benchmarkCount = benchmarkLists.reduce((sum, item) => sum + item.total, 0);
-          recentBenchmarks = benchmarkLists.flatMap((list) => list.items.map((item) => ({
-            name: `${item.chip} / ${item.name}`,
-            category: item.category || item.target || 'Benchmark',
-          }))).slice(0, 3);
         }
 
         if (!cancelled) {
           setStats({
             chips: chipCount,
             benchmarks: benchmarkCount,
-            recentBenchmarks,
           });
         }
       } catch {
         if (!cancelled) {
-          setStats({ chips: null, benchmarks: null, recentBenchmarks: [] });
+          setStats({ chips: null, benchmarks: null });
         }
       }
     }
@@ -61,6 +56,23 @@ export function HomePage() {
       cancelled = true;
     };
   }, [canViewBenchmark]);
+
+  useEffect(() => {
+    let cancelled = false;
+    recentActivityApi.list()
+      .then((response) => {
+        if (!cancelled) setRecentWork(response);
+      })
+      .catch(() => {
+        if (!cancelled) setRecentWork({
+          title: '近期工作',
+          description: '当前用户最近访问和操作',
+          empty_text: '暂无近期工作',
+          items: [],
+        });
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     void Promise.all([
@@ -125,24 +137,32 @@ export function HomePage() {
 
       <div className="platform-home-lower-grid">
         <Card
-          className="platform-home-list-card"
-          title="最近新增 Benchmark"
-          extra={canViewBenchmark
-            ? <Button type="link" onClick={() => navigate('/benchmark')}>查看全部</Button>
-            : <PermissionRequestButton permission="benchmark_access" reason="从首页 Benchmark 列表申请" />}
+          className="platform-home-list-card platform-recent-work-card"
+          title={recentWork?.title || '近期工作'}
+          extra={<span className="platform-recent-work-description">{recentWork?.description || '当前用户最近访问和操作'}</span>}
         >
-          {stats?.recentBenchmarks.length ? stats.recentBenchmarks.map((item) => (
-            <div className="platform-home-list-row" key={item.name}>
-              <span>{item.name}</span><em>{item.category}</em>
-            </div>
-          )) : <div className="platform-home-empty-row">暂无可展示的新增记录</div>}
+          {recentWork?.items.length ? recentWork.items.map((item) => (
+            <button
+              type="button"
+              className="platform-recent-work-row"
+              key={item.id}
+              onClick={() => navigate(item.href)}
+            >
+              <span className={`platform-recent-work-icon is-${item.domain}`}>{item.icon}</span>
+              <span className="platform-recent-work-copy">
+                <strong>{item.title}</strong>
+                <small>{item.description}</small>
+              </span>
+              <span className="platform-recent-work-action">{item.action_label} →</span>
+            </button>
+          )) : <div className="platform-home-empty-row">{recentWork?.empty_text || '暂无近期工作'}</div>}
         </Card>
         <Card
           className="platform-home-list-card"
           title="团队最新成果"
           extra={<Button type="link" onClick={() => navigate('/team')}>进入团队风采</Button>}
         >
-          {team?.achievements.length ? team.achievements.slice(0, 3).map((item) => (
+          {team?.achievements.length ? team.achievements.slice(0, 5).map((item) => (
             <div className="platform-home-list-row" key={`${item.title}-${item.date}`}>
               <span>{item.title}</span><em>{item.category}</em>
             </div>
