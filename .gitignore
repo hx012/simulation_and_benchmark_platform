@@ -4,3 +4,4 @@
 /deploy/offline/python/*
 !/deploy/offline/python/README.md
 /deploy/local/
+/artifacts/server-patches/

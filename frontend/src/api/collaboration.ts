@@ -55,11 +55,44 @@ export interface TeamAchievement {
 export interface TeamMember {
   employee_id: string;
   name: string;
+  avatar_file: string;
+  avatar_url: string;
   direction: string;
   description: string;
   tags: string[];
   order: number;
   enabled: boolean;
+  is_team_member: boolean;
+  representative_achievements: string[];
+  latest_completion_date: string | null;
+}
+
+export interface TeamAchievementArchiveItem {
+  achievement_id: string;
+  owner_employee_id: string;
+  owner_name: string;
+  title: string;
+  category: string;
+  summary: string;
+  completion_date: string;
+  reference_url: string;
+  representative: boolean;
+  score: number | null;
+  can_edit: boolean;
+  can_delete: boolean;
+  can_score: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeamAchievementPayload {
+  owner_employee_id?: string;
+  title: string;
+  category: string;
+  summary: string;
+  completion_date: string;
+  reference_url: string;
+  representative: boolean;
 }
 
 export interface TeamConfig {
@@ -70,6 +103,10 @@ export interface TeamConfig {
   members: TeamMember[];
   achievements: TeamAchievement[];
   all_achievements_url: string;
+  archive_visibility: 'team_only' | 'authenticated';
+  viewer_is_team_member: boolean;
+  viewer_is_admin: boolean;
+  viewer_can_view_archives: boolean;
   contributions: Array<{
     member: string;
     contribution: string;
@@ -165,6 +202,23 @@ export interface DemandAdminPayload {
 export const collaborationApi = {
   getPlatformConfig: () => apiRequest<PlatformConfig>('/api/platform-config'),
   getTeam: () => apiRequest<TeamConfig>('/api/team'),
+  listTeamAchievementArchive: (employeeId: string) => apiRequest<TeamAchievementArchiveItem[]>(
+    `/api/team/achievement-archives/${encodeURIComponent(employeeId)}`,
+  ),
+  createTeamAchievement: (payload: TeamAchievementPayload) => apiRequest<TeamAchievementArchiveItem>(
+    '/api/team/achievement-archives', { method: 'POST', body: JSON.stringify(payload) },
+  ),
+  updateTeamAchievement: (achievementId: string, payload: TeamAchievementPayload) => apiRequest<TeamAchievementArchiveItem>(
+    `/api/team/achievement-archives/${encodeURIComponent(achievementId)}`, { method: 'PATCH', body: JSON.stringify(payload) },
+  ),
+  deleteTeamAchievement: (achievementId: string) => apiRequest<void>(
+    `/api/team/achievement-archives/${encodeURIComponent(achievementId)}`, { method: 'DELETE' },
+  ),
+  scoreTeamAchievement: (achievementId: string, score: number | null) => apiRequest<TeamAchievementArchiveItem>(
+    `/api/admin/team/achievement-archives/${encodeURIComponent(achievementId)}/score`, {
+      method: 'PATCH', body: JSON.stringify({ score }),
+    },
+  ),
   getFeatureReleases: () => apiRequest<FeatureReleaseConfig>('/api/feature-releases'),
   submitFeedback: (payload: FeedbackPayload) => apiRequest<FeedbackItem>('/api/feedback', {
     method: 'POST',

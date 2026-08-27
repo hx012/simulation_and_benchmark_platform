@@ -16,7 +16,8 @@ export function LoginPage() {
   const submitLockRef = useRef(false);
   const [submitting, setSubmitting] = useState(false);
   const [w3Redirecting, setW3Redirecting] = useState(false);
-  const [authMode, setAuthMode] = useState<'w3' | 'admin'>('w3');
+  const [authMode, setAuthMode] = useState<'normal' | 'w3' | 'admin'>('w3');
+  const [w3OAuthEnabled, setW3OAuthEnabled] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
   const { authenticated, initializing, login } = useAuth();
@@ -31,13 +32,20 @@ export function LoginPage() {
     }
   }, [authenticated, initializing, navigate, redirectTo]);
 
+  useEffect(() => {
+    void authApi.getConfig().then((config) => {
+      setW3OAuthEnabled(config.w3_oauth_enabled);
+      if (!config.w3_oauth_enabled) setAuthMode('normal');
+    }).catch(() => undefined);
+  }, []);
+
   async function handleSubmit(values: LoginFormValues) {
     if (submitLockRef.current) return;
     submitLockRef.current = true;
     setSubmitting(true);
     message.destroy('admin-login-error');
     try {
-      await login(values.employeeId, 'admin', values.password);
+      await login(values.employeeId, authMode === 'admin' ? 'admin' : 'normal', values.password);
       navigate(redirectTo, { replace: true });
     } catch (error) {
       message.error({
@@ -65,17 +73,17 @@ export function LoginPage() {
           <div><strong>AI Chip Platform</strong><small>Internal Engineering Workspace</small></div>
         </div>
         <h1>登录平台</h1>
-        <p className="employee-login-intro">使用 W3 统一认证，或通过管理员账号进入内部工程平台。</p>
+        <p className="employee-login-intro">{w3OAuthEnabled ? '使用 W3 统一认证，或通过管理员账号进入内部工程平台。' : '团队成员可通过工号进入平台；管理员需使用账号密码登录。'}</p>
         <Segmented
           block
           className="login-mode-switch"
           value={authMode}
           options={[
-            { label: 'W3 登录', value: 'w3' },
+            { label: w3OAuthEnabled ? 'W3 登录' : '工号登录', value: w3OAuthEnabled ? 'w3' : 'normal' },
             { label: '管理员登录', value: 'admin' },
           ]}
           onChange={(value) => {
-            setAuthMode(value as 'w3' | 'admin');
+            setAuthMode(value as 'normal' | 'w3' | 'admin');
             form.setFieldValue('password', '');
           }}
         />

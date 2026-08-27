@@ -1,11 +1,14 @@
 team:
   name: 芯片仿真与性能分析团队
+  # team_only：普通用户点击档案时提示仅团队成员可看；authenticated：所有登录用户可查看。
+  archive_visibility: team_only
   description: 团队面向芯片架构研究与负载建模，围绕 Benchmark 筛选、MSKPP 芯片仿真、Trace 与性能分析开展平台和工具建设，持续沉淀可复用的仿真能力、Benchmark 和性能分析工具，为芯片性能看护、瓶颈定位、需求分析和微架构优化提供支撑。
   team_size: 7 人
   specialties: [芯片微架构, MSKPP 内源仿真器, NpuSim 开源仿真器]
   members:
     - employee_id: w00517656
       name: 魏富春
+      avatar_file: w00517656.webp
       direction: 芯片微架构 · 仿真器架构设计
       description: 负责芯片微架构研究与需求分析，以及仿真器架构设计。
       tags: [芯片微架构, 需求分析, 仿真器架构]
@@ -13,6 +16,7 @@ team:
       enabled: true
     - employee_id: h00517730
       name: 郝雪桐
+      avatar_file: h00517730.webp
       direction: STARS 任务与资源调度
       description: 负责 STARS 任务与资源调度方向的微架构研究，以及 MSKPP 内源仿真器相关模块开发。
       tags: [STARS, 任务调度, 资源调度, MSKPP]
@@ -20,6 +24,7 @@ team:
       enabled: true
     - employee_id: s00833452
       name: 苏文翀
+      avatar_file: s00833452.webp
       direction: AI Core · SIMT/SIMD 微架构
       description: 负责 AI Core SIMT/SIMD 微架构研究，以及 MSKPP 内源仿真器相关模块开发。
       tags: [AI Core, SIMT, SIMD, MSKPP]
@@ -27,6 +32,7 @@ team:
       enabled: true
     - employee_id: a00595238
       name: 童安哲
+      avatar_file: a00595238.webp
       direction: NoC 微架构
       description: 负责 NoC 微架构研究，以及 MSKPP 内源仿真器相关模块开发。
       tags: [NoC, 芯片互联, 微架构, MSKPP]
@@ -34,6 +40,7 @@ team:
       enabled: true
     - employee_id: z00994199
       name: 赵研
+      avatar_file: z00994199.webp
       direction: Vector 微架构
       description: 负责 Vector 微架构研究，以及 MSKPP 内源仿真器相关模块开发。
       tags: [Vector, 微架构, MSKPP]
@@ -41,6 +48,7 @@ team:
       enabled: true
     - employee_id: w00943468
       name: 吴瑞泽
+      avatar_file: w00943468.webp
       direction: NpuSim · 开源仿真器架构
       description: 负责 NpuSim 开源仿真器的整体架构设计与核心能力开发。
       tags: [NpuSim, 开源仿真器, 架构设计]
@@ -48,6 +56,7 @@ team:
       enabled: true
     - employee_id: x00929963
       name: 徐问问
+      avatar_file: x00929963.webp
       direction: NpuSim · Vector 模块
       description: 负责 NpuSim 开源仿真器 Vector 模块的方案设计与功能开发。
       tags: [NpuSim, Vector, 模块设计]

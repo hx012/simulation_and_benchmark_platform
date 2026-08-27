@@ -194,8 +194,24 @@ export function PermissionCenterPage() {
         role: item.role,
         display_name: item.display_name,
         active,
+        is_team_member: item.is_team_member,
       });
       message.success(active ? `已解除 ${item.display_name} 的登录屏蔽` : `已屏蔽 ${item.display_name} 登录`);
+      await loadAdminData();
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function setTeamMember(item: AdminUserRecord, enabled: boolean) {
+    try {
+      await authApi.updateUser(item.user_id, {
+        role: item.role,
+        display_name: item.display_name,
+        active: item.active,
+        is_team_member: enabled,
+      });
+      message.success(enabled ? `已将 ${item.display_name} 标记为团队成员` : `已取消 ${item.display_name} 的团队成员标签`);
       await loadAdminData();
     } catch (error) {
       message.error(error instanceof Error ? error.message : String(error));
@@ -253,7 +269,7 @@ export function PermissionCenterPage() {
     { title: '用户', render: (_, item) => <div><strong>{item.display_name}</strong><small className="permission-table-secondary">{item.user_id}</small></div> },
     {
       title: '身份', width: 130,
-      render: (_, item) => <Space><Tag color={item.role === 'admin' ? 'purple' : 'default'}>{item.role === 'admin' ? '管理员' : '普通用户'}</Tag>{item.bootstrap_admin ? <Tag color="blue">恢复管理员</Tag> : null}</Space>,
+      render: (_, item) => <Space wrap><Tag color={item.role === 'admin' ? 'purple' : 'default'}>{item.role === 'admin' ? '管理员' : '普通用户'}</Tag>{item.is_team_member ? <Tag color="cyan">团队成员</Tag> : null}{item.bootstrap_admin ? <Tag color="blue">恢复管理员</Tag> : null}</Space>,
     },
     {
       title: '登录状态', width: 120,
@@ -266,6 +282,11 @@ export function PermissionCenterPage() {
         const blockDisabled = item.bootstrap_admin || isSelf;
         return (
           <Space wrap>
+            {item.is_team_member ? (
+              <Popconfirm title="取消团队成员标签？" description="历史成果保留，但该用户将不能再访问完整成果档案。" okText="确认" cancelText="取消" onConfirm={() => void setTeamMember(item, false)}>
+                <Button size="small">取消团队成员</Button>
+              </Popconfirm>
+            ) : <Button size="small" onClick={() => void setTeamMember(item, true)}>设为团队成员</Button>}
             {item.role === 'admin' ? (
               <>
                 <Button size="small" onClick={() => openAdminEditor(item)}>配置管理员</Button>

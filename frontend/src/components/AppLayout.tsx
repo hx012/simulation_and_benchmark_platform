@@ -33,6 +33,7 @@ type NavItem = {
   label: string;
   icon: ReactNode;
   adminOnly?: boolean;
+  teamOrAdmin?: boolean;
 };
 
 type NavGroup = {
@@ -82,7 +83,7 @@ const navGroups: NavGroup[] = [
     items: [
       { path: '/permissions', label: '权限中心', icon: <SafetyCertificateOutlined /> },
       { path: '/collaboration-admin', label: '共建管理', icon: <SolutionOutlined />, adminOnly: true },
-      { path: '/usage-analytics', label: '使用分析', icon: <LineChartOutlined />, adminOnly: true },
+      { path: '/usage-analytics', label: '使用分析', icon: <LineChartOutlined />, teamOrAdmin: true },
     ],
   },
 ];
@@ -184,7 +185,10 @@ export function AppLayout() {
 
                 {(collapsed || opened) ? (
                   <div className="sidebar-group-items">
-                    {group.items.filter((item) => !item.adminOnly || user?.authMode === 'admin').map((item) => {
+                    {group.items.filter((item) => (
+                      (!item.adminOnly || user?.authMode === 'admin')
+                      && (!item.teamOrAdmin || user?.isTeamMember || user?.authMode === 'admin')
+                    )).map((item) => {
                       const active = isActivePath(location.pathname, item.path);
                       return (
                         <button

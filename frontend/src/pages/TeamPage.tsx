@@ -1,114 +1,145 @@
-import { useEffect, useState } from 'react';
-import { ArrowRightOutlined, UserAddOutlined } from '@ant-design/icons';
-import { Button, Empty, Modal, Skeleton, Table, Tabs, Typography } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowRightOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  Button, Checkbox, Drawer, Empty, Form, Input, InputNumber, message, Modal,
+  Popconfirm, Popover, Select, Skeleton, Space, Table, Tabs, Tag,
+} from 'antd';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { collaborationApi, type TeamConfig } from '../api/collaboration';
+import {
+  collaborationApi, type TeamAchievementArchiveItem, type TeamAchievementPayload,
+  type TeamConfig, type TeamMember,
+} from '../api/collaboration';
+import { useAuth } from '../auth/AuthContext';
+import { apiResourceUrl } from '../api/client';
 import { PageHeading } from '../components/PageHeading';
+import { ResultWatermark } from '../components/ResultWatermark';
+import { SupportGroupModal } from '../components/SupportGroupModal';
 
 function openConfiguredUrl(url: string, navigate: (path: string) => void) {
   if (url.startsWith('/')) navigate(url);
   else window.open(url, '_blank', 'noopener,noreferrer');
 }
 
+function MemberPhoto({ member, small = false }: { member: TeamMember; small?: boolean }) {
+  return <div className={`team-member-photo${small ? ' is-small' : ''}`}><span>{member.name.slice(-2)}</span>{member.avatar_url ? <img src={apiResourceUrl(member.avatar_url)} alt={`${member.name}头像`} onError={(event) => { event.currentTarget.style.display = 'none'; }} /> : null}</div>;
+}
+
+function RepresentativeAchievements({ items }: { items: string[] }) {
+  if (!items.length) return <span className="team-summary-empty">暂未设置</span>;
+  const visible = items.slice(0, 2);
+  const remaining = items.length - visible.length;
+  return <div className="team-representative-cell"><span>{visible.join(' · ')}</span>{remaining > 0 ? <Popover trigger="click" title={`代表成果（${items.length}）`} content={<ol className="team-representative-popover">{items.map((item) => <li key={item}>{item}</li>)}</ol>}><Button type="link" size="small">+{remaining} 项</Button></Popover> : null}</div>;
+}
+
+type AchievementFormValues = TeamAchievementPayload;
+
 export function TeamPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [team, setTeam] = useState<TeamConfig | null>(null);
-  const [joinOpen, setJoinOpen] = useState(false);
+  const [supportEnabled, setSupportEnabled] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [archiveMember, setArchiveMember] = useState<TeamMember | null>(null);
+  const [archiveItems, setArchiveItems] = useState<TeamAchievementArchiveItem[]>([]);
+  const [archiveLoading, setArchiveLoading] = useState(false);
+  const [editing, setEditing] = useState<TeamAchievementArchiveItem | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [scoreDrafts, setScoreDrafts] = useState<Record<string, number | null>>({});
+  const [form] = Form.useForm<AchievementFormValues>();
   const activeTab = searchParams.get('tab') === 'results' ? 'results' : 'intro';
 
+  async function loadTeam() {
+    try { setTeam(await collaborationApi.getTeam()); }
+    catch { setTeam({ name: '芯片仿真与性能分析团队', description: '团队内容暂时无法加载。', team_size: '', specialties: [], members: [], achievements: [], contributions: [], all_achievements_url: '', archive_visibility: 'team_only', viewer_is_team_member: false, viewer_is_admin: false, viewer_can_view_archives: false }); }
+  }
+
   useEffect(() => {
-    void collaborationApi.getTeam().then(setTeam).catch(() => setTeam({
-      name: '芯片仿真与性能分析团队', description: '团队内容暂时无法加载。', team_size: '', specialties: [], members: [], achievements: [], contributions: [], all_achievements_url: '',
-    }));
+    void loadTeam();
+    void collaborationApi.getPlatformConfig().then((config) => setSupportEnabled(config.support.enabled)).catch(() => setSupportEnabled(false));
   }, []);
 
+  async function loadArchive(member: TeamMember) {
+    setArchiveLoading(true);
+    try { const items = await collaborationApi.listTeamAchievementArchive(member.employee_id); setArchiveMember(member); setArchiveItems(items); setScoreDrafts(Object.fromEntries(items.map((item) => [item.achievement_id, item.score]))); }
+    catch (error) { message.error(error instanceof Error ? error.message : String(error)); }
+    finally { setArchiveLoading(false); }
+  }
+
+  function openCreate(ownerEmployeeId?: string) {
+    setEditing(null);
+    form.setFieldsValue({ owner_employee_id: ownerEmployeeId || user?.userId || '', title: '', category: '工作成果', summary: '', completion_date: '', reference_url: '', representative: false });
+    setEditorOpen(true);
+  }
+
+  function openEdit(item: TeamAchievementArchiveItem) {
+    setEditing(item);
+    form.setFieldsValue({ owner_employee_id: item.owner_employee_id, title: item.title, category: item.category, summary: item.summary, completion_date: item.completion_date, reference_url: item.reference_url, representative: item.representative });
+    setEditorOpen(true);
+  }
+
+  async function saveAchievement() {
+    try {
+      const values = await form.validateFields();
+      if (editing) await collaborationApi.updateTeamAchievement(editing.achievement_id, values); else await collaborationApi.createTeamAchievement(values);
+      message.success(editing ? '成果已更新' : '成果已登记'); setEditorOpen(false); setEditing(null); await loadTeam(); if (archiveMember) await loadArchive(archiveMember);
+    } catch (error) { if (error instanceof Error) message.error(error.message); }
+  }
+
+  async function removeAchievement(item: TeamAchievementArchiveItem) {
+    try { await collaborationApi.deleteTeamAchievement(item.achievement_id); message.success('成果已删除'); if (archiveMember) await loadArchive(archiveMember); await loadTeam(); }
+    catch (error) { message.error(error instanceof Error ? error.message : String(error)); }
+  }
+
+  async function saveScore(item: TeamAchievementArchiveItem) {
+    try { await collaborationApi.scoreTeamAchievement(item.achievement_id, scoreDrafts[item.achievement_id] ?? null); message.success('评分已保存'); if (archiveMember) await loadArchive(archiveMember); }
+    catch (error) { message.error(error instanceof Error ? error.message : String(error)); }
+  }
+
+  const canCreate = Boolean(team?.viewer_is_team_member || team?.viewer_is_admin);
+  const memberOptions = useMemo(() => team?.members.filter((member) => member.is_team_member).map((member) => ({ value: member.employee_id, label: `${member.name} · ${member.employee_id}` })) || [], [team]);
   if (!team) return <div className="page-container"><Skeleton active /></div>;
 
-  return (
-    <div className="page-container team-page">
-      <PageHeading title="团队风采" />
-      <Tabs
-        className="team-tabs"
-        activeKey={activeTab}
-        onChange={(key) => setSearchParams(key === 'results' ? { tab: 'results' } : {}, { replace: true })}
-        items={[
-          { key: 'intro', label: '团队介绍' },
-          { key: 'results', label: '成果与贡献' },
-        ]}
-      />
+  const summaryColumns = [
+    { title: '成员', key: 'member', width: 190, render: (_: unknown, member: TeamMember) => <div className="team-summary-member"><div><strong>{member.name}</strong><small>{member.employee_id}</small></div></div> },
+    { title: '主要贡献', dataIndex: 'representative_achievements', render: (items: string[]) => <RepresentativeAchievements items={items} /> },
+    { title: '成果更新日期', dataIndex: 'latest_completion_date', width: 150, render: (value: string | null) => value || '—' },
+    { title: '成果档案', key: 'action', width: 140, render: (_: unknown, member: TeamMember) => <Button type="link" onClick={() => void loadArchive(member)}>查看成果档案</Button> },
+  ];
 
-      {activeTab === 'intro' ? (
-        <>
-          <section className="team-intro-panel">
-            <h2>{team.name}</h2>
-            <p>{team.description}</p>
-          </section>
-          <div className="team-section-heading">
-            <h2>团队成员</h2>
-            <button className="team-contact-button" type="button" onClick={() => setJoinOpen(true)}>
-              <UserAddOutlined /> 加入团队 <ArrowRightOutlined />
-            </button>
-          </div>
-          {team.members.length ? (
-            <div className="team-member-grid">
-              {team.members.map((member) => (
-                <article className="team-member-card" key={member.employee_id}>
-                  <h3>{member.name} <span>{member.employee_id}</span></h3>
-                  <strong>{member.direction}</strong>
-                  <p>{member.description}</p>
-                  {member.tags?.length ? <div className="team-member-tags">{member.tags.map((tag) => <span key={tag}>{tag}</span>)}</div> : null}
-                </article>
-              ))}
-            </div>
-          ) : <div className="team-empty"><Empty description="团队成员配置待补充" /></div>}
-        </>
-      ) : (
-        <>
-          <div className="team-section-heading team-results-heading">
-            <h2>重点成果</h2>
-            <Button type="link" disabled={!team.all_achievements_url} onClick={() => team.all_achievements_url && openConfiguredUrl(team.all_achievements_url, navigate)}>
-              查看全部成果 <ArrowRightOutlined />
-            </Button>
-          </div>
-          {team.achievements.length ? (
-            <div className="team-achievement-grid">
-              {team.achievements.slice(0, 3).map((item) => (
-                <button
-                  type="button"
-                  className="team-achievement-card"
-                  key={item.id || `${item.title}-${item.date}`}
-                  disabled={!item.detail_url}
-                  onClick={() => item.detail_url && openConfiguredUrl(item.detail_url, navigate)}
-                >
-                  <span>{item.category}</span><h3>{item.title}</h3><p>{item.summary}</p>
-                  <small>{item.contributors}{item.date ? ` · ${item.date}` : ''}</small>
-                  {item.detail_url ? <em>查看成果 →</em> : null}
-                </button>
-              ))}
-            </div>
-          ) : <div className="team-empty"><Empty description="暂无团队成果" /></div>}
+  return <div className="page-container team-page">
+    <PageHeading title="团队风采" actions={canCreate ? <Button type="primary" icon={<PlusOutlined />} disabled={team.viewer_is_admin && !memberOptions.length} onClick={() => openCreate(team.viewer_is_admin ? memberOptions[0]?.value : user?.userId)}>{team.viewer_is_admin ? '新增成员成果' : '新增我的成果'}</Button> : undefined} />
+    <Tabs className="team-tabs" activeKey={activeTab} onChange={(key) => setSearchParams(key === 'results' ? { tab: 'results' } : {}, { replace: true })} items={[{ key: 'intro', label: '团队介绍' }, { key: 'results', label: '成果与贡献' }]} />
 
-          <div className="team-section-heading"><h2>贡献榜 · 本季度</h2><span>贡献值用于鼓励协作与成果沉淀</span></div>
-          <div className="team-contribution-table">
-            <Table
-              rowKey="member" pagination={false} dataSource={team.contributions} locale={{ emptyText: '暂无贡献数据' }}
-              columns={[
-                { title: '成员', dataIndex: 'member', render: (value: string) => <strong>{value}</strong> },
-                { title: '主要贡献', dataIndex: 'contribution' },
-                { title: '成果数', dataIndex: 'achievement_count', width: 100 },
-                { title: '贡献值', dataIndex: 'contribution_score', width: 110 },
-                { title: '浏览量', dataIndex: 'views', width: 110, render: (value: number) => value.toLocaleString() },
-              ]}
-            />
-          </div>
-        </>
-      )}
-      <Modal title="加入团队" open={joinOpen} footer={null} onCancel={() => setJoinOpen(false)}>
-        <Typography.Paragraph style={{ margin: 0, lineHeight: 1.8 }}>
-          欢迎对芯片微架构、MSKPP 仿真器、Benchmark 和性能分析感兴趣的同学加入。可联系管理员郝雪桐 h00517730。
-        </Typography.Paragraph>
-      </Modal>
-    </div>
-  );
+    {activeTab === 'intro' ? <>
+      <section className="team-intro-panel"><h2>{team.name}</h2><p>{team.description}</p></section>
+      <div className="team-section-heading"><h2>团队成员</h2>{supportEnabled ? <button className="team-contact-button" type="button" onClick={() => setSupportOpen(true)}>联系团队 / 进入 MSKPP 技术支撑群 <ArrowRightOutlined /></button> : null}</div>
+      {team.members.length ? <div className="team-member-grid">{team.members.map((member) => <article className="team-member-card" key={member.employee_id}><MemberPhoto member={member} /><div className="team-member-content"><div className="team-member-name"><h3>{member.name} <span>{member.employee_id}</span></h3>{member.is_team_member ? <Tag color="cyan">团队成员</Tag> : null}</div><strong>{member.direction}</strong><p>{member.description}</p>{member.tags?.length ? <div className="team-member-tags">{member.tags.map((tag) => <span key={tag}>{tag}</span>)}</div> : null}<Button type="link" size="small" onClick={() => void loadArchive(member)}>查看成果档案</Button></div></article>)}</div> : <div className="team-empty"><Empty description="团队成员配置待补充" /></div>}
+    </> : <>
+      <div className="team-section-heading team-results-heading"><h2>重点成果</h2><Button type="link" disabled={!team.all_achievements_url} onClick={() => team.all_achievements_url && openConfiguredUrl(team.all_achievements_url, navigate)}>查看全部成果 <ArrowRightOutlined /></Button></div>
+      {team.achievements.length ? <div className="team-achievement-grid">{team.achievements.slice(0, 3).map((item) => <button type="button" className="team-achievement-card" key={item.id || `${item.title}-${item.date}`} disabled={!item.detail_url} onClick={() => item.detail_url && openConfiguredUrl(item.detail_url, navigate)}><span>{item.category}</span><h3>{item.title}</h3><p>{item.summary}</p><small>{item.contributors}{item.date ? ` · ${item.date}` : ''}</small>{item.detail_url ? <em>查看成果 →</em> : null}</button>)}</div> : <div className="team-empty"><Empty description="暂无团队成果" /></div>}
+      <div className="team-section-heading"><h2>贡献榜</h2><span>展示成员自主选择的主要贡献</span></div>
+      <div className="team-contribution-table"><Table rowKey="employee_id" pagination={false} dataSource={team.members} locale={{ emptyText: '暂无成员成果' }} columns={summaryColumns} /></div>
+    </>}
+
+    <Drawer size={560} open={Boolean(archiveMember)} onClose={() => setArchiveMember(null)} title={archiveMember ? `${archiveMember.name}的成果档案` : '成果档案'}>
+      <ResultWatermark className="team-archive-watermark">
+        {archiveMember ? <div className="team-archive-profile"><MemberPhoto member={archiveMember} /><div><h3>{archiveMember.name}</h3><p>{archiveMember.direction}</p></div>{archiveMember.is_team_member && (team.viewer_is_admin || archiveMember.employee_id === user?.userId) ? <Button type="primary" icon={<PlusOutlined />} onClick={() => openCreate(archiveMember.employee_id)}>新增成果</Button> : null}</div> : null}
+        {archiveLoading ? <Skeleton active /> : archiveItems.length ? <div className="team-archive-list">{archiveItems.map((item) => <article className="team-archive-item" key={item.achievement_id}><div className="team-archive-meta"><time>{item.completion_date}</time><Tag>{item.category}</Tag>{item.representative ? <Tag color="blue">代表成果</Tag> : null}</div><h3>{item.title}</h3>{item.summary ? <p>{item.summary}</p> : null}{item.reference_url ? <a href={item.reference_url} target="_blank" rel="noreferrer">查看关联材料 <ArrowRightOutlined /></a> : null}<div className="team-archive-score"><span>评分：{item.score ?? '未评分'}</span>{item.can_score ? <Space><InputNumber min={0} max={100} value={scoreDrafts[item.achievement_id]} placeholder="0-100" onChange={(value) => setScoreDrafts((current) => ({ ...current, [item.achievement_id]: value }))} /><Button size="small" onClick={() => void saveScore(item)}>保存评分</Button></Space> : null}</div>{(item.can_edit || item.can_delete) ? <div className="team-archive-actions"><Space>{item.can_edit ? <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(item)}>编辑</Button> : null}{item.can_delete ? <Popconfirm title="删除这条成果？" okText="删除" cancelText="取消" onConfirm={() => void removeAchievement(item)}><Button danger size="small" icon={<DeleteOutlined />}>删除</Button></Popconfirm> : null}</Space></div> : null}</article>)}</div> : <Empty description="暂无成果记录" />}
+      </ResultWatermark>
+    </Drawer>
+
+    <Modal title={editing ? '编辑成果' : '新增成果'} open={editorOpen} onCancel={() => setEditorOpen(false)} onOk={() => void saveAchievement()} okText="保存">
+      <Form form={form} layout="vertical">
+        {team.viewer_is_admin && !editing ? <Form.Item label="成果成员" name="owner_employee_id" rules={[{ required: true, message: '请选择成员' }]}><Select options={memberOptions} /></Form.Item> : null}
+        <Form.Item label="成果标题" name="title" rules={[{ required: true, message: '请输入成果标题' }]}><Input maxLength={255} /></Form.Item>
+        <Form.Item label="成果类型" name="category" rules={[{ required: true, message: '请输入成果类型' }]}><Input maxLength={64} /></Form.Item>
+        <Form.Item label="成果完成日期" name="completion_date" rules={[{ required: true, message: '请选择成果完成日期' }]}><Input type="date" /></Form.Item>
+        <Form.Item label="成果内容" name="summary"><Input.TextArea rows={4} maxLength={5000} showCount /></Form.Item>
+        <Form.Item label="关联材料地址" name="reference_url"><Input placeholder="内部文档、代码或任务地址" maxLength={2048} /></Form.Item>
+        <Form.Item name="representative" valuePropName="checked"><Checkbox>设为代表成果</Checkbox></Form.Item>
+      </Form>
+    </Modal>
+    <SupportGroupModal open={supportOpen} onClose={() => setSupportOpen(false)} />
+  </div>;
 }

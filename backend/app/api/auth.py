@@ -101,6 +101,7 @@ def _admin_user_response(user: User) -> AdminUserResponse:
         display_name=user.display_name,
         role="admin" if user.role == "admin" else "normal",
         active=user.active,
+        is_team_member=user.is_team_member,
         password_configured=bool(user.password_hash),
         bootstrap_admin=user.employee_id == bootstrap_id,
         last_login_at=user.last_login_at,
@@ -394,5 +395,6 @@ def configure_user(
         request.display_name,
         request.password,
         request.active,
+        request.is_team_member,
     )
     return _admin_user_response(user)

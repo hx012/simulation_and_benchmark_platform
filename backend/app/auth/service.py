@@ -294,7 +294,20 @@ def get_user_permissions(db: Session, current: AuthenticatedUser | User) -> set[
             UserPermissionGrant.permission_code.in_(active_codes),
         )
     ).all()
-    return {NORMAL_PERMISSION, *grants}
+    permissions = {NORMAL_PERMISSION, *grants}
+    if user.is_team_member:
+        permissions.update(db.scalars(
+            select(ResourcePermissionSet.permission_code)
+            .join(
+                ProtectedResource,
+                ProtectedResource.code == ResourcePermissionSet.resource_code,
+            )
+            .where(
+                ProtectedResource.access_mode.in_(("normal", "permission")),
+                ResourcePermissionSet.permission_code.in_(active_codes),
+            )
+        ).all())
+    return permissions
 
 
 def get_user_requests(db: Session, user: User) -> list[PermissionRequest]:
@@ -330,8 +343,14 @@ def current_user_response(db: Session, current: AuthenticatedUser) -> CurrentUse
             ResourcePermissionSet.resource_code == resource.code
         )).all())
         resource_permissions[resource.code] = required
-        allowed = resource.access_mode != "disabled" and (current.is_admin_mode or resource.access_mode == "normal")
-        if resource.access_mode == "permission":
+        team_business_access = (
+            current.user.is_team_member
+            and resource.access_mode in {"normal", "permission"}
+        )
+        allowed = resource.access_mode != "disabled" and (
+            current.is_admin_mode or team_business_access or resource.access_mode == "normal"
+        )
+        if resource.access_mode == "permission" and not team_business_access:
             allowed = bool(required) and set(required).issubset(permissions)
         elif resource.access_mode == "admin":
             allowed = current.is_admin_mode
@@ -345,6 +364,7 @@ def current_user_response(db: Session, current: AuthenticatedUser) -> CurrentUse
         role=active_role,
         account_role="admin" if current.user.role == "admin" else "normal",
         auth_mode="admin" if current.is_admin_mode else "normal",
+        is_team_member=current.user.is_team_member,
         permissions=sorted(permissions),
         resources=accessible_resources,
         resource_permissions=resource_permissions,
@@ -403,6 +423,8 @@ def require_resource(resource_code: str):
             raise HTTPException(status_code=403, detail="该模块当前未开放")
         if current.is_admin_mode:
             return current
+        if current.user.is_team_member and resource.access_mode in {"normal", "permission"}:
+            return current
         if resource.access_mode == "normal":
             return current
         if resource.access_mode == "admin":
@@ -425,6 +447,14 @@ def require_admin(current: AuthenticatedUser = Depends(get_current_user)) -> Aut
     if not current.is_admin_mode:
         raise HTTPException(status_code=403, detail="请使用管理员登录")
     return current
+
+
+def require_team_member_or_admin(
+    current: AuthenticatedUser = Depends(get_current_user),
+) -> AuthenticatedUser:
+    if current.is_admin_mode or current.user.is_team_member:
+        return current
+    raise HTTPException(status_code=403, detail="只有团队成员或管理员可以查看使用概览")
 
 
 def create_permission_request(db: Session, current: AuthenticatedUser, permission_code: str, reason: str) -> PermissionRequest:
@@ -539,6 +569,7 @@ def update_admin_user(
     display_name: str | None,
     password: str | None,
     active: bool,
+    is_team_member: bool | None = None,
 ) -> User:
     normalized = employee_id.strip()
     bootstrap_id = get_settings().platform_bootstrap_admin_id.strip()
@@ -567,6 +598,8 @@ def update_admin_user(
             raise HTTPException(status_code=409, detail="不能停用或移除最后一个管理员")
     user.role = role
     user.active = active
+    if is_team_member is not None:
+        user.is_team_member = is_team_member
     if display_name:
         user.display_name = display_name.strip()
     if not active:

@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, status
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.auth.constants import DEMAND_VIEW_RESOURCE, TEAM_VIEW_RESOURCE
@@ -18,6 +21,18 @@ from app.collaboration.schemas import (
     FeatureReleaseConfigResponse,
     PlatformConfigResponse,
     TeamConfigResponse,
+    TeamAchievementCreate,
+    TeamAchievementResponse,
+    TeamAchievementScoreUpdate,
+    TeamAchievementUpdate,
+)
+from app.collaboration.team_service import (
+    create_achievement,
+    delete_achievement,
+    enrich_team_members,
+    list_achievements,
+    score_achievement,
+    update_achievement,
 )
 from app.collaboration.service import (
     add_feedback_message,
@@ -54,10 +69,78 @@ def platform_config(
 
 @router.get("/team", response_model=TeamConfigResponse)
 def team_config(
-    _: AuthenticatedUser = Depends(require_resource(TEAM_VIEW_RESOURCE)),
+    current: AuthenticatedUser = Depends(require_resource(TEAM_VIEW_RESOURCE)),
+    db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> TeamConfigResponse:
-    return load_team_config(settings)
+    team = load_team_config(settings)
+    enrich_team_members(db, current, team)
+    return team
+
+
+@router.get("/team/avatars/{filename}")
+def team_avatar(
+    filename: str,
+    _: AuthenticatedUser = Depends(require_resource(TEAM_VIEW_RESOURCE)),
+    settings: Settings = Depends(get_settings),
+) -> FileResponse:
+    normalized = Path(filename).name
+    if normalized != filename or Path(normalized).suffix.lower() not in {".webp", ".png", ".jpg", ".jpeg"}:
+        raise HTTPException(status_code=404, detail="头像不存在")
+    root = (settings.platform_team_avatar_dir or settings.platform_content_config.parent / "team-avatars").resolve()
+    target = (root / normalized).resolve()
+    if target.parent != root or not target.is_file():
+        raise HTTPException(status_code=404, detail="头像不存在")
+    return FileResponse(target)
+
+
+@router.get("/team/achievement-archives/{employee_id}", response_model=list[TeamAchievementResponse])
+def team_achievement_archive(
+    employee_id: str,
+    db: Session = Depends(get_db),
+    current: AuthenticatedUser = Depends(require_resource(TEAM_VIEW_RESOURCE)),
+    settings: Settings = Depends(get_settings),
+) -> list[TeamAchievementResponse]:
+    visibility = load_team_config(settings).archive_visibility
+    return list_achievements(db, current, employee_id, visibility)
+
+
+@router.post("/team/achievement-archives", response_model=TeamAchievementResponse, status_code=status.HTTP_201_CREATED)
+def add_team_achievement(
+    payload: TeamAchievementCreate,
+    db: Session = Depends(get_db),
+    current: AuthenticatedUser = Depends(require_resource(TEAM_VIEW_RESOURCE)),
+) -> TeamAchievementResponse:
+    return create_achievement(db, current, payload)
+
+
+@router.patch("/team/achievement-archives/{achievement_id}", response_model=TeamAchievementResponse)
+def edit_team_achievement(
+    achievement_id: str,
+    payload: TeamAchievementUpdate,
+    db: Session = Depends(get_db),
+    current: AuthenticatedUser = Depends(require_resource(TEAM_VIEW_RESOURCE)),
+) -> TeamAchievementResponse:
+    return update_achievement(db, current, achievement_id, payload)
+
+
+@router.delete("/team/achievement-archives/{achievement_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_team_achievement(
+    achievement_id: str,
+    db: Session = Depends(get_db),
+    current: AuthenticatedUser = Depends(require_resource(TEAM_VIEW_RESOURCE)),
+) -> None:
+    delete_achievement(db, current, achievement_id)
+
+
+@router.patch("/admin/team/achievement-archives/{achievement_id}/score", response_model=TeamAchievementResponse)
+def rate_team_achievement(
+    achievement_id: str,
+    payload: TeamAchievementScoreUpdate,
+    db: Session = Depends(get_db),
+    current: AuthenticatedUser = Depends(require_admin),
+) -> TeamAchievementResponse:
+    return score_achievement(db, current, achievement_id, payload.score)
 
 
 @router.get("/feature-releases", response_model=FeatureReleaseConfigResponse)

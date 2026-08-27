@@ -388,6 +388,7 @@ button, input, textarea, select { font: inherit; }
 .analytics-user-link strong { color: #2563eb; font-weight: 600; }
 .analytics-user-link span { margin-top: 2px; color: #8a929d; font-size: 12px; }
 .analytics-user-detail h3 { margin: 24px 0 12px; font-size: 15px; }
+.analytics-user-detail-watermark { min-height: calc(100vh - 120px); }
 .analytics-event-time { margin-left: 10px; color: #8a929d; font-size: 12px; }
 .analytics-event-context { margin-top: 3px; color: #6b7280; font-size: 12px; }
 
@@ -1931,7 +1932,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px s
 .portal-loop-circuit { fill: none; stroke: #7fa4c2; stroke-width: 1.2; opacity: .17; }
 .portal-loop-main-glow path { fill: none; stroke: #0bafbd; stroke-width: 9; opacity: .08; }
 .portal-loop-main path { fill: none; stroke: #069eae; stroke-width: 2.7; }
-.portal-loop-feedback path { fill: none; stroke: #7165d9; stroke-width: 2.4; stroke-dasharray: 7 7; }
+.portal-loop-feedback path { fill: none; stroke: #7165d9; stroke-width: 2.4; }
 .portal-loop-neutral { fill: rgba(255,255,255,.84); stroke: #bfd2e3; stroke-width: 1.5; }
 .portal-loop-chip { fill: #f2f7ff; stroke: #8db1e3; stroke-width: 1.6; }
 .portal-loop-core { stroke-width: 2; }
@@ -2101,15 +2102,21 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px s
 .team-contact-button { display: inline-flex; align-items: center; gap: 7px; padding: 4px 0; border: 0; background: transparent; color: #3168e8; font-size: 12px; line-height: 20px; cursor: pointer; }
 .team-contact-button:hover { color: #1e4fca; }
 .team-member-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
-.team-member-card { min-height: 126px; padding: 17px; border: 1px solid #d7e1ed; border-top: 2px solid #3168e8; border-radius: 13px; background: #fff; }
+.team-member-card { min-height: 172px; padding: 17px; display: flex; align-items: flex-start; gap: 16px; border: 1px solid #d7e1ed; border-top: 2px solid #3168e8; border-radius: 13px; background: #fff; }
 .team-member-card:nth-child(3n + 2) { border-top-color: #08a9b7; }
 .team-member-card:nth-child(3n) { border-top-color: #7c5ce7; }
+.team-member-photo { position: relative; width: 72px; height: 90px; flex: 0 0 auto; display: grid; place-items: center; overflow: hidden; border: 1px solid #c8d4e2; border-radius: 8px; background: linear-gradient(145deg,#edf3f9,#dfe9f4); color: #536b86; font-size: 16px; font-weight: 700; }
+.team-member-photo img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; }
+.team-member-photo.is-small { width: 36px; height: 45px; border-radius: 5px; font-size: 10px; }
+.team-member-content { min-width: 0; flex: 1; }
+.team-member-name { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .team-member-card h3 { margin: 0 0 4px; font-size: 15px; }
 .team-member-card h3 span { margin-left: 8px; color: #7b8da1; font: 10px/18px "SFMono-Regular",Consolas,monospace; }
-.team-member-card > strong { color: #344d68; font-size: 10px; }
+.team-member-content > strong { color: #344d68; font-size: 10px; }
 .team-member-card p { margin: 8px 0 0; color: #687b94; font-size: 11px; line-height: 1.55; }
 .team-member-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
 .team-member-tags span { padding: 3px 7px; border-radius: 999px; background: #f2f6fb; color: #687b94; font-size: 9px; }
+.team-member-content > .ant-btn { height: auto; margin-top: 8px; padding: 0; font-size: 11px; }
 .team-results-heading { margin-top: 4px; }
 .team-achievement-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
 .team-achievement-card { min-height: 172px; padding: 18px; display: flex; flex-direction: column; align-items: flex-start; border: 1px solid #d7e1ed; border-radius: 14px; background: #fff; color: #10233f; text-align: left; cursor: pointer; }
@@ -2122,6 +2129,28 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px s
 .team-achievement-card em { margin-top: 12px; color: #8898a9; font-size: 11px; font-style: normal; }
 .team-achievement-card:not(:disabled) em { color: #3168e8; }
 .team-contribution-table { overflow: hidden; border: 1px solid #d7e1ed; border-radius: 14px; background: #fff; }
+.team-summary-member { display: flex; align-items: center; gap: 10px; }
+.team-summary-member strong, .team-summary-member small { display: block; }
+.team-summary-member small { margin-top: 2px; color: #7b8da1; font: 10px/16px Consolas,monospace; }
+.team-representative-cell { max-width: 520px; display: flex; align-items: flex-end; gap: 4px; }
+.team-representative-cell > span { display: -webkit-box; overflow: hidden; color: #344d68; line-height: 1.6; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.team-representative-cell .ant-btn { flex: 0 0 auto; height: auto; padding: 0; }
+.team-representative-popover { max-width: 420px; margin: 0; padding-left: 20px; }
+.team-representative-popover li + li { margin-top: 7px; }
+.team-summary-empty { color: #99a5b3; }
+.team-archive-watermark { min-height: calc(100vh - 120px); }
+.team-archive-profile { padding: 0 0 18px; display: grid; grid-template-columns: 72px minmax(0,1fr) auto; align-items: center; gap: 14px; border-bottom: 1px solid #e1e8f0; }
+.team-archive-profile h3 { margin: 0 0 5px; }
+.team-archive-profile p { margin: 0; color: #687b94; }
+.team-archive-list { padding-top: 18px; display: grid; gap: 12px; }
+.team-archive-item { position: relative; padding: 16px; border: 1px solid #d7e1ed; border-radius: 12px; background: rgba(255,255,255,.94); }
+.team-archive-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; color: #637891; }
+.team-archive-meta .ant-tag { margin: 0; }
+.team-archive-item h3 { margin: 10px 0 7px; font-size: 15px; }
+.team-archive-item p { margin: 0 0 8px; color: #687b94; line-height: 1.65; }
+.team-archive-score { min-height: 34px; margin-top: 12px; padding-top: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #e7edf4; color: #536b86; }
+.team-archive-score .ant-input-number { width: 92px; }
+.team-archive-actions { margin-top: 10px; }
 .team-empty { padding: 40px; border: 1px solid #d7e1ed; border-radius: 14px; background: #fff; }
 .benchmark-detail-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
 .benchmark-detail-grid .benchmark-detail-card { height: 100%; }
@@ -2201,6 +2230,10 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px s
   .team-section-heading { align-items: flex-start; flex-direction: column; }
   .team-results-heading { flex-direction: row; align-items: center; }
   .team-member-card h3 span { display: block; margin: 3px 0 0; }
+  .team-member-card { gap: 12px; }
+  .team-member-photo { width: 60px; height: 75px; }
+  .team-archive-profile { grid-template-columns: 60px minmax(0,1fr); }
+  .team-archive-profile > .ant-btn { grid-column: 1 / -1; }
   .support-group-image-shell { padding: 8px; }
   .app-header { gap: 6px; }
   .header-leading { min-width: 0; }

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 import os
 from pathlib import Path
 import sys
@@ -9,12 +9,19 @@ sys.path.insert(0, str(BACKEND_ROOT))
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
 from sqlalchemy import create_engine
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.auth.models import User, UserSession
 from app.auth.service import AuthenticatedUser
-from app.collaboration.models import Demand, DemandEvent, DemandVote, FeedbackEntry, FeedbackMessage
-from app.collaboration.schemas import DemandAdminUpdate, DemandCreate, FeedbackAdminUpdate, FeedbackCreate
+from app.collaboration.models import Demand, DemandEvent, DemandVote, FeedbackEntry, FeedbackMessage, TeamAchievementRecord
+from app.collaboration.schemas import (
+    DemandAdminUpdate,
+    DemandCreate,
+    FeedbackAdminUpdate,
+    FeedbackCreate,
+    TeamAchievementCreate,
+)
 from app.collaboration.content import community_links, load_team_config, platform_support
 from app.collaboration.service import (
     create_demand,
@@ -27,6 +34,7 @@ from app.collaboration.service import (
     set_vote,
     withdraw_feedback,
 )
+from app.collaboration.team_service import create_achievement, list_achievements, score_achievement
 from app.common.config import Settings
 
 
@@ -52,6 +60,7 @@ def main() -> None:
     Demand.__table__.create(engine)
     DemandEvent.__table__.create(engine)
     DemandVote.__table__.create(engine)
+    TeamAchievementRecord.__table__.create(engine)
 
     with TemporaryDirectory() as directory:
         config_path = Path(directory) / "platform_content.yml"
@@ -137,9 +146,10 @@ def main() -> None:
         assert platform_support(settings).name == "Test Support"
 
         with Session(engine) as db:
-            owner = User(employee_id="owner", display_name="Owner", role="normal")
+            owner = User(employee_id="owner", display_name="Owner", role="normal", is_team_member=True)
             other = User(employee_id="other", display_name="Other", role="normal")
-            db.add_all([owner, other])
+            admin = User(employee_id="admin", display_name="Admin", role="admin")
+            db.add_all([owner, other, admin])
             db.commit()
 
             owner_current = current(owner)
@@ -188,6 +198,38 @@ def main() -> None:
             assert vote.support_count == 1 and vote.voted_by_me
             vote = set_vote(db, demand, other_current, False)
             assert vote.support_count == 0 and not vote.voted_by_me
+
+            achievement = create_achievement(db, owner_current, TeamAchievementCreate(
+                title="调度模型验证",
+                category="性能优化",
+                summary="完成关键路径验证",
+                completion_date=date(2026, 8, 18),
+                representative=True,
+            ))
+            assert achievement.owner_employee_id == "owner"
+            assert achievement.representative and achievement.score is None
+            assert list_achievements(db, owner_current, "owner")[0].title == "调度模型验证"
+            try:
+                list_achievements(db, other_current, "owner")
+                raise AssertionError("non-team member should not view archives")
+            except HTTPException as error:
+                assert error.status_code == 403
+                assert error.detail == "仅团队成员可看"
+            public_archive = list_achievements(db, other_current, "owner", "authenticated")
+            assert public_archive[0].title == "调度模型验证"
+            assert public_archive[0].can_edit is False
+            assert public_archive[0].can_delete is False
+            scored = score_achievement(db, current(admin, "admin"), achievement.achievement_id, 86)
+            assert scored.score == 86
+            try:
+                TeamAchievementCreate(
+                    title="危险链接",
+                    completion_date=date(2026, 8, 19),
+                    reference_url="javascript:alert(1)",
+                )
+                raise AssertionError("unsafe reference URL should be rejected")
+            except ValueError:
+                pass
 
             pending_feedback = create_feedback(db, other_current, FeedbackCreate(content="不再需要处理"))
             withdrawn = withdraw_feedback(db, pending_feedback.feedback_id, other_current)

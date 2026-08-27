@@ -1,7 +1,8 @@
 from datetime import date, datetime
 from typing import Literal
+from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class CommunityLink(BaseModel):
@@ -59,11 +60,16 @@ class TeamAchievement(BaseModel):
 class TeamMember(BaseModel):
     employee_id: str
     name: str
+    avatar_file: str = ""
+    avatar_url: str = ""
     direction: str = ""
     description: str = ""
     tags: list[str] = Field(default_factory=list)
     order: int = 0
     enabled: bool = True
+    is_team_member: bool = False
+    representative_achievements: list[str] = Field(default_factory=list)
+    latest_completion_date: date | None = None
 
 
 class TeamContribution(BaseModel):
@@ -83,6 +89,69 @@ class TeamConfigResponse(BaseModel):
     achievements: list[TeamAchievement] = Field(default_factory=list)
     contributions: list[TeamContribution] = Field(default_factory=list)
     all_achievements_url: str = ""
+    archive_visibility: Literal["team_only", "authenticated"] = "team_only"
+    viewer_is_team_member: bool = False
+    viewer_is_admin: bool = False
+    viewer_can_view_archives: bool = False
+
+
+class TeamAchievementCreate(BaseModel):
+    owner_employee_id: str = Field(default="", max_length=128)
+    title: str = Field(min_length=2, max_length=255)
+    category: str = Field(default="工作成果", min_length=1, max_length=64)
+    summary: str = Field(default="", max_length=5000)
+    completion_date: date
+    reference_url: str = Field(default="", max_length=2048)
+    representative: bool = False
+
+    @field_validator("reference_url")
+    @classmethod
+    def validate_reference_url(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            return value
+        if value.startswith("/") and not value.startswith("//"):
+            return value
+        parsed = urlparse(value)
+        if parsed.scheme in {"http", "https"} and parsed.netloc:
+            return value
+        raise ValueError("关联材料地址仅支持站内路径或 http/https 地址")
+
+
+class TeamAchievementUpdate(BaseModel):
+    title: str = Field(min_length=2, max_length=255)
+    category: str = Field(default="工作成果", min_length=1, max_length=64)
+    summary: str = Field(default="", max_length=5000)
+    completion_date: date
+    reference_url: str = Field(default="", max_length=2048)
+    representative: bool = False
+
+    @field_validator("reference_url")
+    @classmethod
+    def validate_reference_url(cls, value: str) -> str:
+        return TeamAchievementCreate.validate_reference_url(value)
+
+
+class TeamAchievementScoreUpdate(BaseModel):
+    score: int | None = Field(default=None, ge=0, le=100)
+
+
+class TeamAchievementResponse(BaseModel):
+    achievement_id: str
+    owner_employee_id: str
+    owner_name: str
+    title: str
+    category: str
+    summary: str
+    completion_date: date
+    reference_url: str
+    representative: bool
+    score: int | None = None
+    can_edit: bool = False
+    can_delete: bool = False
+    can_score: bool = False
+    created_at: datetime
+    updated_at: datetime
 
 
 class FeedbackCreate(BaseModel):

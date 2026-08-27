@@ -50,6 +50,7 @@ class CurrentUserResponse(BaseModel):
     role: Literal["normal", "admin"]
     account_role: Literal["normal", "admin"]
     auth_mode: Literal["normal", "admin"]
+    is_team_member: bool = False
     permissions: list[str]
     resources: list[str]
     resource_permissions: dict[str, list[str]]
@@ -103,6 +104,7 @@ class AdminUserResponse(BaseModel):
     display_name: str
     role: Literal["normal", "admin"]
     active: bool
+    is_team_member: bool = False
     password_configured: bool
     bootstrap_admin: bool = False
     last_login_at: datetime | None
@@ -113,3 +115,4 @@ class AdminUserUpdate(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=255)
     password: str | None = Field(default=None, min_length=8, max_length=256)
     active: bool = True
+    is_team_member: bool | None = None

@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.common.database import Base
@@ -138,4 +138,31 @@ class DemandVote(Base):
     __table_args__ = (
         UniqueConstraint("demand_id", "user_id", name="uq_demand_vote"),
         Index("ix_demand_votes_demand", "demand_id"),
+    )
+
+
+class TeamAchievementRecord(Base):
+    __tablename__ = "team_achievement_records"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    category: Mapped[str] = mapped_column(String(64), nullable=False, default="工作成果")
+    summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    completion_date: Mapped[date] = mapped_column(Date, nullable=False)
+    reference_url: Mapped[str] = mapped_column(String(2048), nullable=False, default="")
+    representative: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    score: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_team_achievement_owner_completion", "owner_user_id", "completion_date"),
+        Index("ix_team_achievement_representative", "representative"),
     )

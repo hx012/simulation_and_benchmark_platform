@@ -269,7 +269,8 @@ assert ordinary_admin.json()["role"] == "normal"
 assert ordinary_admin.json()["account_role"] == "admin"
 assert ordinary_admin_client.get("/api/admin/users").status_code == 403
 
-# Usage events are available to authenticated users, while reports remain admin-only.
+# Usage events are available to authenticated users. Aggregated reports are
+# visible to team members, while identified user reports remain admin-only.
 tracked = alice_client.post("/api/analytics/events", json={
     "event_id": "permission-test-event-0001",
     "session_id": "permission-test-session-01",
@@ -280,8 +281,61 @@ assert tracked.status_code == 202, tracked.text
 recent = alice_client.get("/api/recent-activities")
 assert recent.status_code == 200, recent.text
 assert recent.json()["items"] == []
+assert alice_client.get("/api/analytics/overview").status_code == 403
 assert alice_client.get("/api/admin/analytics/overview").status_code == 403
+assert admin_client.get("/api/analytics/overview").status_code == 200
 assert admin_client.get("/api/admin/analytics/overview").status_code == 200
+
+team_client = TestClient(app)
+team_login = team_client.post("/api/auth/login", json={
+    "employee_id": "permission-team-member", "auth_mode": "normal",
+})
+assert team_login.status_code == 200, team_login.text
+marked_team_member = admin_client.put("/api/admin/users/permission-team-member", json={
+    "role": "normal",
+    "display_name": "Team Member",
+    "active": True,
+    "is_team_member": True,
+})
+assert marked_team_member.status_code == 200, marked_team_member.text
+team_identity = team_client.get("/api/auth/me")
+assert team_identity.status_code == 200, team_identity.text
+assert team_identity.json()["is_team_member"] is True
+assert {
+    "normal", "benchmark_access", "simulation_log", "performance_access",
+    "team_access", "demand_access",
+}.issubset(set(team_identity.json()["permissions"]))
+assert {
+    "simulation.task", "simulation.log", "benchmark.view", "performance.view",
+    "team.view", "demand.view",
+}.issubset(set(team_identity.json()["resources"]))
+assert {
+    "admin.manage", "permission.manage", "analytics.usage",
+}.isdisjoint(set(team_identity.json()["resources"]))
+assert team_client.get("/api/analytics/overview").status_code == 200
+assert team_client.get("/api/admin/analytics/users").status_code == 403
+assert team_client.get("/api/admin/users").status_code == 403
+
+with TestingSession() as session:
+    session.add(simulation_models.SimulationTask(
+        queue_seq=3,
+        task_id="SIM-PERMISSION-TEAM-MEMBER",
+        task_name="Team member task",
+        owner_id="permission-team-member",
+        simulator_version="mock",
+        chip_variant=None,
+        simulation_mode=SimulationMode.SINGLE_CHIP,
+        status=TaskStatus.COMPLETED,
+        workspace_path="/tmp/SIM-PERMISSION-TEAM-MEMBER",
+    ))
+    session.commit()
+
+team_tasks = team_client.get("/api/simulation/tasks")
+assert team_tasks.status_code == 200, team_tasks.text
+assert [item["task_id"] for item in team_tasks.json()["items"]] == [
+    "SIM-PERMISSION-TEAM-MEMBER",
+]
+assert team_client.get("/api/simulation/tasks/SIM-PERMISSION-BOB").status_code == 404
 
 # Blocking a user immediately revokes existing sessions and prevents a new
 # login, while unblocking restores login without deleting the account.
