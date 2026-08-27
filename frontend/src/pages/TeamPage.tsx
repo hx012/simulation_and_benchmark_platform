@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ArrowRightOutlined } from '@ant-design/icons';
-import { Button, Empty, Skeleton, Table, Tabs } from 'antd';
+import { ArrowRightOutlined, UserAddOutlined } from '@ant-design/icons';
+import { Button, Empty, Modal, Skeleton, Table, Tabs, Typography } from 'antd';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { collaborationApi, type TeamConfig } from '../api/collaboration';
 import { PageHeading } from '../components/PageHeading';
-import { SupportGroupModal } from '../components/SupportGroupModal';
 
 function openConfiguredUrl(url: string, navigate: (path: string) => void) {
   if (url.startsWith('/')) navigate(url);
@@ -15,17 +14,13 @@ export function TeamPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [team, setTeam] = useState<TeamConfig | null>(null);
-  const [supportEnabled, setSupportEnabled] = useState(false);
-  const [supportOpen, setSupportOpen] = useState(false);
+  const [joinOpen, setJoinOpen] = useState(false);
   const activeTab = searchParams.get('tab') === 'results' ? 'results' : 'intro';
 
   useEffect(() => {
     void collaborationApi.getTeam().then(setTeam).catch(() => setTeam({
       name: '芯片仿真与性能分析团队', description: '团队内容暂时无法加载。', team_size: '', specialties: [], members: [], achievements: [], contributions: [], all_achievements_url: '',
     }));
-    void collaborationApi.getPlatformConfig()
-      .then((config) => setSupportEnabled(config.support.enabled))
-      .catch(() => setSupportEnabled(false));
   }, []);
 
   if (!team) return <div className="page-container"><Skeleton active /></div>;
@@ -51,11 +46,9 @@ export function TeamPage() {
           </section>
           <div className="team-section-heading">
             <h2>团队成员</h2>
-            {supportEnabled ? (
-              <button className="team-contact-button" type="button" onClick={() => setSupportOpen(true)}>
-                联系团队 / 进入 MSKPP 技术支撑群 <ArrowRightOutlined />
-              </button>
-            ) : null}
+            <button className="team-contact-button" type="button" onClick={() => setJoinOpen(true)}>
+              <UserAddOutlined /> 加入团队 <ArrowRightOutlined />
+            </button>
           </div>
           {team.members.length ? (
             <div className="team-member-grid">
@@ -111,7 +104,11 @@ export function TeamPage() {
           </div>
         </>
       )}
-      <SupportGroupModal open={supportOpen} onClose={() => setSupportOpen(false)} />
+      <Modal title="加入团队" open={joinOpen} footer={null} onCancel={() => setJoinOpen(false)}>
+        <Typography.Paragraph style={{ margin: 0, lineHeight: 1.8 }}>
+          欢迎对芯片微架构、MSKPP 仿真器、Benchmark 和性能分析感兴趣的同学加入。可联系管理员郝雪桐 h00517730。
+        </Typography.Paragraph>
+      </Modal>
     </div>
   );
 }
