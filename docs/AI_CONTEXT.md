@@ -264,15 +264,16 @@ TASK_ROOT/
 
 数据库保存任务状态、路径和元数据；日志、summary、trace 这类大文件保存在文件系统中。
 
-仓库内置一个用于界面开发的 V310 样例：
+仓库按仿真模式内置统一样例，不同 Simulator 版本和芯片变体共用同一套目录：
 
 ```text
-backend/config/simulation_templates/v310/default/single_chip/
-├── chip_config/
-│   ├── simulator_config.yml
-│   └── daw_config.yml
-└── workload/
-    └── workload.yml
+backend/config/simulation_templates/default/
+├── single_chip/
+│   ├── chip_config/
+│   └── workload/
+└── multi_chip/
+    ├── chip_config/
+    └── workload/
 ```
 
 ## 8. Simulator Profile

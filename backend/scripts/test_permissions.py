@@ -91,11 +91,44 @@ assert "mskpp_config_template_v310_default_single_chip.zip" in (
     config_template.headers["content-disposition"]
 )
 with ZipFile(BytesIO(config_template.content)) as archive:
-    assert {
+    expected_template_files = {
         "chip_config/simulator_config.yml",
         "chip_config/daw_config.yml",
         "workload/workload.yml",
-    }.issubset(set(archive.namelist()))
+    }
+    assert expected_template_files.issubset(set(archive.namelist()))
+    v310_template_content = {
+        name: archive.read(name) for name in expected_template_files
+    }
+
+v320_template = admin_client.get(
+    "/api/simulation/config-template",
+    params={
+        "simulator_version": "v320",
+        "chip_variant": "default",
+        "simulation_mode": "SINGLE_CHIP",
+    },
+)
+assert v320_template.status_code == 200, v320_template.text
+with ZipFile(BytesIO(v320_template.content)) as archive:
+    assert {
+        name: archive.read(name) for name in expected_template_files
+    } == v310_template_content
+
+multi_chip_template = admin_client.get(
+    "/api/simulation/config-template",
+    params={
+        "simulator_version": "v320",
+        "chip_variant": "high_perf",
+        "simulation_mode": "MULTI_CHIP",
+    },
+)
+assert multi_chip_template.status_code == 200, multi_chip_template.text
+with ZipFile(BytesIO(multi_chip_template.content)) as archive:
+    assert b"mode: MULTI_CHIP" in archive.read(
+        "chip_config/simulator_config.yml"
+    )
+    assert b"chip_count: 2" in archive.read("chip_config/daw_config.yml")
 
 # Normal users are server-bound to their own tasks. Admin mode can read every
 # task, but task mutations remain owner-only.

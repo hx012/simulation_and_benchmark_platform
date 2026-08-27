@@ -11,8 +11,6 @@ def main() -> None:
         description="Install a validated simulation input as a read-only default template."
     )
     parser.add_argument("--source", required=True, help="Directory containing chip_config/ and workload/")
-    parser.add_argument("--simulator-version", default="v310")
-    parser.add_argument("--chip-variant", default="default")
     parser.add_argument(
         "--simulation-mode",
         default="single_chip",
@@ -34,8 +32,7 @@ def main() -> None:
 
     target = (
         Path(args.target_root).resolve()
-        / args.simulator_version
-        / args.chip_variant
+        / "default"
         / args.simulation_mode
     )
     staging = target.parent / f".{target.name}.installing"

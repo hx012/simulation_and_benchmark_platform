@@ -41,46 +41,19 @@ class SimulationSampleService:
             variant_key = "default"
         mode_key = simulation_mode.value.lower()
 
-        # New multi-profile layout:
-        #   <root>/<version>/<variant>/<mode>/chip_config
-        #   <root>/<version>/<variant>/<mode>/workload
-        # Keep the legacy <root>/<version>/sample layout as a fallback so
-        # existing V310 sample installations continue to work unchanged.
-        candidate_roots = [
-            (
-                self.template_root
-                / simulator_version
-                / variant_key
-                / mode_key
-            ).resolve(),
-        ]
-        if (
-            variant_key == "default"
-            and simulation_mode == SimulationMode.SINGLE_CHIP
+        # Templates are shared by every simulator version and chip variant.
+        # Only the execution topology changes the folder that is loaded:
+        #   <root>/default/single_chip/{chip_config,workload}
+        #   <root>/default/multi_chip/{chip_config,workload}
+        sample_root = (self.template_root / "default" / mode_key).resolve()
+        if not (
+            (sample_root / "chip_config").is_dir()
+            and (sample_root / "workload").is_dir()
         ):
-            candidate_roots.append(
-                (
-                    self.template_root
-                    / simulator_version
-                    / "sample"
-                ).resolve()
-            )
-
-        sample_root = next(
-            (
-                path
-                for path in candidate_roots
-                if (path / "chip_config").is_dir()
-                and (path / "workload").is_dir()
-            ),
-            None,
-        )
-        if sample_root is None:
-            expected = " or ".join(str(path) for path in candidate_roots)
             raise ValueError(
                 "Simulation sample is not installed for "
                 f"version={simulator_version}, variant={variant_key}, "
-                f"mode={simulation_mode.value}. Expected: {expected}"
+                f"mode={simulation_mode.value}. Expected: {sample_root}"
             )
 
         return sample_root, variant_key, mode_key

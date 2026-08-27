@@ -1,0 +1,15 @@
+# Shared single-chip simulator example used by every configured version.
+simulator:
+  mode: SINGLE_CHIP
+  log_level: INFO
+  max_cycles: 1000000
+
+runtime:
+  random_seed: 2026
+  timeout_seconds: 300
+  enable_statistics: true
+  enable_trace: false
+
+output:
+  result_directory: results
+  log_file: logs/davinci_sim.log
