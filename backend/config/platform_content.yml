@@ -148,10 +148,12 @@ feature_releases:
 communities:
   - key: jiaxian
     name: 稼先社区
+    url: "https://jx.huawei.com/community/comgroup/forum?style=0&item=0&groupId=f0616c1c20b64e30ba6a960a2641b2df"
     enabled: true
     order: 10
   - key: w3
     name: W3 负载建模社区
+    url: "https://3ms.huawei.com/km/groups/3951278/home?gid=3951278"
     enabled: true
     order: 20
   - key: benchmark_wiki
