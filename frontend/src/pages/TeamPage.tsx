@@ -99,7 +99,7 @@ export function TeamPage() {
 
   const summaryColumns = [
     { title: '成员', key: 'member', width: 190, render: (_: unknown, member: TeamMember) => <div className="team-summary-member"><div><strong>{member.name}</strong><small>{member.employee_id}</small></div></div> },
-    { title: '主要贡献', dataIndex: 'representative_achievements', render: (items: string[]) => <RepresentativeAchievements items={items} /> },
+    { title: '核心成果', dataIndex: 'representative_achievements', render: (items: string[]) => <RepresentativeAchievements items={items} /> },
     { title: '成果更新日期', dataIndex: 'latest_completion_date', width: 150, render: (value: string | null) => value || '—' },
     { title: '成果档案', key: 'action', width: 140, render: (_: unknown, member: TeamMember) => <Button type="link" onClick={() => void loadArchive(member)}>查看成果档案</Button> },
   ];
@@ -115,7 +115,7 @@ export function TeamPage() {
     </> : <>
       <div className="team-section-heading team-results-heading"><h2>重点成果</h2><Button type="link" disabled={!team.all_achievements_url} onClick={() => team.all_achievements_url && openConfiguredUrl(team.all_achievements_url, navigate)}>查看全部成果 <ArrowRightOutlined /></Button></div>
       {team.achievements.length ? <div className="team-achievement-grid">{team.achievements.slice(0, 3).map((item) => <button type="button" className="team-achievement-card" key={item.id || `${item.title}-${item.date}`} disabled={!item.detail_url} onClick={() => item.detail_url && openConfiguredUrl(item.detail_url, navigate)}><span>{item.category}</span><h3>{item.title}</h3><p>{item.summary}</p><small>{item.contributors}{item.date ? ` · ${item.date}` : ''}</small>{item.detail_url ? <em>查看成果 →</em> : null}</button>)}</div> : <div className="team-empty"><Empty description="暂无团队成果" /></div>}
-      <div className="team-section-heading"><h2>贡献榜</h2><span>展示成员自主选择的主要贡献</span></div>
+      <div className="team-section-heading"><h2>成果榜</h2></div>
       <div className="team-contribution-table"><Table rowKey="employee_id" pagination={false} dataSource={team.members} locale={{ emptyText: '暂无成员成果' }} columns={summaryColumns} /></div>
     </>}
 
