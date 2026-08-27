@@ -10,7 +10,7 @@ import {
   Input,
   message,
   Row,
-  Segmented,
+  Select,
   Space,
   Skeleton,
   Statistic,
@@ -297,7 +297,18 @@ export function UsageAnalyticsPage() {
             <Button icon={<ReloadOutlined />} loading={overviewLoading || usersLoading} onClick={() => void refreshAll()}>
               立即刷新
             </Button>
-            <Segmented<number> value={days} onChange={(value) => { setDays(value); setUserPage(1); }} options={[{ label: '近 7 天', value: 7 }, { label: '近 30 天', value: 30 }, { label: '近 90 天', value: 90 }]} />
+            <Select<number>
+              aria-label="统计时间范围"
+              value={days}
+              style={{ width: 128 }}
+              onChange={(value) => { setDays(value); setUserPage(1); }}
+              options={[
+                { label: '近 7 天', value: 7 },
+                { label: '近 30 天', value: 30 },
+                { label: '近 90 天', value: 90 },
+                { label: '近一年', value: 365 },
+              ]}
+            />
           </Space>
         )}
       />

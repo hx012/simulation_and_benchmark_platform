@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.constants import DEMAND_VIEW_RESOURCE, TEAM_VIEW_RESOURCE
 from app.auth.service import AuthenticatedUser, get_current_user, require_admin, require_resource
-from app.collaboration.content import community_links, load_team_config, platform_support
+from app.collaboration.content import community_links, load_feature_releases, load_team_config, platform_support
 from app.collaboration.schemas import (
     DemandCreate,
     DemandAdminUpdate,
@@ -15,6 +15,7 @@ from app.collaboration.schemas import (
     FeedbackCreate,
     FeedbackMessageCreate,
     FeedbackResponse,
+    FeatureReleaseConfigResponse,
     PlatformConfigResponse,
     TeamConfigResponse,
 )
@@ -57,6 +58,14 @@ def team_config(
     settings: Settings = Depends(get_settings),
 ) -> TeamConfigResponse:
     return load_team_config(settings)
+
+
+@router.get("/feature-releases", response_model=FeatureReleaseConfigResponse)
+def feature_releases(
+    _: AuthenticatedUser = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> FeatureReleaseConfigResponse:
+    return load_feature_releases(settings)
 
 
 @router.post("/feedback", response_model=FeedbackResponse, status_code=status.HTTP_201_CREATED)

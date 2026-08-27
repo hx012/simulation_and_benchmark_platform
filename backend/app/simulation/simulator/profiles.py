@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlparse
 
 import yaml
 
@@ -7,6 +8,16 @@ from app.simulation.enums import SimulationMode
 
 
 DEFAULT_VARIANT_KEY = "default"
+
+
+def normalize_guide_url(value: object) -> str:
+    normalized = str(value or "").strip()
+    if normalized.startswith("/") and not normalized.startswith("//"):
+        return normalized
+    parsed = urlparse(normalized)
+    if parsed.scheme in {"http", "https"} and parsed.netloc:
+        return normalized
+    return ""
 
 
 def normalize_variant_key(chip_variant: str | None) -> str:
@@ -93,6 +104,10 @@ class SimulatorProfileRegistry:
             encoding="utf-8",
         ) as file:
             data = yaml.safe_load(file) or {}
+
+        self.mskpp_guide_url = normalize_guide_url(
+            data.get("mskpp_guide_url")
+        )
 
         profiles: list[SimulatorProfile] = []
         seen_keys: set[tuple[str, str, SimulationMode]] = set()

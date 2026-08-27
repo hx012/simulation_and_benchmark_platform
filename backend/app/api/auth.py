@@ -375,7 +375,7 @@ def list_users(
     _: AuthenticatedUser = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> list[AdminUserResponse]:
-    users = db.scalars(select(User).order_by(User.employee_id)).all()
+    users = db.scalars(select(User).order_by(User.role, User.employee_id)).all()
     return [_admin_user_response(user) for user in users]
 
 
@@ -383,10 +383,16 @@ def list_users(
 def configure_user(
     employee_id: str,
     request: AdminUserUpdate,
-    _: AuthenticatedUser = Depends(require_admin),
+    current: AuthenticatedUser = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> AdminUserResponse:
     user = update_admin_user(
-        db, employee_id, request.role, request.display_name, request.password, request.active
+        db,
+        current,
+        employee_id,
+        request.role,
+        request.display_name,
+        request.password,
+        request.active,
     )
     return _admin_user_response(user)

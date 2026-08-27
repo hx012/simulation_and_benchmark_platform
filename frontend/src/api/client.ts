@@ -101,3 +101,43 @@ export async function apiRequest<T>(
 
   return (await response.json()) as T;
 }
+
+export async function apiDownload(
+  path: string,
+  query?: Record<string, string | number | boolean | undefined | null>,
+): Promise<string> {
+  const response = await fetch(makeUrl(path, query), {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    let detail: unknown;
+    try {
+      const payload = (await response.json()) as { detail?: unknown };
+      detail = payload.detail;
+    } catch {
+      detail = await response.text().catch(() => undefined);
+    }
+    throw new ApiError(
+      response.status,
+      detailToMessage(detail, `HTTP ${response.status}`),
+      detail,
+    );
+  }
+
+  const disposition = response.headers.get('Content-Disposition') || '';
+  const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  const plainName = disposition.match(/filename="?([^";]+)"?/i)?.[1];
+  const filename = encodedName
+    ? decodeURIComponent(encodedName)
+    : plainName || 'download';
+  const objectUrl = URL.createObjectURL(await response.blob());
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+  return filename;
+}

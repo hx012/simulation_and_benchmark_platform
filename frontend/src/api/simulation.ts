@@ -1,4 +1,4 @@
-import { apiRequest, apiResourceUrl } from './client';
+import { apiDownload, apiRequest, apiResourceUrl } from './client';
 import type {
   ApplySimulationSampleResponse,
   LocalFileEntry,
@@ -179,6 +179,18 @@ export const simulationApi = {
         body: JSON.stringify(payload),
       },
     );
+  },
+
+  downloadConfigTemplate(payload: {
+    simulator_version: string;
+    chip_variant: string | null;
+    simulation_mode: SimulationMode;
+  }) {
+    return apiDownload(`${BASE}/config-template`, {
+      simulator_version: payload.simulator_version,
+      chip_variant: payload.chip_variant,
+      simulation_mode: payload.simulation_mode,
+    });
   },
 
   uploadPackage(

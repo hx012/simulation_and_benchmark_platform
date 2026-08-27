@@ -12,10 +12,13 @@ import {
   Spin,
   Steps,
   Tabs,
+  Tooltip,
 } from 'antd';
 import {
+  BookOutlined,
   CheckCircleOutlined,
   CopyOutlined,
+  DownloadOutlined,
   RocketOutlined,
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
@@ -60,6 +63,7 @@ export function CreateTaskPage() {
   const [quota, setQuota] = useState<SimulationTaskQuotaResponse | null>(null);
 
   const [simulators, setSimulators] = useState<SimulatorCapability[]>([]);
+  const [mskppGuideUrl, setMskppGuideUrl] = useState('');
   const [capabilitiesLoading, setCapabilitiesLoading] = useState(true);
   const [capabilitiesError, setCapabilitiesError] = useState<string | null>(null);
   const [simulatorKey, setSimulatorKey] = useState<string | null>(null);
@@ -76,6 +80,7 @@ export function CreateTaskPage() {
   const [chipRefreshToken, setChipRefreshToken] = useState(0);
   const [workloadRefreshToken, setWorkloadRefreshToken] = useState(0);
   const [sampleLoading, setSampleLoading] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(false);
   const [validating, setValidating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -134,6 +139,7 @@ export function CreateTaskPage() {
       .then((response) => {
         if (cancelled) return;
         setSimulators(response.simulators);
+        setMskppGuideUrl(response.mskpp_guide_url);
         const firstSimulator = response.simulators[0];
         const firstVariant = firstSimulator?.variants[0];
         const firstMode = firstVariant?.modes[0];
@@ -263,6 +269,31 @@ export function CreateTaskPage() {
     }
   }
 
+  async function handleDownloadTemplate() {
+    if (!selectedSimulator || !selectedVariant || !selectedMode) {
+      message.warning('请选择完整的仿真配置');
+      return;
+    }
+    setTemplateLoading(true);
+    try {
+      await simulationApi.downloadConfigTemplate({
+        simulator_version: selectedSimulator.key,
+        chip_variant: selectedVariant.key,
+        simulation_mode: selectedMode.key,
+      });
+      message.success('配置模板 ZIP 已开始下载');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : String(error));
+    } finally {
+      setTemplateLoading(false);
+    }
+  }
+
+  function handleOpenGuide() {
+    if (!mskppGuideUrl) return;
+    window.open(mskppGuideUrl, '_blank', 'noopener,noreferrer');
+  }
+
   async function uploadPackage(
     endpoint: 'chip-config' | 'workload',
     entries: LocalFileEntry[],
@@ -287,7 +318,7 @@ export function CreateTaskPage() {
         return;
       }
       if (!uploadSessionId || !hasConfiguration) {
-        message.warning('请先载入当前样例，或分别上传 Chip Config 与 Workload');
+        message.warning('请先载入配置样例，或分别上传 Chip Config 与 Workload');
         return;
       }
 
@@ -479,15 +510,38 @@ export function CreateTaskPage() {
       <section className="create-major-section create-major-config">
         <div className="create-major-head">
           <h2>配置</h2>
-          <Button
-            className="sample-action-button"
-            icon={<CopyOutlined />}
-            loading={sampleLoading}
-            disabled={!hasCapabilitySelection || capabilitiesLoading || quotaFull}
-            onClick={() => void handleApplySample()}
-          >
-            载入当前样例
-          </Button>
+          <Space wrap>
+            <Tooltip title={mskppGuideUrl ? undefined : '请在 simulator_profiles.yml 中配置 mskpp_guide_url'}>
+              <span>
+                <Button
+                  className="sample-action-button"
+                  icon={<BookOutlined />}
+                  disabled={!mskppGuideUrl}
+                  onClick={handleOpenGuide}
+                >
+                  MSKPP 使用指南
+                </Button>
+              </span>
+            </Tooltip>
+            <Button
+              className="sample-action-button"
+              icon={<DownloadOutlined />}
+              loading={templateLoading}
+              disabled={!hasCapabilitySelection || capabilitiesLoading}
+              onClick={() => void handleDownloadTemplate()}
+            >
+              下载配置模板
+            </Button>
+            <Button
+              className="sample-action-button"
+              icon={<CopyOutlined />}
+              loading={sampleLoading}
+              disabled={!hasCapabilitySelection || capabilitiesLoading || quotaFull}
+              onClick={() => void handleApplySample()}
+            >
+              载入配置样例
+            </Button>
+          </Space>
         </div>
 
         <Tabs

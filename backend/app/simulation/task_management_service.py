@@ -98,9 +98,8 @@ class SimulationTaskManagementService:
                 db,
                 task_id,
             )
-            # 当前仍是临时工号登录，owner_id 来自前端；这里至少保证
-            # 删除请求不能误删另一个 owner 的任务。正式 SSO 接入后改为
-            # 从后端认证会话获取 owner_id。
+            # owner_id is derived from the authenticated server session by
+            # the API layer; keep this service-level check as defense in depth.
             if task is None or task.owner_id != owner_id:
                 raise TaskNotFoundError(
                     f"Simulation task not found: {task_id}"

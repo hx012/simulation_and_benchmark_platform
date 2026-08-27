@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -23,6 +23,24 @@ class PlatformSupport(BaseModel):
 class PlatformConfigResponse(BaseModel):
     communities: list[CommunityLink]
     support: PlatformSupport = Field(default_factory=PlatformSupport)
+
+
+class FeatureReleaseItem(BaseModel):
+    id: str
+    title: str
+    description: str = ""
+    launched_at: date
+    action_text: str = "立即使用"
+    action_url: str = ""
+    enabled: bool = True
+
+
+class FeatureReleaseConfigResponse(BaseModel):
+    enabled: bool = True
+    title: str = "新特性上线"
+    max_items: int = Field(default=3, ge=1, le=5)
+    new_badge_days: int = Field(default=14, ge=0, le=365)
+    items: list[FeatureReleaseItem] = Field(default_factory=list)
 
 
 class TeamAchievement(BaseModel):

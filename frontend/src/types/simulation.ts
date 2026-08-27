@@ -18,6 +18,7 @@ export interface SimulatorCapability {
 }
 
 export interface SimulationCapabilitiesResponse {
+  mskpp_guide_url: string;
   simulators: SimulatorCapability[];
 }
 

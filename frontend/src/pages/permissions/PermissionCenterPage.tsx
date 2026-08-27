@@ -4,7 +4,8 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
-  SafetyCertificateOutlined, SearchOutlined, SettingOutlined, TeamOutlined, UserAddOutlined,
+  SafetyCertificateOutlined, SearchOutlined, SettingOutlined, StopOutlined,
+  UnlockOutlined, UserAddOutlined,
 } from '@ant-design/icons';
 import { authApi } from '../../api/auth';
 import { useAuth } from '../../auth/AuthContext';
@@ -57,8 +58,9 @@ export function PermissionCenterPage() {
   const [loading, setLoading] = useState(false);
   const [resourceDrafts, setResourceDrafts] = useState<Record<string, ProtectedResourceRecord>>({});
   const [expandedResources, setExpandedResources] = useState<string[]>([]);
-  const [adminDirectoryOpen, setAdminDirectoryOpen] = useState(false);
-  const [adminSearch, setAdminSearch] = useState('');
+  const [userSearch, setUserSearch] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'admin' | 'normal'>('all');
+  const [userStatusFilter, setUserStatusFilter] = useState<'all' | 'active' | 'blocked'>('all');
   const [adminEditing, setAdminEditing] = useState<AdminUserRecord | null>(null);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [adminForm] = Form.useForm<AdminFormValues>();
@@ -71,11 +73,6 @@ export function PermissionCenterPage() {
     [permissionCatalog],
   );
 
-  const administrators = useMemo(
-    () => users.filter((item) => item.role === 'admin'),
-    [users],
-  );
-
   const orderedResources = useMemo(() => {
     const order = new Map(resourceDisplayOrder.map((code, index) => [code, index]));
     return [...resources].sort((left, right) => (
@@ -86,13 +83,21 @@ export function PermissionCenterPage() {
   }, [resources]);
 
   const filteredUsers = useMemo(() => {
-    const keyword = adminSearch.trim().toLocaleLowerCase();
-    if (!keyword) return users;
-    return users.filter((item) => (
-      item.user_id.toLocaleLowerCase().includes(keyword)
-      || item.display_name.toLocaleLowerCase().includes(keyword)
-    ));
-  }, [adminSearch, users]);
+    const keyword = userSearch.trim().toLocaleLowerCase();
+    return [...users]
+      .sort((left, right) => (
+        Number(right.role === 'admin') - Number(left.role === 'admin')
+        || left.user_id.localeCompare(right.user_id, 'zh-CN')
+      ))
+      .filter((item) => (
+        (!keyword
+          || item.user_id.toLocaleLowerCase().includes(keyword)
+          || item.display_name.toLocaleLowerCase().includes(keyword))
+        && (userRoleFilter === 'all' || item.role === userRoleFilter)
+        && (userStatusFilter === 'all'
+          || (userStatusFilter === 'active' ? item.active : !item.active))
+      ));
+  }, [userRoleFilter, userSearch, userStatusFilter, users]);
 
   const loadAdminData = useCallback(async () => {
     if (!isAdmin) return;
@@ -160,7 +165,7 @@ export function PermissionCenterPage() {
         role: 'admin',
         display_name: values.display_name,
         password: values.password || undefined,
-        active: true,
+        active: adminEditing.active,
       });
       message.success(`${values.display_name || adminEditing.user_id}已设为管理员`);
       setAdminEditing(null);
@@ -177,6 +182,20 @@ export function PermissionCenterPage() {
         role: 'normal', display_name: item.display_name, active: item.active,
       });
       message.success(`已移除 ${item.display_name} 的管理员身份`);
+      await loadAdminData();
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function setUserActive(item: AdminUserRecord, active: boolean) {
+    try {
+      await authApi.updateUser(item.user_id, {
+        role: item.role,
+        display_name: item.display_name,
+        active,
+      });
+      message.success(active ? `已解除 ${item.display_name} 的登录屏蔽` : `已屏蔽 ${item.display_name} 登录`);
       await loadAdminData();
     } catch (error) {
       message.error(error instanceof Error ? error.message : String(error));
@@ -230,21 +249,53 @@ export function PermissionCenterPage() {
     },
   ];
 
-  const adminColumns: ColumnsType<AdminUserRecord> = [
-    { title: '管理员', render: (_, item) => <div><strong>{item.display_name}</strong><small className="permission-table-secondary">{item.user_id}</small></div> },
-    { title: '账号状态', render: (_, item) => <Space><Tag color={item.active ? 'success' : 'default'}>{item.active ? '正常' : '已停用'}</Tag>{item.bootstrap_admin ? <Tag color="blue">恢复管理员</Tag> : null}</Space> },
-    { title: '管理员密码', dataIndex: 'password_configured', render: (value) => value ? '已配置' : '未配置' },
-    { title: '最近登录', dataIndex: 'last_login_at', render: (value: string | null) => value ? new Date(value).toLocaleString('zh-CN') : '尚未登录' },
-    {
-      title: '操作', width: 170,
-      render: (_, item) => <Space><Button size="small" onClick={() => openAdminEditor(item)}>配置</Button><Popconfirm title="移除管理员身份？" description="该用户账号仍会保留，并恢复为普通用户。" okText="移除" cancelText="取消" disabled={item.bootstrap_admin} onConfirm={() => void removeAdministrator(item)}><Button danger size="small" disabled={item.bootstrap_admin}>移除</Button></Popconfirm></Space>,
-    },
-  ];
-
-  const directoryColumns: ColumnsType<AdminUserRecord> = [
+  const userColumns: ColumnsType<AdminUserRecord> = [
     { title: '用户', render: (_, item) => <div><strong>{item.display_name}</strong><small className="permission-table-secondary">{item.user_id}</small></div> },
-    { title: '当前身份', render: (_, item) => <Tag color={item.role === 'admin' ? 'purple' : 'default'}>{item.role === 'admin' ? '管理员' : '普通用户'}</Tag> },
-    { title: '操作', width: 130, render: (_, item) => item.role === 'admin' ? <Button size="small" onClick={() => openAdminEditor(item)}>配置管理员</Button> : <Button type="primary" size="small" icon={<UserAddOutlined />} onClick={() => openAdminEditor(item)}>设为管理员</Button> },
+    {
+      title: '身份', width: 130,
+      render: (_, item) => <Space><Tag color={item.role === 'admin' ? 'purple' : 'default'}>{item.role === 'admin' ? '管理员' : '普通用户'}</Tag>{item.bootstrap_admin ? <Tag color="blue">恢复管理员</Tag> : null}</Space>,
+    },
+    {
+      title: '登录状态', width: 120,
+      render: (_, item) => <Tag color={item.active ? 'success' : 'error'}>{item.active ? '正常' : '已屏蔽'}</Tag>,
+    },
+    {
+      title: '操作', width: 350,
+      render: (_, item) => {
+        const isSelf = item.user_id === user?.userId;
+        const blockDisabled = item.bootstrap_admin || isSelf;
+        return (
+          <Space wrap>
+            {item.role === 'admin' ? (
+              <>
+                <Button size="small" onClick={() => openAdminEditor(item)}>配置管理员</Button>
+                <Popconfirm title="移除管理员身份？" description="该用户账号仍会保留，并恢复为普通用户。" okText="移除" cancelText="取消" disabled={item.bootstrap_admin || isSelf} onConfirm={() => void removeAdministrator(item)}>
+                  <Button danger size="small" disabled={item.bootstrap_admin || isSelf}>移除管理员</Button>
+                </Popconfirm>
+              </>
+            ) : (
+              <Button type="primary" size="small" icon={<UserAddOutlined />} disabled={!item.active} onClick={() => openAdminEditor(item)}>设为管理员</Button>
+            )}
+            {item.active ? (
+              <Popconfirm
+                title="屏蔽该用户登录？"
+                description="已有会话将立即失效，历史任务和数据不会删除。"
+                okText="确认屏蔽"
+                cancelText="取消"
+                disabled={blockDisabled}
+                onConfirm={() => void setUserActive(item, false)}
+              >
+                <Button danger size="small" icon={<StopOutlined />} disabled={blockDisabled}>屏蔽登录</Button>
+              </Popconfirm>
+            ) : (
+              <Popconfirm title="解除登录屏蔽？" okText="解除屏蔽" cancelText="取消" onConfirm={() => void setUserActive(item, true)}>
+                <Button size="small" icon={<UnlockOutlined />}>解除屏蔽</Button>
+              </Popconfirm>
+            )}
+          </Space>
+        );
+      },
+    },
   ];
 
   if (!isAdmin) {
@@ -306,28 +357,28 @@ export function PermissionCenterPage() {
     </div>
   );
 
-  const administratorManagement = (
-    <div className="permission-admin-panel">
-      <div className="permission-admin-toolbar"><div><strong>当前管理员</strong><p>这里只展示管理员账号；需要新增管理员时，从完整用户目录中搜索。</p></div><Space><Button onClick={() => setPasswordOpen(true)}>修改我的密码</Button><Button type="primary" icon={<TeamOutlined />} onClick={() => setAdminDirectoryOpen(true)}>配置管理员</Button></Space></div>
-      <Table rowKey="user_id" columns={adminColumns} dataSource={administrators} loading={loading} pagination={false} />
+  const userManagement = (
+    <div className="permission-user-panel">
+      <div className="permission-admin-toolbar"><div><strong>统一管理平台用户</strong><p>管理员固定排在前面，可配置管理员身份或屏蔽用户登录；屏蔽不会删除历史任务和数据。</p></div><Button onClick={() => setPasswordOpen(true)}>修改我的密码</Button></div>
+      <div className="permission-user-filters">
+        <Input allowClear prefix={<SearchOutlined />} placeholder="搜索姓名或工号" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} />
+        <Select value={userRoleFilter} onChange={setUserRoleFilter} options={[{ value: 'all', label: '全部身份' }, { value: 'admin', label: '管理员' }, { value: 'normal', label: '普通用户' }]} />
+        <Select value={userStatusFilter} onChange={setUserStatusFilter} options={[{ value: 'all', label: '全部状态' }, { value: 'active', label: '正常' }, { value: 'blocked', label: '已屏蔽' }]} />
+      </div>
+      <Table rowKey="user_id" columns={userColumns} dataSource={filteredUsers} loading={loading} pagination={{ pageSize: 10, hideOnSinglePage: true }} scroll={{ x: 900 }} />
     </div>
   );
 
   return (
     <div className="page-container permission-center-page">
-      <PageHeading title="权限管理" subtitle="审批访问申请、配置模块访问方式并维护平台管理员" />
+      <PageHeading title="权限管理" subtitle="审批访问申请、配置模块访问方式并管理平台用户" />
       <Card className="section-card clean-card permission-admin-card">
         <Tabs items={[
           { key: 'requests', label: `待审批申请 (${pendingRequests.length})`, children: pendingRequests.length ? <Table rowKey="request_id" columns={requestColumns} dataSource={pendingRequests} loading={loading} pagination={false} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无待审批申请" /> },
           { key: 'resources', label: '模块访问管理', children: resourceManagement },
-          { key: 'admins', label: '管理员配置', children: administratorManagement },
+          { key: 'users', label: '用户管理', children: userManagement },
         ]} />
       </Card>
-
-      <Modal title="配置管理员" width={760} open={adminDirectoryOpen} footer={null} onCancel={() => { setAdminDirectoryOpen(false); setAdminSearch(''); }}>
-        <Input allowClear prefix={<SearchOutlined />} placeholder="搜索姓名或工号" value={adminSearch} onChange={(event) => setAdminSearch(event.target.value)} className="permission-admin-search" />
-        <Table rowKey="user_id" columns={directoryColumns} dataSource={filteredUsers} loading={loading} pagination={{ pageSize: 6, hideOnSinglePage: true }} />
-      </Modal>
 
       <Modal title={adminEditing?.role === 'admin' ? '配置管理员' : '设为管理员'} open={Boolean(adminEditing)} onCancel={() => { setAdminEditing(null); adminForm.resetFields(); }} onOk={() => void saveAdministrator()} okText="保存">
         <Form form={adminForm} layout="vertical">

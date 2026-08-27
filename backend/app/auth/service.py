@@ -8,7 +8,7 @@ import hmac
 import secrets
 
 from fastapi import Cookie, Depends, HTTPException
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app.auth.constants import (
@@ -531,22 +531,35 @@ def update_resource_policy(db: Session, resource: ProtectedResource, access_mode
     db.commit()
 
 
-def update_admin_user(db: Session, employee_id: str, role: str, display_name: str | None, password: str | None, active: bool) -> User:
+def update_admin_user(
+    db: Session,
+    current: AuthenticatedUser,
+    employee_id: str,
+    role: str,
+    display_name: str | None,
+    password: str | None,
+    active: bool,
+) -> User:
     normalized = employee_id.strip()
     bootstrap_id = get_settings().platform_bootstrap_admin_id.strip()
     if normalized == bootstrap_id and (role != "admin" or not active):
         raise HTTPException(status_code=409, detail="启动恢复管理员不能被降级或停用")
+    if normalized == current.user.employee_id and not active:
+        raise HTTPException(status_code=409, detail="不能屏蔽当前登录账号")
+    if normalized == current.user.employee_id and role != "admin":
+        raise HTTPException(status_code=409, detail="不能移除当前登录账号的管理员身份")
     user = db.scalar(select(User).where(User.employee_id == normalized))
     if user is None:
         user = User(employee_id=normalized, display_name=display_name or normalized)
         db.add(user)
+        db.flush()
     if role == "admin" and not (password or user.password_hash):
         raise HTTPException(status_code=400, detail="管理员必须配置密码")
     if password:
         validate_admin_password(password)
         user.password_hash = hash_password(password)
         user.password_changed_at = _utcnow()
-    if user.role == "admin" and (role != "admin" or not active):
+    if user.role == "admin" and user.active and (role != "admin" or not active):
         admin_count = db.scalar(select(func.count()).select_from(User).where(
             User.role == "admin", User.active.is_(True)
         )) or 0
@@ -556,6 +569,12 @@ def update_admin_user(db: Session, employee_id: str, role: str, display_name: st
     user.active = active
     if display_name:
         user.display_name = display_name.strip()
+    if not active:
+        db.execute(
+            update(UserSession)
+            .where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None))
+            .values(revoked_at=_utcnow())
+        )
     db.commit()
     db.refresh(user)
     return user

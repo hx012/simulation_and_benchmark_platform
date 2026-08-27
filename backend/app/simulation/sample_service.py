@@ -1,7 +1,10 @@
+import re
 import shutil
 from datetime import datetime, timezone
+from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
+from zipfile import ZIP_DEFLATED, ZipFile
 
 from sqlalchemy.orm import Session
 
@@ -25,6 +28,72 @@ class SimulationSampleService:
         self.template_root = Path(
             settings.sim_sample_template_root
         ).resolve()
+
+    def _resolve_sample_root(
+        self,
+        *,
+        simulator_version: str,
+        chip_variant: str | None,
+        simulation_mode: SimulationMode,
+    ) -> tuple[Path, str, str]:
+        variant_key = (chip_variant or "default").strip() or "default"
+        if variant_key.lower() == "default":
+            variant_key = "default"
+        mode_key = simulation_mode.value.lower()
+
+        # Templates are shared by every simulator version and chip variant.
+        # Only the execution topology changes the folder that is loaded:
+        #   <root>/default/single_chip/{chip_config,workload}
+        #   <root>/default/multi_chip/{chip_config,workload}
+        sample_root = (self.template_root / "default" / mode_key).resolve()
+        if not (
+            (sample_root / "chip_config").is_dir()
+            and (sample_root / "workload").is_dir()
+        ):
+            raise ValueError(
+                "Simulation sample is not installed for "
+                f"version={simulator_version}, variant={variant_key}, "
+                f"mode={simulation_mode.value}. Expected: {sample_root}"
+            )
+
+        return sample_root, variant_key, mode_key
+
+    def build_template_archive(
+        self,
+        *,
+        simulator_version: str,
+        chip_variant: str | None,
+        simulation_mode: SimulationMode,
+    ) -> tuple[str, bytes]:
+        sample_root, variant_key, mode_key = self._resolve_sample_root(
+            simulator_version=simulator_version,
+            chip_variant=chip_variant,
+            simulation_mode=simulation_mode,
+        )
+
+        buffer = BytesIO()
+        with ZipFile(buffer, mode="w", compression=ZIP_DEFLATED) as archive:
+            for package_name in ("chip_config", "workload"):
+                package_root = (sample_root / package_name).resolve()
+                archive.writestr(f"{package_name}/", b"")
+                for path in sorted(package_root.rglob("*")):
+                    if not path.is_file() or path.is_symlink():
+                        continue
+                    resolved_path = path.resolve()
+                    if not resolved_path.is_relative_to(package_root):
+                        continue
+                    relative_path = resolved_path.relative_to(package_root)
+                    archive.writestr(
+                        (Path(package_name) / relative_path).as_posix(),
+                        resolved_path.read_bytes(),
+                    )
+
+        safe_parts = [
+            re.sub(r"[^A-Za-z0-9._-]+", "-", value).strip("-") or "default"
+            for value in (simulator_version, variant_key, mode_key)
+        ]
+        filename = "mskpp_config_template_" + "_".join(safe_parts) + ".zip"
+        return filename, buffer.getvalue()
 
     def apply_sample(
         self,
@@ -54,52 +123,11 @@ class SimulationSampleService:
                 f"{upload_session.status.value}"
             )
 
-        variant_key = (chip_variant or "default").strip() or "default"
-        if variant_key.lower() == "default":
-            variant_key = "default"
-        mode_key = simulation_mode.value.lower()
-
-        # New multi-profile layout:
-        #   <root>/<version>/<variant>/<mode>/chip_config
-        #   <root>/<version>/<variant>/<mode>/workload
-        # Keep the legacy <root>/<version>/sample layout as a fallback so
-        # existing V310 sample installations continue to work unchanged.
-        candidate_roots = [
-            (
-                self.template_root
-                / simulator_version
-                / variant_key
-                / mode_key
-            ).resolve(),
-        ]
-        if (
-            variant_key == "default"
-            and simulation_mode == SimulationMode.SINGLE_CHIP
-        ):
-            candidate_roots.append(
-                (
-                    self.template_root
-                    / simulator_version
-                    / "sample"
-                ).resolve()
-            )
-
-        sample_root = next(
-            (
-                path
-                for path in candidate_roots
-                if (path / "chip_config").is_dir()
-                and (path / "workload").is_dir()
-            ),
-            None,
+        sample_root, _, _ = self._resolve_sample_root(
+            simulator_version=simulator_version,
+            chip_variant=chip_variant,
+            simulation_mode=simulation_mode,
         )
-        if sample_root is None:
-            expected = " or ".join(str(path) for path in candidate_roots)
-            raise ValueError(
-                "Simulation sample is not installed for "
-                f"version={simulator_version}, variant={variant_key}, "
-                f"mode={simulation_mode.value}. Expected: {expected}"
-            )
 
         chip_source = sample_root / "chip_config"
         workload_source = sample_root / "workload"

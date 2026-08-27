@@ -13,6 +13,7 @@ import {
   Tabs,
   Tag,
   Timeline,
+  Tooltip,
 } from 'antd';
 import { EditOutlined, EyeOutlined, LikeOutlined, PlusOutlined } from '@ant-design/icons';
 import { collaborationApi, type DemandItem, type DemandPayload } from '../api/collaboration';
@@ -175,7 +176,11 @@ export function DemandPoolPage() {
       <PageHeading
         title="平台需求池"
         subtitle="公共需求透明跟踪，个人提交独立管理；审视结论与交付进展都有记录"
-        actions={<Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>提交需求</Button>}
+        actions={(
+          <Tooltip title="提交关于benchmark、仿真器、分析工具的新需求">
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>提交需求</Button>
+          </Tooltip>
+        )}
       />
 
       <div className="demand-metric-grid">

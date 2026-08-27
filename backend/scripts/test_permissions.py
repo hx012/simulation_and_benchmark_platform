@@ -1,7 +1,10 @@
 """End-to-end check for session auth, admin accounts, and permission policy."""
 
 import sys
+from io import BytesIO
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from zipfile import ZipFile
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -13,10 +16,12 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.auth import models as auth_models  # noqa: F401
+from app.api import simulation as simulation_api
 from app.common.config import get_settings
 from app.common.database import Base, get_db
 from app.main import create_app
 from app.simulation import models as simulation_models  # noqa: F401
+from app.simulation.enums import SimulationMode, TaskStatus
 
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
@@ -68,6 +73,139 @@ assert set(admin.json()["permissions"]) == {
     "performance_access", "team_access", "demand_access",
 }
 
+capabilities = admin_client.get("/api/simulation/capabilities")
+assert capabilities.status_code == 200, capabilities.text
+assert "mskpp_guide_url" in capabilities.json()
+
+configured_guide_url = simulation_api.profile_registry.mskpp_guide_url
+del simulation_api.profile_registry.mskpp_guide_url
+try:
+    legacy_capabilities = admin_client.get("/api/simulation/capabilities")
+    assert legacy_capabilities.status_code == 200, legacy_capabilities.text
+    assert legacy_capabilities.json()["mskpp_guide_url"] == ""
+finally:
+    simulation_api.profile_registry.mskpp_guide_url = configured_guide_url
+
+config_template = admin_client.get(
+    "/api/simulation/config-template",
+    params={
+        "simulator_version": "v310",
+        "chip_variant": "default",
+        "simulation_mode": "SINGLE_CHIP",
+    },
+)
+assert config_template.status_code == 200, config_template.text
+assert config_template.headers["content-type"].startswith("application/zip")
+assert "mskpp_config_template_v310_default_single_chip.zip" in (
+    config_template.headers["content-disposition"]
+)
+with ZipFile(BytesIO(config_template.content)) as archive:
+    expected_template_files = {
+        "chip_config/simulator_config.yml",
+        "chip_config/daw_config.yml",
+        "workload/workload.yml",
+    }
+    assert expected_template_files.issubset(set(archive.namelist()))
+    v310_template_content = {
+        name: archive.read(name) for name in expected_template_files
+    }
+
+v320_template = admin_client.get(
+    "/api/simulation/config-template",
+    params={
+        "simulator_version": "v320",
+        "chip_variant": "default",
+        "simulation_mode": "SINGLE_CHIP",
+    },
+)
+assert v320_template.status_code == 200, v320_template.text
+with ZipFile(BytesIO(v320_template.content)) as archive:
+    assert {
+        name: archive.read(name) for name in expected_template_files
+    } == v310_template_content
+
+multi_chip_template = admin_client.get(
+    "/api/simulation/config-template",
+    params={
+        "simulator_version": "v320",
+        "chip_variant": "high_perf",
+        "simulation_mode": "MULTI_CHIP",
+    },
+)
+assert multi_chip_template.status_code == 200, multi_chip_template.text
+with ZipFile(BytesIO(multi_chip_template.content)) as archive:
+    assert b"mode: MULTI_CHIP" in archive.read(
+        "chip_config/simulator_config.yml"
+    )
+    assert b"chip_count: 2" in archive.read("chip_config/daw_config.yml")
+
+# Normal users are server-bound to their own tasks. Admin mode can read every
+# task, but task mutations remain owner-only.
+with TestingSession() as session:
+    session.add_all([
+        simulation_models.SimulationTask(
+            queue_seq=1,
+            task_id="SIM-PERMISSION-ALICE",
+            task_name="Alice task",
+            owner_id="permission-alice",
+            simulator_version="mock",
+            chip_variant=None,
+            simulation_mode=SimulationMode.SINGLE_CHIP,
+            status=TaskStatus.COMPLETED,
+            workspace_path="/tmp/SIM-PERMISSION-ALICE",
+        ),
+        simulation_models.SimulationTask(
+            queue_seq=2,
+            task_id="SIM-PERMISSION-BOB",
+            task_name="Bob task",
+            owner_id="permission-bob",
+            simulator_version="mock",
+            chip_variant=None,
+            simulation_mode=SimulationMode.SINGLE_CHIP,
+            status=TaskStatus.COMPLETED,
+            workspace_path="/tmp/SIM-PERMISSION-BOB",
+        ),
+    ])
+    session.commit()
+
+alice_tasks = alice_client.get(
+    "/api/simulation/tasks",
+    params={"owner_id": "permission-bob"},
+)
+assert alice_tasks.status_code == 200, alice_tasks.text
+assert [item["task_id"] for item in alice_tasks.json()["items"]] == ["SIM-PERMISSION-ALICE"]
+assert alice_client.get("/api/simulation/tasks/SIM-PERMISSION-BOB").status_code == 404
+
+admin_tasks = admin_client.get("/api/simulation/tasks")
+assert admin_tasks.status_code == 200, admin_tasks.text
+assert {item["task_id"] for item in admin_tasks.json()["items"]} == {
+    "SIM-PERMISSION-ALICE", "SIM-PERMISSION-BOB",
+}
+assert admin_client.get("/api/simulation/tasks/SIM-PERMISSION-BOB").status_code == 200
+assert admin_client.post("/api/simulation/tasks/SIM-PERMISSION-BOB/cancel").status_code == 404
+
+with TemporaryDirectory() as task_root:
+    task_root_path = Path(task_root).resolve()
+    bob_workspace = task_root_path / "SIM-PERMISSION-BOB"
+    viewer_path = bob_workspace / "result" / "trace" / "trace.html"
+    viewer_path.parent.mkdir(parents=True)
+    viewer_path.write_text("<html><body>Trace viewer</body></html>", encoding="utf-8")
+    simulation_api.task_io_service.task_root = task_root_path
+    with TestingSession() as session:
+        bob_task = session.get(simulation_models.SimulationTask, 2)
+        assert bob_task is not None
+        bob_task.workspace_path = str(bob_workspace)
+        session.commit()
+
+    assert alice_client.get(
+        "/api/simulation/tasks/SIM-PERMISSION-BOB/trace/viewer"
+    ).status_code == 404
+    admin_viewer = admin_client.get(
+        "/api/simulation/tasks/SIM-PERMISSION-BOB/trace/viewer"
+    )
+    assert admin_viewer.status_code == 200, admin_viewer.text
+    assert "MSKPP&amp;AIBench + admin" in admin_viewer.text
+
 pending = admin_client.get("/api/admin/permission-requests")
 assert pending.status_code == 200, pending.text
 for item in pending.json():
@@ -99,6 +237,7 @@ assert benchmark_resource["authorized_users"] == [{
     "user_id": "permission-alice", "display_name": "permission-alice",
 }]
 admin_users = admin_client.get("/api/admin/users").json()
+assert admin_users[0]["role"] == "admin"
 bootstrap_admin = next(item for item in admin_users if item["user_id"] == "admin")
 assert bootstrap_admin["bootstrap_admin"] is True
 
@@ -143,5 +282,30 @@ assert recent.status_code == 200, recent.text
 assert recent.json()["items"] == []
 assert alice_client.get("/api/admin/analytics/overview").status_code == 403
 assert admin_client.get("/api/admin/analytics/overview").status_code == 200
+
+# Blocking a user immediately revokes existing sessions and prevents a new
+# login, while unblocking restores login without deleting the account.
+blocked_bob = admin_client.put("/api/admin/users/permission-bob", json={
+    "role": "normal",
+    "display_name": "permission-bob",
+    "active": False,
+})
+assert blocked_bob.status_code == 200, blocked_bob.text
+assert blocked_bob.json()["active"] is False
+assert bob_client.get("/api/auth/me").status_code == 401
+blocked_bob_login = TestClient(app).post("/api/auth/login", json={
+    "employee_id": "permission-bob", "auth_mode": "normal",
+})
+assert blocked_bob_login.status_code == 403, blocked_bob_login.text
+
+unblocked_bob = admin_client.put("/api/admin/users/permission-bob", json={
+    "role": "normal",
+    "display_name": "permission-bob",
+    "active": True,
+})
+assert unblocked_bob.status_code == 200, unblocked_bob.text
+assert TestClient(app).post("/api/auth/login", json={
+    "employee_id": "permission-bob", "auth_mode": "normal",
+}).status_code == 200
 
 print("permission and administrator workflow checks passed")

@@ -30,6 +30,7 @@ class SimulatorCapabilityResponse(BaseModel):
 
 
 class SimulationCapabilitiesResponse(BaseModel):
+    mskpp_guide_url: str = ""
     simulators: list[SimulatorCapabilityResponse]
 
 

@@ -29,7 +29,7 @@ export function ResultWatermark({ children, className, enabled = true, style }: 
         color: 'rgba(31, 78, 121, 0.10)',
         fontFamily: 'Arial, "Microsoft YaHei", sans-serif',
         fontSize: 15,
-        fontWeight: 600,
+        fontWeight: 400,
       }}
     >
       {children}

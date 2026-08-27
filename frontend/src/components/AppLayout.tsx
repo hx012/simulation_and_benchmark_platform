@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Button, Dropdown, Layout, Typography } from 'antd';
+import { Button, Dropdown, Layout, Tooltip, Typography } from 'antd';
 import {
   BarChartOutlined,
   LineChartOutlined,
   BulbOutlined,
   CommentOutlined,
-  ExperimentOutlined,
   HomeOutlined,
   LogoutOutlined,
   MenuOutlined,
@@ -155,7 +154,7 @@ export function AppLayout() {
           title="返回平台展示页"
           aria-label="返回平台展示页"
         >
-          <div className="brand-mark"><ExperimentOutlined /></div>
+          <div className="brand-mark" aria-hidden="true">AI</div>
           {!collapsed ? (
             <div className="brand-copy">
               <div className="brand-title">AI Chip Platform</div>
@@ -235,7 +234,16 @@ export function AppLayout() {
             <Dropdown trigger={['click']} menu={{
               items: [
                 { key: 'support-group', label: 'MSKPP 技术支撑群', icon: <QuestionCircleOutlined />, onClick: () => setSupportOpen(true) },
-                { key: 'feedback', label: '意见反馈', icon: <CommentOutlined />, onClick: () => setFeedbackOpen(true) },
+                {
+                  key: 'feedback',
+                  label: (
+                    <Tooltip title="反馈当前界面问题" placement="left">
+                      <span>意见反馈</span>
+                    </Tooltip>
+                  ),
+                  icon: <CommentOutlined />,
+                  onClick: () => setFeedbackOpen(true),
+                },
               ],
             }}>
               <Button type="text" icon={<QuestionCircleOutlined />}>帮助与反馈</Button>

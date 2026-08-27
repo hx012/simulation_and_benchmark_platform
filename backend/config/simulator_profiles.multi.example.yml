@@ -1,5 +1,8 @@
 # Default example only. Set SIMULATOR_PROFILES_FILE to an untracked deployment file for real simulators.
 # Labels are optional; when omitted the backend provides sensible fallbacks.
+# Configure an internal path or an http(s) URL for the "MSKPP 使用指南" button.
+mskpp_guide_url: ""
+
 profiles:
   - simulator_version: v310
     simulator_label: V310

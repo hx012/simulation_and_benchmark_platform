@@ -36,6 +36,7 @@ class TraceWatermarkTests(unittest.TestCase):
             self.assertIn(body_tag, rendered)
             self.assertIn(f'id="{WATERMARK_LAYER_ID}"', rendered)
             self.assertIn("MSKPP&amp;AIBench + E123456", rendered)
+            self.assertIn('font: 400 15px/1.2 Arial, "Microsoft YaHei", sans-serif;', rendered)
             self.assertLess(
                 rendered.index(body_tag),
                 rendered.index(f'id="{WATERMARK_LAYER_ID}"'),

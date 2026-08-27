@@ -87,9 +87,20 @@ def main() -> None:
             "      featured_order: 10\n"
             "      enabled: true\n"
             "communities:\n"
+            "  - key: jiaxian\n"
+            "    name: Jiaxian From Content\n"
+            "    url: https://content.example.com/jiaxian\n"
+            "    enabled: true\n"
+            "    order: 10\n"
+            "  - key: w3\n"
+            "    name: W3 From Content\n"
+            "    url: https://content.example.com/w3\n"
+            "    enabled: true\n"
+            "    order: 20\n"
             "  - key: benchmark_wiki\n"
             "    name: Benchmark Wiki\n"
-            "    enabled: false\n"
+            "    url: https://content.example.com/benchmark-wiki\n"
+            "    enabled: true\n"
             "    order: 30\n"
             "support:\n"
             "  name: Test Support\n"
@@ -109,7 +120,20 @@ def main() -> None:
         assert team.achievements[0].featured
         links = community_links(settings)
         assert [link.key for link in links] == ["jiaxian", "w3", "benchmark_wiki"]
-        assert links[0].enabled and not links[-1].enabled
+        assert [link.url for link in links] == [
+            "https://content.example.com/jiaxian",
+            "https://content.example.com/w3",
+            "https://content.example.com/benchmark-wiki",
+        ]
+        fallback_links = community_links(Settings(
+            platform_content_config=Path(directory) / "missing-platform-content.yml",
+            platform_community_jiaxian_url="https://jiaxian.example.com",
+            platform_community_w3_url="https://w3.example.com",
+        ))
+        assert [link.url for link in fallback_links[:2]] == [
+            "https://jiaxian.example.com",
+            "https://w3.example.com",
+        ]
         assert platform_support(settings).name == "Test Support"
 
         with Session(engine) as db:

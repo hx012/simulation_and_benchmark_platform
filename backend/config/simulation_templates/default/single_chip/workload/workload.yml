@@ -1,0 +1,16 @@
+# Editable workload example shared by every single-chip profile.
+workload:
+  name: vector_add_demo
+  description: Add two FP16 vectors in a single-chip simulation.
+  framework: sample
+  operator: vector_add
+  iterations: 10
+
+inputs:
+  vector_length: 1024
+  data_type: float16
+  batch_size: 1
+
+execution:
+  warmup_iterations: 2
+  collect_metrics: true

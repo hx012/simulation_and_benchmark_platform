@@ -11,11 +11,10 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.auth.constants import SIMULATION_LOG_RESOURCE, SIMULATION_TASK_RESOURCE
-from app.auth.models import User
 from app.auth.service import AuthenticatedUser, get_current_user, require_resource
 from app.common.config import get_settings
 from app.common.database import get_db
-from app.simulation.enums import TaskStatus
+from app.simulation.enums import SimulationMode, TaskStatus
 from app.simulation.exceptions import (
     InvalidTaskStateError,
     InvalidUploadSessionStateError,
@@ -66,6 +65,11 @@ from app.simulation.submission_service import SimulationSubmissionService
 from app.simulation.task_io_service import SimulationTaskIOService
 from app.simulation.task_management_service import SimulationTaskManagementService
 from app.simulation.task_service import SimulationTaskService
+from app.simulation.access_control import (
+    require_task_owner,
+    require_task_read_access,
+    visible_task_owner,
+)
 from app.simulation.trace_watermark import iter_watermarked_trace_html
 from app.simulation.upload_repository import UploadSessionRepository
 from app.simulation.upload_file_service import UploadSessionFileService
@@ -164,6 +168,10 @@ def _upload_session_response(upload_session) -> UploadSessionResponse:
 )
 def get_simulation_capabilities() -> SimulationCapabilitiesResponse:
     return SimulationCapabilitiesResponse(
+        # Keep the capability endpoint available during rolling or patch-based
+        # deployments where the API module may be newer than the in-memory
+        # registry instance. A complete restart will restore the configured URL.
+        mskpp_guide_url=getattr(profile_registry, "mskpp_guide_url", ""),
         simulators=[
             SimulatorCapabilityResponse(
                 key=simulator.key,
@@ -185,6 +193,37 @@ def get_simulation_capabilities() -> SimulationCapabilitiesResponse:
             )
             for simulator in profile_registry.get_capabilities()
         ]
+    )
+
+
+@router.get("/config-template")
+def download_simulation_config_template(
+    simulator_version: str = Query(min_length=1, max_length=64),
+    chip_variant: str | None = Query(default="default", max_length=64),
+    simulation_mode: SimulationMode = Query(default=SimulationMode.SINGLE_CHIP),
+) -> StreamingResponse:
+    try:
+        profile_registry.get_profile(
+            simulator_version=simulator_version,
+            chip_variant=chip_variant,
+            simulation_mode=simulation_mode,
+        )
+        filename, content = sample_service.build_template_archive(
+            simulator_version=simulator_version,
+            chip_variant=chip_variant,
+            simulation_mode=simulation_mode,
+        )
+    except Exception as exc:
+        _raise_upload_http_error(exc)
+        raise
+
+    return StreamingResponse(
+        iter([content]),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(content)),
+        },
     )
 
 
@@ -240,6 +279,19 @@ def _raise_upload_http_error(exc: Exception) -> None:
     raise exc
 
 
+def _require_owned_upload_session(
+    db: Session,
+    upload_session_id: str,
+    current_user: AuthenticatedUser,
+):
+    upload_session = upload_service.get_session(db, upload_session_id)
+    if upload_session.owner_id != current_user.user.employee_id:
+        raise UploadSessionNotFoundError(
+            f"Upload session not found: {upload_session_id}"
+        )
+    return upload_session
+
+
 def _upload_package(
     *,
     upload_session_id: str,
@@ -247,8 +299,10 @@ def _upload_package(
     files: list[UploadFile],
     relative_paths: list[str],
     db: Session,
+    current_user: AuthenticatedUser,
 ) -> UploadFilesResponse:
     try:
+        _require_owned_upload_session(db, upload_session_id, current_user)
         uploaded_count = upload_service.upload_files(
             db=db,
             upload_session_id=upload_session_id,
@@ -293,12 +347,14 @@ def list_simulation_tasks(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> SimulationTaskListResponse:
     offset = (page - 1) * page_size
+    effective_owner_id = visible_task_owner(current_user, owner_id)
 
     tasks = repository.list_tasks(
         db,
-        owner_id=owner_id,
+        owner_id=effective_owner_id,
         status=status,
         archived=archived,
         offset=offset,
@@ -307,7 +363,7 @@ def list_simulation_tasks(
 
     total = repository.count_tasks(
         db,
-        owner_id=owner_id,
+        owner_id=effective_owner_id,
         status=status,
         archived=archived,
     )
@@ -330,8 +386,9 @@ def list_simulation_tasks(
 def get_simulation_task_quota(
     owner_id: str = Query(min_length=1, max_length=128),
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> SimulationTaskQuotaResponse:
-    quota = task_management_service.get_quota(db, owner_id)
+    quota = task_management_service.get_quota(db, current_user.user.employee_id)
     return SimulationTaskQuotaResponse(
         owner_id=quota.owner_id,
         limit=quota.limit,
@@ -350,11 +407,12 @@ def get_simulation_task_quota(
 def batch_delete_simulation_tasks(
     request: SimulationBatchDeleteRequest,
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> SimulationDeleteResponse:
     try:
         deleted = task_management_service.delete_tasks(
             db,
-            owner_id=request.owner_id,
+            owner_id=current_user.user.employee_id,
             task_ids=request.task_ids,
         )
     except Exception as exc:
@@ -374,9 +432,11 @@ def batch_delete_simulation_tasks(
 def get_simulation_task(
     task_id: str,
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> SimulationTaskResponse:
     try:
         task = task_service.get_task(db, task_id)
+        require_task_read_access(current_user, task)
     except Exception as exc:
         _raise_task_http_error(exc)
         raise
@@ -392,11 +452,12 @@ def delete_simulation_task(
     task_id: str,
     owner_id: str = Query(min_length=1, max_length=128),
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> SimulationDeleteResponse:
     try:
         deleted = task_management_service.delete_task(
             db,
-            owner_id=owner_id,
+            owner_id=current_user.user.employee_id,
             task_id=task_id,
         )
     except Exception as exc:
@@ -416,9 +477,11 @@ def delete_simulation_task(
 def get_simulation_queue(
     task_id: str,
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> SimulationQueueResponse:
     try:
         task = task_service.get_task(db, task_id)
+        require_task_read_access(current_user, task)
         queued_ahead = task_service.get_queue_ahead(
             db,
             task_id,
@@ -446,12 +509,11 @@ def get_simulation_log(
         ge=1,
     ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_resource(SIMULATION_LOG_RESOURCE)),
+    current_user: AuthenticatedUser = Depends(require_resource(SIMULATION_LOG_RESOURCE)),
 ) -> SimulationLogResponse:
     try:
         task = task_service.get_task(db, task_id)
-        if task.owner_id != current_user.employee_id:
-            raise TaskNotFoundError(f"Simulation task not found: {task_id}")
+        require_task_read_access(current_user, task)
         chunk = task_io_service.read_log(
             task,
             offset=offset,
@@ -484,9 +546,11 @@ def get_simulation_log(
 def get_simulation_result(
     task_id: str,
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> SimulationResultResponse:
     try:
         task = task_service.get_task(db, task_id)
+        require_task_read_access(current_user, task)
         artifacts = task_io_service.read_result_artifacts(task)
     except TaskIOError as exc:
         raise HTTPException(
@@ -528,9 +592,11 @@ def get_simulation_result(
 def get_simulation_trace(
     task_id: str,
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> SimulationTraceResponse:
     try:
         task = task_service.get_task(db, task_id)
+        require_task_read_access(current_user, task)
         events = task_io_service.read_trace_events(task)
     except TaskIOError as exc:
         raise HTTPException(
@@ -559,6 +625,7 @@ def get_simulation_trace_viewer(
 ) -> StreamingResponse:
     try:
         task = task_service.get_task(db, task_id)
+        require_task_read_access(current_user, task)
         viewer_path = task_io_service.get_trace_viewer_path(task)
     except TaskIOError as exc:
         raise HTTPException(
@@ -605,8 +672,10 @@ def get_simulation_trace_viewer(
 def cancel_simulation_task(
     task_id: str,
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> SimulationTaskResponse:
     try:
+        require_task_owner(current_user, task_service.get_task(db, task_id))
         task = task_service.request_cancel(db, task_id)
         db.commit()
     except Exception as exc:
@@ -624,8 +693,10 @@ def cancel_simulation_task(
 def terminate_simulation_task(
     task_id: str,
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> SimulationTaskResponse:
     try:
+        require_task_owner(current_user, task_service.get_task(db, task_id))
         task = task_service.request_terminate(db, task_id)
         db.commit()
     except Exception as exc:
@@ -643,8 +714,10 @@ def terminate_simulation_task(
 def archive_simulation_task(
     task_id: str,
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> SimulationTaskResponse:
     try:
+        require_task_owner(current_user, task_service.get_task(db, task_id))
         task = task_service.archive_task(db, task_id)
         db.commit()
     except Exception as exc:
@@ -662,8 +735,10 @@ def archive_simulation_task(
 def unarchive_simulation_task(
     task_id: str,
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> SimulationTaskResponse:
     try:
+        require_task_owner(current_user, task_service.get_task(db, task_id))
         task = task_service.unarchive_task(db, task_id)
         db.commit()
     except Exception as exc:
@@ -683,8 +758,10 @@ def rerun_simulation_task(
     task_id: str,
     request: SimulationRerunRequest,
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> SimulationQueuedTaskResponse:
     try:
+        require_task_owner(current_user, task_service.get_task(db, task_id))
         task = submission_service.rerun_task(
             db,
             source_task_id=task_id,
@@ -723,10 +800,11 @@ def rerun_simulation_task(
 def create_upload_session(
     request: UploadSessionCreateRequest,
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> UploadSessionResponse:
     upload_session = upload_service.create_session(
         db,
-        owner_id=request.owner_id,
+        owner_id=current_user.user.employee_id,
     )
 
     db.commit()
@@ -741,11 +819,11 @@ def create_upload_session(
 def get_upload_session(
     upload_session_id: str,
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> UploadSessionResponse:
     try:
-        upload_session = upload_service.get_session(
-            db,
-            upload_session_id,
+        upload_session = _require_owned_upload_session(
+            db, upload_session_id, current_user
         )
     except Exception as exc:
         _raise_upload_http_error(exc)
@@ -763,6 +841,7 @@ def upload_chip_config(
     files: list[UploadFile] = File(...),
     relative_paths: list[str] = Form(...),
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> UploadFilesResponse:
     return _upload_package(
         upload_session_id=upload_session_id,
@@ -770,6 +849,7 @@ def upload_chip_config(
         files=files,
         relative_paths=relative_paths,
         db=db,
+        current_user=current_user,
     )
 
 
@@ -782,6 +862,7 @@ def upload_workload(
     files: list[UploadFile] = File(...),
     relative_paths: list[str] = Form(...),
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> UploadFilesResponse:
     return _upload_package(
         upload_session_id=upload_session_id,
@@ -789,6 +870,7 @@ def upload_workload(
         files=files,
         relative_paths=relative_paths,
         db=db,
+        current_user=current_user,
     )
 
 
@@ -800,8 +882,10 @@ def apply_simulation_sample(
     upload_session_id: str,
     request: ApplySimulationSampleRequest,
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> ApplySimulationSampleResponse:
     try:
+        _require_owned_upload_session(db, upload_session_id, current_user)
         # Validate the selected capability tuple before looking up a sample.
         profile_registry.get_profile(
             simulator_version=request.simulator_version,
@@ -844,8 +928,10 @@ def list_upload_session_files(
     upload_session_id: str,
     package_type: str = Query(..., pattern="^(chip_config|workload)$"),
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> UploadFileListResponse:
     try:
+        _require_owned_upload_session(db, upload_session_id, current_user)
         files = upload_file_service.list_files(
             db,
             upload_session_id=upload_session_id,
@@ -879,8 +965,10 @@ def get_upload_session_file_content(
     package_type: str = Query(..., pattern="^(chip_config|workload)$"),
     path: str = Query(..., min_length=1),
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> UploadFileContentResponse:
     try:
+        _require_owned_upload_session(db, upload_session_id, current_user)
         info, content = upload_file_service.read_content(
             db,
             upload_session_id=upload_session_id,
@@ -910,8 +998,10 @@ def update_upload_session_file_content(
     upload_session_id: str,
     request: UploadFileContentUpdateRequest,
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> UploadFileContentUpdateResponse:
     try:
+        _require_owned_upload_session(db, upload_session_id, current_user)
         info = upload_file_service.write_content(
             db,
             upload_session_id=upload_session_id,
@@ -945,11 +1035,11 @@ def update_upload_session_file_content(
 def validate_upload_session(
     upload_session_id: str,
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> UploadValidationResponse:
     try:
-        upload_session = upload_service.get_session(
-            db,
-            upload_session_id,
+        upload_session = _require_owned_upload_session(
+            db, upload_session_id, current_user
         )
 
         upload_service.begin_validation(
@@ -991,8 +1081,10 @@ def submit_upload_session(
     upload_session_id: str,
     request: SimulationSubmitRequest,
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> SimulationSubmitResponse:
     try:
+        _require_owned_upload_session(db, upload_session_id, current_user)
         task = submission_service.submit_upload(
             db,
             upload_session_id=upload_session_id,

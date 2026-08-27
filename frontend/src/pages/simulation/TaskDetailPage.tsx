@@ -40,7 +40,7 @@ const LOG_CHUNK_BYTES = 512 * 1024;
 export function TaskDetailPage() {
   const { taskId } = useParams();
   const navigate = useNavigate();
-  const { hasResource } = useAuth();
+  const { user, hasResource } = useAuth();
   const canViewLog = hasResource('simulation.log');
   const { task, loading, error, refresh } = useTaskPolling(taskId, 2000);
   const [queue, setQueue] = useState<SimulationQueueResponse | null>(null);
@@ -172,6 +172,8 @@ export function TaskDetailPage() {
 
   const terminal = isTerminalStatus(task.status);
   const terminalSuccess = task.status === 'COMPLETED';
+  const canManageTask = task.owner_id === user?.userId;
+  const isAdmin = user?.authMode === 'admin';
 
   return (
     <div className="page-container task-detail-page">
@@ -181,10 +183,10 @@ export function TaskDetailPage() {
         actions={(
           <Space>
             <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/simulation/tasks')}>返回列表</Button>
-            {task.status === 'QUEUED' ? (
+            {canManageTask && task.status === 'QUEUED' ? (
               <Button danger onClick={() => Modal.confirm({ title: '确认取消任务？', content: task.task_name, okButtonProps: { danger: true }, onOk: cancel })}>取消任务</Button>
             ) : null}
-            {task.status === 'RUNNING' ? (
+            {canManageTask && task.status === 'RUNNING' ? (
               <Button danger icon={<StopOutlined />} onClick={() => Modal.confirm({ title: '确认强制终止？', content: 'Worker 将向 Simulator 进程组发送终止信号。', okButtonProps: { danger: true }, onOk: terminate })}>强制终止</Button>
             ) : null}
           </Space>
@@ -236,6 +238,7 @@ export function TaskDetailPage() {
           <Descriptions.Item label="Simulator">{task.simulator_label || task.simulator_version.toUpperCase()}</Descriptions.Item>
           <Descriptions.Item label="Simulation Mode">{task.simulation_mode_label || task.simulation_mode}</Descriptions.Item>
           <Descriptions.Item label="Chip Variant">{task.chip_variant_label || task.chip_variant || '默认'}</Descriptions.Item>
+          {isAdmin ? <Descriptions.Item label="提交人">{task.owner_id}</Descriptions.Item> : null}
           <Descriptions.Item label="提交时间">{formatDateTime(task.submit_time)}</Descriptions.Item>
           <Descriptions.Item label="开始时间">{formatDateTime(task.start_time)}</Descriptions.Item>
           <Descriptions.Item label="完成时间">{formatDateTime(task.end_time)}</Descriptions.Item>
