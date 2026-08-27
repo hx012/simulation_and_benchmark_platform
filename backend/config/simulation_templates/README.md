@@ -32,3 +32,15 @@ config/simulation_templates/v310/default/single_chip/
 ```
 
 The Backend still accepts the legacy `config/simulation_templates/v310/sample/` layout as a fallback for existing V310 installations.
+
+The task creation page exposes the selected template as a ZIP download. The
+archive keeps the upload-ready top-level directories:
+
+```text
+chip_config/
+workload/
+```
+
+Configure the **MSKPP 使用指南** button with `mskpp_guide_url` in the active
+`SIMULATOR_PROFILES_FILE`. Internal paths and `http(s)` URLs are supported; an
+empty value keeps the button disabled.

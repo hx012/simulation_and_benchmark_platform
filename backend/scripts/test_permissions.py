@@ -1,8 +1,10 @@
 """End-to-end check for session auth, admin accounts, and permission policy."""
 
 import sys
+from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from zipfile import ZipFile
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -70,6 +72,30 @@ assert set(admin.json()["permissions"]) == {
     "normal", "benchmark_access", "simulation_log",
     "performance_access", "team_access", "demand_access",
 }
+
+capabilities = admin_client.get("/api/simulation/capabilities")
+assert capabilities.status_code == 200, capabilities.text
+assert "mskpp_guide_url" in capabilities.json()
+
+config_template = admin_client.get(
+    "/api/simulation/config-template",
+    params={
+        "simulator_version": "v310",
+        "chip_variant": "default",
+        "simulation_mode": "SINGLE_CHIP",
+    },
+)
+assert config_template.status_code == 200, config_template.text
+assert config_template.headers["content-type"].startswith("application/zip")
+assert "mskpp_config_template_v310_default_single_chip.zip" in (
+    config_template.headers["content-disposition"]
+)
+with ZipFile(BytesIO(config_template.content)) as archive:
+    assert {
+        "chip_config/simulator_config.yml",
+        "chip_config/daw_config.yml",
+        "workload/workload.yml",
+    }.issubset(set(archive.namelist()))
 
 # Normal users are server-bound to their own tasks. Admin mode can read every
 # task, but task mutations remain owner-only.

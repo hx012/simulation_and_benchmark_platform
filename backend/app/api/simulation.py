@@ -14,7 +14,7 @@ from app.auth.constants import SIMULATION_LOG_RESOURCE, SIMULATION_TASK_RESOURCE
 from app.auth.service import AuthenticatedUser, get_current_user, require_resource
 from app.common.config import get_settings
 from app.common.database import get_db
-from app.simulation.enums import TaskStatus
+from app.simulation.enums import SimulationMode, TaskStatus
 from app.simulation.exceptions import (
     InvalidTaskStateError,
     InvalidUploadSessionStateError,
@@ -168,6 +168,7 @@ def _upload_session_response(upload_session) -> UploadSessionResponse:
 )
 def get_simulation_capabilities() -> SimulationCapabilitiesResponse:
     return SimulationCapabilitiesResponse(
+        mskpp_guide_url=profile_registry.mskpp_guide_url,
         simulators=[
             SimulatorCapabilityResponse(
                 key=simulator.key,
@@ -189,6 +190,37 @@ def get_simulation_capabilities() -> SimulationCapabilitiesResponse:
             )
             for simulator in profile_registry.get_capabilities()
         ]
+    )
+
+
+@router.get("/config-template")
+def download_simulation_config_template(
+    simulator_version: str = Query(min_length=1, max_length=64),
+    chip_variant: str | None = Query(default="default", max_length=64),
+    simulation_mode: SimulationMode = Query(default=SimulationMode.SINGLE_CHIP),
+) -> StreamingResponse:
+    try:
+        profile_registry.get_profile(
+            simulator_version=simulator_version,
+            chip_variant=chip_variant,
+            simulation_mode=simulation_mode,
+        )
+        filename, content = sample_service.build_template_archive(
+            simulator_version=simulator_version,
+            chip_variant=chip_variant,
+            simulation_mode=simulation_mode,
+        )
+    except Exception as exc:
+        _raise_upload_http_error(exc)
+        raise
+
+    return StreamingResponse(
+        iter([content]),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(content)),
+        },
     )
 
 
