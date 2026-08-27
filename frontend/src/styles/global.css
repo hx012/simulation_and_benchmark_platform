@@ -150,6 +150,7 @@ button, input, textarea, select { font: inherit; }
 .header-user { display: flex; align-items: center; gap: 12px; color: #4b5563; font-size: 13px; }
 .internal-badge { color: #6b7280; font-size: 11px; border: 1px solid #d1d5db; padding: 1px 7px; border-radius: 999px; line-height: 20px; }
 .app-content { min-width: 0; background: var(--bg); }
+.result-watermark-fill { min-width: 0; min-height: 0; flex: 1 1 auto; display: flex; flex-direction: column; }
 
 /* Page rhythm */
 .page-container { max-width: 1440px; margin: 0 auto; padding: 28px 32px 56px; }
@@ -312,6 +313,7 @@ button, input, textarea, select { font: inherit; }
 .catapult-trace-viewer:fullscreen .catapult-trace-frame,
 .catapult-trace-viewer-fallback-fullscreen .catapult-trace-frame { height: 100%; }
 .trace-viewer { width: 100%; min-width: 0; }
+.trace-viewer-fullscreen > .result-watermark-fill { height: 100%; }
 .trace-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 12px; }
 .trace-zoom { width: 260px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; color: #6b7280; font-size: 12px; }
 .trace-limit-alert { margin-bottom: 12px; }
@@ -1409,6 +1411,7 @@ button, input, textarea, select { font: inherit; }
 .performance-cycle-modal-toolbar .ant-input-search { width: min(420px, 70vw); }
 .performance-cycle-modal-toolbar > span { color: #7b8491; font-size: 12px; white-space: nowrap; }
 .performance-cycle-distribution.is-fullscreen { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+.performance-cycle-watermark { min-height: calc(100vh - 150px); display: flex; flex-direction: column; }
 .performance-cycle-distribution.is-fullscreen .performance-bars { flex: 1 1 auto; max-height: none; min-height: 0; }
 .performance-cycle-distribution.is-fullscreen .performance-bars-header,
 .performance-cycle-distribution.is-fullscreen .performance-bar-row { grid-template-columns: minmax(240px, 340px) minmax(240px, 1fr) 180px; }
@@ -2042,6 +2045,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px s
 .platform-core-copy small { margin-top: 5px; color: #687b94; font-size: 12px; line-height: 20px; }
 .platform-core-arrow { position: absolute; right: 22px; bottom: 20px; color: var(--core-tone); font-size: 12px; font-weight: 700; }
 .platform-home-panels { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); align-items: stretch; gap: 14px; margin-top: 18px; }
+.platform-home-watermark { height: 100%; }
 .platform-home-list-card.ant-card { height: 100%; display: flex; flex-direction: column; overflow: hidden; border-radius: 15px; }
 .platform-home-list-card .ant-card-head { min-height: 52px; padding: 0 17px; }
 .platform-home-list-card .ant-card-head-title { font-size: 14px; }

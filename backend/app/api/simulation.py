@@ -7,12 +7,12 @@ from fastapi import (
     Query,
     UploadFile,
 )
-from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.auth.constants import SIMULATION_LOG_RESOURCE, SIMULATION_TASK_RESOURCE
 from app.auth.models import User
-from app.auth.service import require_resource
+from app.auth.service import AuthenticatedUser, get_current_user, require_resource
 from app.common.config import get_settings
 from app.common.database import get_db
 from app.simulation.enums import TaskStatus
@@ -66,6 +66,7 @@ from app.simulation.submission_service import SimulationSubmissionService
 from app.simulation.task_io_service import SimulationTaskIOService
 from app.simulation.task_management_service import SimulationTaskManagementService
 from app.simulation.task_service import SimulationTaskService
+from app.simulation.trace_watermark import iter_watermarked_trace_html
 from app.simulation.upload_repository import UploadSessionRepository
 from app.simulation.upload_file_service import UploadSessionFileService
 from app.simulation.upload_service import UploadSessionService
@@ -549,12 +550,13 @@ def get_simulation_trace(
 
 @router.get(
     "/tasks/{task_id}/trace/viewer",
-    response_class=FileResponse,
+    response_class=StreamingResponse,
 )
 def get_simulation_trace_viewer(
     task_id: str,
     db: Session = Depends(get_db),
-) -> FileResponse:
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> StreamingResponse:
     try:
         task = task_service.get_task(db, task_id)
         viewer_path = task_io_service.get_trace_viewer_path(task)
@@ -567,11 +569,15 @@ def get_simulation_trace_viewer(
         _raise_task_http_error(exc)
         raise
 
-    return FileResponse(
-        viewer_path,
+    return StreamingResponse(
+        iter_watermarked_trace_html(
+            viewer_path,
+            current_user.user.employee_id,
+        ),
         media_type="text/html",
         headers={
-            "Cache-Control": "private, no-cache",
+            "Cache-Control": "private, no-store",
+            "Vary": "Cookie",
             "Content-Disposition": (
                 f'inline; filename="{task_id}-trace.html"'
             ),

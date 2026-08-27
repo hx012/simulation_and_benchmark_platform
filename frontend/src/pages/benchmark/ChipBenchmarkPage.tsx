@@ -5,6 +5,7 @@ import type { TableColumnsType } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { benchmarkApi } from '../../api/benchmark';
 import { PageHeading } from '../../components/PageHeading';
+import { ResultWatermark } from '../../components/ResultWatermark';
 import type { BenchmarkDefinition, ChipDetail } from '../../types/benchmark';
 
 function displayVendor(value: string) {
@@ -125,30 +126,32 @@ export function ChipBenchmarkPage() {
         )}
       />
 
-      <Card className="table-card benchmark-table-card">
-        <div className="benchmark-list-toolbar">
-          <Input
-            allowClear
-            prefix={<SearchOutlined />}
-            placeholder="搜索 Benchmark"
-            value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
+      <ResultWatermark>
+        <Card className="table-card benchmark-table-card">
+          <div className="benchmark-list-toolbar">
+            <Input
+              allowClear
+              prefix={<SearchOutlined />}
+              placeholder="搜索 Benchmark"
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
+            />
+            <Space size={8} className="benchmark-list-count">
+              <span>{filtered.length}</span>
+              <span>Benchmarks</span>
+            </Space>
+          </div>
+          <Table<BenchmarkDefinition>
+            rowKey="benchmark_id"
+            columns={columns}
+            dataSource={filtered}
+            loading={loading}
+            pagination={filtered.length > 20 ? { pageSize: 20, showSizeChanger: false } : false}
+            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无已注册 Benchmark" /> }}
+            scroll={{ x: 760 }}
           />
-          <Space size={8} className="benchmark-list-count">
-            <span>{filtered.length}</span>
-            <span>Benchmarks</span>
-          </Space>
-        </div>
-        <Table<BenchmarkDefinition>
-          rowKey="benchmark_id"
-          columns={columns}
-          dataSource={filtered}
-          loading={loading}
-          pagination={filtered.length > 20 ? { pageSize: 20, showSizeChanger: false } : false}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无已注册 Benchmark" /> }}
-          scroll={{ x: 760 }}
-        />
-      </Card>
+        </Card>
+      </ResultWatermark>
     </div>
   );
 }
