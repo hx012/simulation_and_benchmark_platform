@@ -23,6 +23,7 @@ import { performanceApi } from '../api/performance';
 import { trackAnalyticsEventQuietly } from '../api/analytics';
 import { simulationApi } from '../api/simulation';
 import { PageHeading } from '../components/PageHeading';
+import { ResultWatermark } from '../components/ResultWatermark';
 import type {
   TraceProducer,
   TraceTimeAnalysisResponse,
@@ -362,37 +363,37 @@ export function PerformancePage() {
               <div className="metric-card"><div className="metric-label">Analyzed Events</div><div className="metric-value">{formatNumber(result.analyzed_event_count)}</div></div>
               <div className="metric-card"><div className="metric-label">Filtered Sync Events</div><div className="metric-value">{formatNumber(result.sync_event_count)}</div></div>
             </div>
-            {result.skipped_event_count ? (
-              <Alert
-                className="performance-alert"
-                type="warning"
-                showIcon
-                title={`已跳过 ${formatNumber(result.skipped_event_count)} 个不参与周期统计的事件`}
-                description={result.producer === 'esl'
-                  ? '这些事件缺少有效的时间字段，或 pid 不符合 core.subcore 格式，因此无法归入 ESL 周期统计。'
-                  : '这些事件缺少有效的 ts/dur，或 tid 无法映射到 Pipe；通常属于 Trace 元数据或标记事件。同步事件已单独统计。'}
-              />
-            ) : null}
-            <Card
-              title="周期分布"
-              extra={(
-                <Space size={10}>
-                  <span className="muted-text">
-                    共 {result.items.length} 个{result.producer === 'esl' ? ' TID' : ' Pipe'}
-                  </span>
-                  <Button size="small" icon={<FullscreenOutlined />} onClick={openCycleFullscreen}>
-                    全屏查看
-                  </Button>
-                </Space>
-              )}
-              className="clean-card performance-chart-card"
-            >
-              <CycleDistribution
-                items={result.items}
-                producer={result.producer}
-                maxCycles={maxCycles}
-              />
-            </Card>
+              {result.skipped_event_count ? (
+                <Alert
+                  className="performance-alert"
+                  type="warning"
+                  showIcon
+                  title={`已跳过 ${formatNumber(result.skipped_event_count)} 个不参与周期统计的事件`}
+                  description={result.producer === 'esl'
+                    ? '这些事件缺少有效的时间字段，或 pid 不符合 core.subcore 格式，因此无法归入 ESL 周期统计。'
+                    : '这些事件缺少有效的 ts/dur，或 tid 无法映射到 Pipe；通常属于 Trace 元数据或标记事件。同步事件已单独统计。'}
+                />
+              ) : null}
+              <Card
+                title="周期分布"
+                extra={(
+                  <Space size={10}>
+                    <span className="muted-text">
+                      共 {result.items.length} 个{result.producer === 'esl' ? ' TID' : ' Pipe'}
+                    </span>
+                    <Button size="small" icon={<FullscreenOutlined />} onClick={openCycleFullscreen}>
+                      全屏查看
+                    </Button>
+                  </Space>
+                )}
+                className="clean-card performance-chart-card"
+              >
+                <CycleDistribution
+                  items={result.items}
+                  producer={result.producer}
+                  maxCycles={maxCycles}
+                />
+              </Card>
             <Modal
               className="performance-cycle-modal"
               title={`周期分布 · ${result.source_name}`}
@@ -402,27 +403,29 @@ export function PerformancePage() {
               style={{ top: 24 }}
               onCancel={() => setCycleFullscreen(false)}
             >
-              <div className="performance-cycle-modal-toolbar">
-                <Input.Search
-                  allowClear
-                  value={cycleSearch}
-                  placeholder={`搜索 ${result.producer === 'esl' ? 'TID' : 'Pipe'} 名称`}
-                  onChange={(event) => setCycleSearch(event.target.value)}
-                />
-                <span>
-                  显示 {fullscreenItems.length} / {result.items.length}
-                </span>
-              </div>
-              {fullscreenItems.length ? (
-                <CycleDistribution
-                  items={fullscreenItems}
-                  producer={result.producer}
-                  maxCycles={maxCycles}
-                  fullscreen
-                />
-              ) : (
-                <div className="performance-cycle-empty">没有匹配的 Pipe/TID</div>
-              )}
+              <ResultWatermark className="performance-cycle-watermark">
+                <div className="performance-cycle-modal-toolbar">
+                  <Input.Search
+                    allowClear
+                    value={cycleSearch}
+                    placeholder={`搜索 ${result.producer === 'esl' ? 'TID' : 'Pipe'} 名称`}
+                    onChange={(event) => setCycleSearch(event.target.value)}
+                  />
+                  <span>
+                    显示 {fullscreenItems.length} / {result.items.length}
+                  </span>
+                </div>
+                {fullscreenItems.length ? (
+                  <CycleDistribution
+                    items={fullscreenItems}
+                    producer={result.producer}
+                    maxCycles={maxCycles}
+                    fullscreen
+                  />
+                ) : (
+                  <div className="performance-cycle-empty">没有匹配的 Pipe/TID</div>
+                )}
+              </ResultWatermark>
             </Modal>
           </>
         ) : null}

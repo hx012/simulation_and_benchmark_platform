@@ -11,6 +11,7 @@ import {
 import { SearchOutlined } from '@ant-design/icons';
 import type { TraceEvent } from '../types/simulation';
 import { formatNumber } from '../utils/format';
+import { ResultWatermark } from './ResultWatermark';
 
 interface TraceViewerProps {
   events: TraceEvent[];
@@ -204,12 +205,13 @@ export function TraceViewer({ events, eventCount, onAnalyze }: TraceViewerProps)
 
   return (
     <div className={`trace-viewer ${isFullscreen ? 'trace-viewer-fullscreen' : ''}`}>
-      {isFullscreen ? (
-        <div className="trace-fullscreen-head">
-          <strong>Trace</strong>
-          <Button onClick={() => setIsFullscreen(false)}>退出全屏</Button>
-        </div>
-      ) : null}
+      <ResultWatermark className="result-watermark-fill" enabled={isFullscreen}>
+        {isFullscreen ? (
+          <div className="trace-fullscreen-head">
+            <strong>Trace</strong>
+            <Button onClick={() => setIsFullscreen(false)}>退出全屏</Button>
+          </div>
+        ) : null}
 
       <div className="trace-toolbar trace-toolbar-rich">
         <div className="trace-toolbar-main">
@@ -359,6 +361,7 @@ export function TraceViewer({ events, eventCount, onAnalyze }: TraceViewerProps)
           </div>
         </div>
       )}
+      </ResultWatermark>
     </div>
   );
 }

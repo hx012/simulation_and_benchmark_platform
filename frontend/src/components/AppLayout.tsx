@@ -24,6 +24,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { AnalyticsTracker } from './AnalyticsTracker';
 import { FeedbackCenterDrawer } from './FeedbackCenterDrawer';
+import { ResultWatermark } from './ResultWatermark';
 import { SupportGroupModal } from './SupportGroupModal';
 
 const { Header, Sider, Content } = Layout;
@@ -277,7 +278,9 @@ export function AppLayout() {
         </Header>
         <Content className="app-content">
           <AnalyticsTracker />
-          <Outlet />
+          <ResultWatermark className="app-content-watermark">
+            <Outlet />
+          </ResultWatermark>
         </Content>
       </Layout>
       <FeedbackCenterDrawer
