@@ -32,7 +32,7 @@ def build_trace_watermark_markup(employee_id: str) -> bytes:
   }}
   #{WATERMARK_LAYER_ID} span {{
     color: rgba(31, 78, 121, 0.10);
-    font: 600 15px/1.2 Arial, "Microsoft YaHei", sans-serif;
+    font: 400 15px/1.2 Arial, "Microsoft YaHei", sans-serif;
     white-space: nowrap;
     transform: rotate(-22deg);
   }}
