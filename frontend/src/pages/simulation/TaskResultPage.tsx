@@ -16,7 +16,6 @@ import { simulationApi } from '../../api/simulation';
 import { trackAnalyticsEventQuietly } from '../../api/analytics';
 import { MetricCard } from '../../components/MetricCard';
 import { PageHeading } from '../../components/PageHeading';
-import { ResultWatermark } from '../../components/ResultWatermark';
 import { TaskStatusTag, TraceStatusTag } from '../../components/StatusTag';
 import { TraceViewer } from '../../components/TraceViewer';
 import { CatapultTraceViewer } from '../../components/CatapultTraceViewer';
@@ -192,32 +191,30 @@ export function TaskResultPage() {
         />
       ) : null}
 
-      <ResultWatermark>
-        <div className="metrics-grid metrics-grid-4 result-metrics">
-          <MetricCard label="Total Cycle" value={formatNumber(result.total_cycle)} accent />
-          <MetricCard label="Simulated Time" value={formatSimulatedTime(result.simulated_time_seconds)} hint="芯片模型模拟时间" />
-          <MetricCard label="Runtime" value={formatDuration(result.runtime_seconds)} hint="服务器实际仿真耗时" />
-          <MetricCard label="Exit Code" value={result.exit_code ?? '—'} />
-        </div>
+      <div className="metrics-grid metrics-grid-4 result-metrics">
+        <MetricCard label="Total Cycle" value={formatNumber(result.total_cycle)} accent />
+        <MetricCard label="Simulated Time" value={formatSimulatedTime(result.simulated_time_seconds)} hint="芯片模型模拟时间" />
+        <MetricCard label="Runtime" value={formatDuration(result.runtime_seconds)} hint="服务器实际仿真耗时" />
+        <MetricCard label="Exit Code" value={result.exit_code ?? '—'} />
+      </div>
 
-        <Card
-          title="结果摘要"
-          className="section-card clean-card result-summary-card"
-          extra={<TaskStatusTag status={result.status} />}
-        >
-          <Descriptions column={{ xs: 1, sm: 2, lg: 3 }} size="small">
-            <Descriptions.Item label="Simulator">{task.simulator_label || task.simulator_version.toUpperCase()}</Descriptions.Item>
-            <Descriptions.Item label="Chip Variant">{task.chip_variant_label || task.chip_variant || '默认'}</Descriptions.Item>
-            <Descriptions.Item label="Simulation Mode">{task.simulation_mode_label || task.simulation_mode}</Descriptions.Item>
-            <Descriptions.Item label="提交时间">{formatDateTime(result.submit_time)}</Descriptions.Item>
-            <Descriptions.Item label="开始时间">{formatDateTime(result.start_time)}</Descriptions.Item>
-            <Descriptions.Item label="完成时间">{formatDateTime(result.end_time)}</Descriptions.Item>
-            <Descriptions.Item label="Current Cycle">{formatNumber(result.current_cycle)}</Descriptions.Item>
-            <Descriptions.Item label="Total Cycle">{formatNumber(result.total_cycle)}</Descriptions.Item>
-            <Descriptions.Item label="Trace"><TraceStatusTag status={result.trace_status} /></Descriptions.Item>
-          </Descriptions>
-        </Card>
-      </ResultWatermark>
+      <Card
+        title="结果摘要"
+        className="section-card clean-card result-summary-card"
+        extra={<TaskStatusTag status={result.status} />}
+      >
+        <Descriptions column={{ xs: 1, sm: 2, lg: 3 }} size="small">
+          <Descriptions.Item label="Simulator">{task.simulator_label || task.simulator_version.toUpperCase()}</Descriptions.Item>
+          <Descriptions.Item label="Chip Variant">{task.chip_variant_label || task.chip_variant || '默认'}</Descriptions.Item>
+          <Descriptions.Item label="Simulation Mode">{task.simulation_mode_label || task.simulation_mode}</Descriptions.Item>
+          <Descriptions.Item label="提交时间">{formatDateTime(result.submit_time)}</Descriptions.Item>
+          <Descriptions.Item label="开始时间">{formatDateTime(result.start_time)}</Descriptions.Item>
+          <Descriptions.Item label="完成时间">{formatDateTime(result.end_time)}</Descriptions.Item>
+          <Descriptions.Item label="Current Cycle">{formatNumber(result.current_cycle)}</Descriptions.Item>
+          <Descriptions.Item label="Total Cycle">{formatNumber(result.total_cycle)}</Descriptions.Item>
+          <Descriptions.Item label="Trace"><TraceStatusTag status={result.trace_status} /></Descriptions.Item>
+        </Descriptions>
+      </Card>
 
       <Card
         title="Trace"
@@ -251,10 +248,9 @@ export function TaskResultPage() {
         )}
       </Card>
 
-      <ResultWatermark>
-        <Collapse
-          className="summary-collapse raw-result-collapse"
-          items={[
+      <Collapse
+        className="summary-collapse raw-result-collapse"
+        items={[
           {
             key: 'summary',
             label: (
@@ -269,9 +265,8 @@ export function TaskResultPage() {
               <Alert type="warning" showIcon title="summary.json 不可用" description={result.summary_error || 'No summary'} />
             ),
           },
-          ]}
-        />
-      </ResultWatermark>
+        ]}
+      />
     </div>
   );
 }

@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom';
 import { collaborationApi, type TeamConfig } from '../api/collaboration';
 import { recentActivityApi } from '../api/recentActivity';
 import { PageHeading } from '../components/PageHeading';
-import { ResultWatermark } from '../components/ResultWatermark';
 import type { RecentActivityList } from '../types/recentActivity';
 
 const entries = [
@@ -70,23 +69,21 @@ export function HomePage() {
           )) : <div className="platform-home-empty-row">{recentWork?.empty_text || '暂无近期工作'}</div>}
         </Card>
 
-        <ResultWatermark className="platform-home-watermark">
-          <Card className="platform-home-list-card" title="重点成果" extra={<Button type="link" onClick={() => navigate('/team?tab=results')}>查看全部成果</Button>}>
-            {featuredAchievements.length ? featuredAchievements.map((item) => (
-              <button
-                type="button"
-                className="platform-compact-row platform-achievement-row"
-                key={item.id || `${item.title}-${item.date}`}
-                disabled={!item.detail_url}
-                onClick={() => item.detail_url && openConfiguredUrl(item.detail_url, navigate)}
-              >
-                <span className="platform-achievement-category">{item.category}</span>
-                <span className="platform-compact-copy"><strong>{item.title}</strong><small>{item.contributors}{item.date ? ` · ${item.date}` : ''}</small></span>
-                <span className="platform-row-action">{item.detail_url ? '查看成果' : '详情待开放'}</span>
-              </button>
-            )) : <div className="platform-home-empty-row">暂无重点成果</div>}
-          </Card>
-        </ResultWatermark>
+        <Card className="platform-home-list-card" title="重点成果" extra={<Button type="link" onClick={() => navigate('/team?tab=results')}>查看全部成果</Button>}>
+          {featuredAchievements.length ? featuredAchievements.map((item) => (
+            <button
+              type="button"
+              className="platform-compact-row platform-achievement-row"
+              key={item.id || `${item.title}-${item.date}`}
+              disabled={!item.detail_url}
+              onClick={() => item.detail_url && openConfiguredUrl(item.detail_url, navigate)}
+            >
+              <span className="platform-achievement-category">{item.category}</span>
+              <span className="platform-compact-copy"><strong>{item.title}</strong><small>{item.contributors}{item.date ? ` · ${item.date}` : ''}</small></span>
+              <span className="platform-row-action">{item.detail_url ? '查看成果' : '详情待开放'}</span>
+            </button>
+          )) : <div className="platform-home-empty-row">暂无重点成果</div>}
+        </Card>
       </div>
 
       <Card className="platform-co-build-card">

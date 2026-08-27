@@ -150,6 +150,7 @@ button, input, textarea, select { font: inherit; }
 .header-user { display: flex; align-items: center; gap: 12px; color: #4b5563; font-size: 13px; }
 .internal-badge { color: #6b7280; font-size: 11px; border: 1px solid #d1d5db; padding: 1px 7px; border-radius: 999px; line-height: 20px; }
 .app-content { min-width: 0; background: var(--bg); }
+.app-content-watermark { min-height: calc(100vh - 58px); }
 .result-watermark-fill { min-width: 0; min-height: 0; flex: 1 1 auto; display: flex; flex-direction: column; }
 
 /* Page rhythm */
@@ -2045,7 +2046,6 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px s
 .platform-core-copy small { margin-top: 5px; color: #687b94; font-size: 12px; line-height: 20px; }
 .platform-core-arrow { position: absolute; right: 22px; bottom: 20px; color: var(--core-tone); font-size: 12px; font-weight: 700; }
 .platform-home-panels { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); align-items: stretch; gap: 14px; margin-top: 18px; }
-.platform-home-watermark { height: 100%; }
 .platform-home-list-card.ant-card { height: 100%; display: flex; flex-direction: column; overflow: hidden; border-radius: 15px; }
 .platform-home-list-card .ant-card-head { min-height: 52px; padding: 0 17px; }
 .platform-home-list-card .ant-card-head-title { font-size: 14px; }

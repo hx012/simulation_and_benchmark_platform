@@ -5,7 +5,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { benchmarkApi } from '../../api/benchmark';
 import { trackAnalyticsEventQuietly } from '../../api/analytics';
 import { PageHeading } from '../../components/PageHeading';
-import { ResultWatermark } from '../../components/ResultWatermark';
 import type { BenchmarkDefinition, BenchmarkResultListResponse } from '../../types/benchmark';
 
 function displayVendor(value: string) {
@@ -100,9 +99,8 @@ export function BenchmarkDetailPage() {
         actions={<Button icon={<ArrowLeftOutlined />} onClick={() => navigate(backPath)}>返回</Button>}
       />
 
-      <ResultWatermark>
-        <div className="benchmark-detail-grid">
-          <Card title="基本信息" className="clean-card benchmark-detail-card">
+      <div className="benchmark-detail-grid">
+        <Card title="基本信息" className="clean-card benchmark-detail-card">
             <Descriptions column={{ xs: 1, sm: 2 }} size="small">
               <Descriptions.Item label="Vendor">{displayVendor(definition.vendor)}</Descriptions.Item>
               <Descriptions.Item label="Chip">{displayChip(definition.chip)}</Descriptions.Item>
@@ -110,18 +108,18 @@ export function BenchmarkDetailPage() {
               {definition.category ? <Descriptions.Item label="类别">{definition.category}</Descriptions.Item> : null}
               {definition.target ? <Descriptions.Item label="Target">{definition.target}</Descriptions.Item> : null}
             </Descriptions>
-          </Card>
-          <Card title="实现定义" className="clean-card benchmark-detail-card">
+        </Card>
+        <Card title="实现定义" className="clean-card benchmark-detail-card">
             <Descriptions column={1} size="small" className="benchmark-implementation-info">
               <Descriptions.Item label="Module">{definition.module}</Descriptions.Item>
               <Descriptions.Item label="Class">{definition.class_name}</Descriptions.Item>
               <Descriptions.Item label="Benchmark ID">{definition.benchmark_id}</Descriptions.Item>
             </Descriptions>
-          </Card>
-        </div>
+        </Card>
+      </div>
 
-        <h2 className="section-title">Benchmark 结果</h2>
-        <Card className="clean-card benchmark-result-card">
+      <h2 className="section-title">Benchmark 结果</h2>
+      <Card className="clean-card benchmark-result-card">
           {results?.total ? (
             <div className="benchmark-result-pending-ui">
               已发现 {results.total} 条结果，结果展示组件将在 Result Schema 确定后接入。
@@ -132,8 +130,7 @@ export function BenchmarkDetailPage() {
               description={results?.configured ? '暂无已发布结果' : '结果存储尚未接入'}
             />
           )}
-        </Card>
-      </ResultWatermark>
+      </Card>
     </div>
   );
 }

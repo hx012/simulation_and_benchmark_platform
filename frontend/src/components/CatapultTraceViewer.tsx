@@ -8,7 +8,6 @@ import {
   BarChartOutlined,
 } from '@ant-design/icons';
 import { simulationApi } from '../api/simulation';
-import { ResultWatermark } from './ResultWatermark';
 
 interface CatapultTraceViewerProps {
   taskId: string;
@@ -158,57 +157,55 @@ export function CatapultTraceViewer({ taskId, title, onAnalyze }: CatapultTraceV
       ref={containerRef}
       className={`catapult-trace-viewer ${fallbackFullscreen ? 'catapult-trace-viewer-fallback-fullscreen' : ''}`}
     >
-      <ResultWatermark className="result-watermark-fill">
-        <div className="catapult-trace-toolbar">
-          <div>
-            <strong>Catapult Trace Viewer</strong>
-            <span>支持 Lane、缩放、搜索与事件详情</span>
-          </div>
-          <Space size={8}>
-            <Tooltip title="重新加载 Viewer">
-              <Button icon={<ReloadOutlined />} onClick={reloadViewer}>
-                重新加载
-              </Button>
-            </Tooltip>
-            <Button icon={<ExportOutlined />} onClick={openStandalone}>
-              新窗口打开
-            </Button>
-            <Button
-              icon={fullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
-              onClick={() => void (fullscreen ? exitFullscreen() : enterFullscreen())}
-            >
-              {fullscreen ? '退出全屏' : '全屏查看'}
-            </Button>
-            {onAnalyze ? (
-              <Button type="primary" icon={<BarChartOutlined />} onClick={onAnalyze}>
-                分析此结果
-              </Button>
-            ) : null}
-          </Space>
+      <div className="catapult-trace-toolbar">
+        <div>
+          <strong>Catapult Trace Viewer</strong>
+          <span>支持 Lane、缩放、搜索与事件详情</span>
         </div>
-
-        <div className="catapult-trace-frame-shell">
-          {loading ? (
-            <div className="catapult-trace-loading">
-              <Spin />
-              <span>正在解析 Trace 数据…</span>
-            </div>
+        <Space size={8}>
+          <Tooltip title="重新加载 Viewer">
+            <Button icon={<ReloadOutlined />} onClick={reloadViewer}>
+              重新加载
+            </Button>
+          </Tooltip>
+          <Button icon={<ExportOutlined />} onClick={openStandalone}>
+            新窗口打开
+          </Button>
+          <Button
+            icon={fullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+            onClick={() => void (fullscreen ? exitFullscreen() : enterFullscreen())}
+          >
+            {fullscreen ? '退出全屏' : '全屏查看'}
+          </Button>
+          {onAnalyze ? (
+            <Button type="primary" icon={<BarChartOutlined />} onClick={onAnalyze}>
+              分析此结果
+            </Button>
           ) : null}
-          <iframe
-            ref={iframeRef}
-            key={viewerRevision}
-            className={`catapult-trace-frame ${loading ? 'catapult-trace-frame-loading' : ''}`}
-            src={viewerUrl}
-            title={`${title} Catapult Trace Viewer`}
-            sandbox="allow-scripts allow-same-origin allow-downloads"
-            allow="fullscreen"
-            allowFullScreen
-            loading="lazy"
-            referrerPolicy="same-origin"
-            onLoad={waitForViewerReady}
-          />
-        </div>
-      </ResultWatermark>
+        </Space>
+      </div>
+
+      <div className="catapult-trace-frame-shell">
+        {loading ? (
+          <div className="catapult-trace-loading">
+            <Spin />
+            <span>正在解析 Trace 数据…</span>
+          </div>
+        ) : null}
+        <iframe
+          ref={iframeRef}
+          key={viewerRevision}
+          className={`catapult-trace-frame ${loading ? 'catapult-trace-frame-loading' : ''}`}
+          src={viewerUrl}
+          title={`${title} Catapult Trace Viewer`}
+          sandbox="allow-scripts allow-same-origin allow-downloads"
+          allow="fullscreen"
+          allowFullScreen
+          loading="lazy"
+          referrerPolicy="same-origin"
+          onLoad={waitForViewerReady}
+        />
+      </div>
     </div>
   );
 }

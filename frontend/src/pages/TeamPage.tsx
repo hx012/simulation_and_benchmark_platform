@@ -4,7 +4,6 @@ import { Button, Empty, Skeleton, Table, Tabs } from 'antd';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { collaborationApi, type TeamConfig } from '../api/collaboration';
 import { PageHeading } from '../components/PageHeading';
-import { ResultWatermark } from '../components/ResultWatermark';
 import { SupportGroupModal } from '../components/SupportGroupModal';
 
 function openConfiguredUrl(url: string, navigate: (path: string) => void) {
@@ -72,7 +71,7 @@ export function TeamPage() {
           ) : <div className="team-empty"><Empty description="团队成员配置待补充" /></div>}
         </>
       ) : (
-        <ResultWatermark>
+        <>
           <div className="team-section-heading team-results-heading">
             <h2>重点成果</h2>
             <Button type="link" disabled={!team.all_achievements_url} onClick={() => team.all_achievements_url && openConfiguredUrl(team.all_achievements_url, navigate)}>
@@ -110,7 +109,7 @@ export function TeamPage() {
               ]}
             />
           </div>
-        </ResultWatermark>
+        </>
       )}
       <SupportGroupModal open={supportOpen} onClose={() => setSupportOpen(false)} />
     </div>

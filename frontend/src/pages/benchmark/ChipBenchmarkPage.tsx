@@ -5,7 +5,6 @@ import type { TableColumnsType } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { benchmarkApi } from '../../api/benchmark';
 import { PageHeading } from '../../components/PageHeading';
-import { ResultWatermark } from '../../components/ResultWatermark';
 import type { BenchmarkDefinition, ChipDetail } from '../../types/benchmark';
 
 function displayVendor(value: string) {
@@ -126,9 +125,8 @@ export function ChipBenchmarkPage() {
         )}
       />
 
-      <ResultWatermark>
-        <Card className="table-card benchmark-table-card">
-          <div className="benchmark-list-toolbar">
+      <Card className="table-card benchmark-table-card">
+        <div className="benchmark-list-toolbar">
             <Input
               allowClear
               prefix={<SearchOutlined />}
@@ -140,8 +138,8 @@ export function ChipBenchmarkPage() {
               <span>{filtered.length}</span>
               <span>Benchmarks</span>
             </Space>
-          </div>
-          <Table<BenchmarkDefinition>
+        </div>
+        <Table<BenchmarkDefinition>
             rowKey="benchmark_id"
             columns={columns}
             dataSource={filtered}
@@ -149,9 +147,8 @@ export function ChipBenchmarkPage() {
             pagination={filtered.length > 20 ? { pageSize: 20, showSizeChanger: false } : false}
             locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无已注册 Benchmark" /> }}
             scroll={{ x: 760 }}
-          />
-        </Card>
-      </ResultWatermark>
+        />
+      </Card>
     </div>
   );
 }

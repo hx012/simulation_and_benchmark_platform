@@ -357,13 +357,12 @@ export function PerformancePage() {
                 <span>{result.source_name} · {result.producer.toUpperCase()}</span>
               </div>
             </div>
-            <ResultWatermark>
-              <div className="metrics-grid metrics-grid-4 performance-result-metrics">
-                <div className="metric-card metric-card-accent"><div className="metric-label">Total Cycle</div><div className="metric-value">{formatNumber(result.total_cycles)}</div></div>
-                <div className="metric-card"><div className="metric-label">Trace Events</div><div className="metric-value">{formatNumber(result.event_count)}</div></div>
-                <div className="metric-card"><div className="metric-label">Analyzed Events</div><div className="metric-value">{formatNumber(result.analyzed_event_count)}</div></div>
-                <div className="metric-card"><div className="metric-label">Filtered Sync Events</div><div className="metric-value">{formatNumber(result.sync_event_count)}</div></div>
-              </div>
+            <div className="metrics-grid metrics-grid-4 performance-result-metrics">
+              <div className="metric-card metric-card-accent"><div className="metric-label">Total Cycle</div><div className="metric-value">{formatNumber(result.total_cycles)}</div></div>
+              <div className="metric-card"><div className="metric-label">Trace Events</div><div className="metric-value">{formatNumber(result.event_count)}</div></div>
+              <div className="metric-card"><div className="metric-label">Analyzed Events</div><div className="metric-value">{formatNumber(result.analyzed_event_count)}</div></div>
+              <div className="metric-card"><div className="metric-label">Filtered Sync Events</div><div className="metric-value">{formatNumber(result.sync_event_count)}</div></div>
+            </div>
               {result.skipped_event_count ? (
                 <Alert
                   className="performance-alert"
@@ -395,7 +394,6 @@ export function PerformancePage() {
                   maxCycles={maxCycles}
                 />
               </Card>
-            </ResultWatermark>
             <Modal
               className="performance-cycle-modal"
               title={`周期分布 · ${result.source_name}`}

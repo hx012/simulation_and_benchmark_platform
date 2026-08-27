@@ -205,13 +205,13 @@ export function TraceViewer({ events, eventCount, onAnalyze }: TraceViewerProps)
 
   return (
     <div className={`trace-viewer ${isFullscreen ? 'trace-viewer-fullscreen' : ''}`}>
-      <ResultWatermark className="result-watermark-fill">
-      {isFullscreen ? (
-        <div className="trace-fullscreen-head">
-          <strong>Trace</strong>
-          <Button onClick={() => setIsFullscreen(false)}>退出全屏</Button>
-        </div>
-      ) : null}
+      <ResultWatermark className="result-watermark-fill" enabled={isFullscreen}>
+        {isFullscreen ? (
+          <div className="trace-fullscreen-head">
+            <strong>Trace</strong>
+            <Button onClick={() => setIsFullscreen(false)}>退出全屏</Button>
+          </div>
+        ) : null}
 
       <div className="trace-toolbar trace-toolbar-rich">
         <div className="trace-toolbar-main">
