@@ -11,12 +11,13 @@ from chip_performance_analysis import (
 )
 
 from app.auth.constants import PERFORMANCE_VIEW_RESOURCE
-from app.auth.service import require_resource
+from app.auth.service import AuthenticatedUser, get_current_user, require_resource
 from app.common.config import get_settings
 from app.common.database import get_db
 from app.performance.schemas import TraceTimeAnalysisResponse
 from app.performance.service import trace_time_response
 from app.simulation.exceptions import TaskIOError, TaskNotFoundError
+from app.simulation.access_control import require_task_read_access
 from app.simulation.repository import SimulationRepository
 from app.simulation.task_io_service import SimulationTaskIOService
 from app.simulation.task_service import SimulationTaskService
@@ -41,9 +42,11 @@ task_io_service = SimulationTaskIOService(settings)
 def analyze_task_trace_time(
     task_id: str,
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> TraceTimeAnalysisResponse:
     try:
         task = task_service.get_task(db, task_id)
+        require_task_read_access(current_user, task)
         events = task_io_service.read_trace_events(task)
         result = analyze_trace(events, TraceProducer.MSKPP)
     except TaskNotFoundError as exc:

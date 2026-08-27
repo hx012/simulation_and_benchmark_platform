@@ -296,23 +296,6 @@ button, input, textarea, select { font: inherit; }
   color: #6b7280;
   background: #fff;
 }
-.catapult-trace-viewer:fullscreen,
-.catapult-trace-viewer-fallback-fullscreen {
-  width: 100vw;
-  height: 100vh;
-  border: 0;
-  border-radius: 0;
-  background: #fff;
-}
-.catapult-trace-viewer-fallback-fullscreen {
-  position: fixed;
-  inset: 0;
-  z-index: 2500;
-}
-.catapult-trace-viewer:fullscreen .catapult-trace-frame-shell,
-.catapult-trace-viewer-fallback-fullscreen .catapult-trace-frame-shell { min-height: 0; }
-.catapult-trace-viewer:fullscreen .catapult-trace-frame,
-.catapult-trace-viewer-fallback-fullscreen .catapult-trace-frame { height: 100%; }
 .trace-viewer { width: 100%; min-width: 0; }
 .trace-viewer-fullscreen > .result-watermark-fill { height: 100%; }
 .trace-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 12px; }
@@ -1719,7 +1702,8 @@ button, input, textarea, select { font: inherit; }
 .permission-authorized-users > div:first-child { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #10233f; }
 .permission-authorized-tags { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 7px; }
 .permission-resource-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px; padding-top: 14px; border-top: 1px solid #e1eaf2; }
-.permission-admin-search { margin-bottom: 14px; }
+.permission-user-filters { margin-bottom: 16px; display: grid; grid-template-columns: minmax(260px,1fr) 150px 150px; gap: 12px; }
+.permission-user-filters .ant-select { width: 100%; }
 .admin-mode-badge {
   padding: 1px 6px;
   border-radius: 999px;
@@ -1750,6 +1734,7 @@ button, input, textarea, select { font: inherit; }
 @media (max-width: 900px) {
   .permission-resource-editor { grid-template-columns: 1fr; }
   .permission-admin-toolbar { align-items: flex-start; flex-direction: column; }
+  .permission-user-filters { grid-template-columns: 1fr; }
   .permission-personal-row { grid-template-columns: 38px minmax(0,1fr); }
   .permission-row-action { grid-column: 2; text-align: left; }
   .permission-locked-panel {

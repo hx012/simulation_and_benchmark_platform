@@ -2,6 +2,7 @@
 
 import sys
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -13,10 +14,12 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.auth import models as auth_models  # noqa: F401
+from app.api import simulation as simulation_api
 from app.common.config import get_settings
 from app.common.database import Base, get_db
 from app.main import create_app
 from app.simulation import models as simulation_models  # noqa: F401
+from app.simulation.enums import SimulationMode, TaskStatus
 
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
@@ -68,6 +71,73 @@ assert set(admin.json()["permissions"]) == {
     "performance_access", "team_access", "demand_access",
 }
 
+# Normal users are server-bound to their own tasks. Admin mode can read every
+# task, but task mutations remain owner-only.
+with TestingSession() as session:
+    session.add_all([
+        simulation_models.SimulationTask(
+            queue_seq=1,
+            task_id="SIM-PERMISSION-ALICE",
+            task_name="Alice task",
+            owner_id="permission-alice",
+            simulator_version="mock",
+            chip_variant=None,
+            simulation_mode=SimulationMode.SINGLE_CHIP,
+            status=TaskStatus.COMPLETED,
+            workspace_path="/tmp/SIM-PERMISSION-ALICE",
+        ),
+        simulation_models.SimulationTask(
+            queue_seq=2,
+            task_id="SIM-PERMISSION-BOB",
+            task_name="Bob task",
+            owner_id="permission-bob",
+            simulator_version="mock",
+            chip_variant=None,
+            simulation_mode=SimulationMode.SINGLE_CHIP,
+            status=TaskStatus.COMPLETED,
+            workspace_path="/tmp/SIM-PERMISSION-BOB",
+        ),
+    ])
+    session.commit()
+
+alice_tasks = alice_client.get(
+    "/api/simulation/tasks",
+    params={"owner_id": "permission-bob"},
+)
+assert alice_tasks.status_code == 200, alice_tasks.text
+assert [item["task_id"] for item in alice_tasks.json()["items"]] == ["SIM-PERMISSION-ALICE"]
+assert alice_client.get("/api/simulation/tasks/SIM-PERMISSION-BOB").status_code == 404
+
+admin_tasks = admin_client.get("/api/simulation/tasks")
+assert admin_tasks.status_code == 200, admin_tasks.text
+assert {item["task_id"] for item in admin_tasks.json()["items"]} == {
+    "SIM-PERMISSION-ALICE", "SIM-PERMISSION-BOB",
+}
+assert admin_client.get("/api/simulation/tasks/SIM-PERMISSION-BOB").status_code == 200
+assert admin_client.post("/api/simulation/tasks/SIM-PERMISSION-BOB/cancel").status_code == 404
+
+with TemporaryDirectory() as task_root:
+    task_root_path = Path(task_root).resolve()
+    bob_workspace = task_root_path / "SIM-PERMISSION-BOB"
+    viewer_path = bob_workspace / "result" / "trace" / "trace.html"
+    viewer_path.parent.mkdir(parents=True)
+    viewer_path.write_text("<html><body>Trace viewer</body></html>", encoding="utf-8")
+    simulation_api.task_io_service.task_root = task_root_path
+    with TestingSession() as session:
+        bob_task = session.get(simulation_models.SimulationTask, 2)
+        assert bob_task is not None
+        bob_task.workspace_path = str(bob_workspace)
+        session.commit()
+
+    assert alice_client.get(
+        "/api/simulation/tasks/SIM-PERMISSION-BOB/trace/viewer"
+    ).status_code == 404
+    admin_viewer = admin_client.get(
+        "/api/simulation/tasks/SIM-PERMISSION-BOB/trace/viewer"
+    )
+    assert admin_viewer.status_code == 200, admin_viewer.text
+    assert "MSKPP&amp;AIBench + admin" in admin_viewer.text
+
 pending = admin_client.get("/api/admin/permission-requests")
 assert pending.status_code == 200, pending.text
 for item in pending.json():
@@ -99,6 +169,7 @@ assert benchmark_resource["authorized_users"] == [{
     "user_id": "permission-alice", "display_name": "permission-alice",
 }]
 admin_users = admin_client.get("/api/admin/users").json()
+assert admin_users[0]["role"] == "admin"
 bootstrap_admin = next(item for item in admin_users if item["user_id"] == "admin")
 assert bootstrap_admin["bootstrap_admin"] is True
 
@@ -143,5 +214,30 @@ assert recent.status_code == 200, recent.text
 assert recent.json()["items"] == []
 assert alice_client.get("/api/admin/analytics/overview").status_code == 403
 assert admin_client.get("/api/admin/analytics/overview").status_code == 200
+
+# Blocking a user immediately revokes existing sessions and prevents a new
+# login, while unblocking restores login without deleting the account.
+blocked_bob = admin_client.put("/api/admin/users/permission-bob", json={
+    "role": "normal",
+    "display_name": "permission-bob",
+    "active": False,
+})
+assert blocked_bob.status_code == 200, blocked_bob.text
+assert blocked_bob.json()["active"] is False
+assert bob_client.get("/api/auth/me").status_code == 401
+blocked_bob_login = TestClient(app).post("/api/auth/login", json={
+    "employee_id": "permission-bob", "auth_mode": "normal",
+})
+assert blocked_bob_login.status_code == 403, blocked_bob_login.text
+
+unblocked_bob = admin_client.put("/api/admin/users/permission-bob", json={
+    "role": "normal",
+    "display_name": "permission-bob",
+    "active": True,
+})
+assert unblocked_bob.status_code == 200, unblocked_bob.text
+assert TestClient(app).post("/api/auth/login", json={
+    "employee_id": "permission-bob", "auth_mode": "normal",
+}).status_code == 200
 
 print("permission and administrator workflow checks passed")
