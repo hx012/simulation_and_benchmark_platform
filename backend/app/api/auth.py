@@ -13,6 +13,7 @@ from app.auth.models import (
     ProtectedResource,
     ResourcePermissionSet,
     User,
+    UserPermissionGrant,
 )
 from app.auth.schemas import (
     AdminUserResponse,
@@ -29,6 +30,7 @@ from app.auth.schemas import (
     PermissionSetUpdate,
     ProtectedResourceResponse,
     ProtectedResourceUpdate,
+    ResourceAuthorizedUserResponse,
 )
 from app.auth.service import (
     AuthenticatedUser,
@@ -38,6 +40,7 @@ from app.auth.service import (
     consume_w3_login_transaction,
     create_w3_login_transaction,
     get_current_user,
+    initialize_auth_data,
     login_user,
     login_w3_user,
     logout_user,
@@ -92,12 +95,14 @@ def _catalog_item(item: PermissionSet) -> PermissionCatalogItem:
 
 
 def _admin_user_response(user: User) -> AdminUserResponse:
+    bootstrap_id = get_settings().platform_bootstrap_admin_id.strip()
     return AdminUserResponse(
         user_id=user.employee_id,
         display_name=user.display_name,
         role="admin" if user.role == "admin" else "normal",
         active=user.active,
         password_configured=bool(user.password_hash),
+        bootstrap_admin=user.employee_id == bootstrap_id,
         last_login_at=user.last_login_at,
     )
 
@@ -108,12 +113,30 @@ def _resource_response(db: Session, item: ProtectedResource) -> ProtectedResourc
         .where(ResourcePermissionSet.resource_code == item.code)
         .order_by(ResourcePermissionSet.permission_code)
     ).all())
+    authorized_users: list[ResourceAuthorizedUserResponse] = []
+    if permission_codes:
+        users = db.scalars(
+            select(User)
+            .join(UserPermissionGrant, UserPermissionGrant.user_id == User.id)
+            .where(
+                UserPermissionGrant.permission_code.in_(permission_codes),
+                UserPermissionGrant.active.is_(True),
+                User.active.is_(True),
+            )
+            .distinct()
+            .order_by(User.employee_id)
+        ).all()
+        authorized_users = [
+            ResourceAuthorizedUserResponse(user_id=user.employee_id, display_name=user.display_name)
+            for user in users
+        ]
     return ProtectedResourceResponse(
         code=item.code,
         name=item.name,
         description=item.description,
         access_mode=item.access_mode,
         permission_codes=permission_codes,
+        authorized_users=authorized_users,
         system_managed=item.system_managed,
     )
 
@@ -236,6 +259,8 @@ def me(
     current: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CurrentUserResponse:
+    # Reconcile newly registered modules for sessions that survived a deployment.
+    initialize_auth_data(db)
     return current_user_response(db, current)
 
 

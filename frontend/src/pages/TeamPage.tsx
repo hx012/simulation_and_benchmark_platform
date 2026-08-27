@@ -49,7 +49,14 @@ export function TeamPage() {
             <h2>{team.name}</h2>
             <p>{team.description}</p>
           </section>
-          <div className="team-section-heading"><h2>团队成员</h2><span>成员信息由配置统一维护</span></div>
+          <div className="team-section-heading">
+            <h2>团队成员</h2>
+            {supportEnabled ? (
+              <button className="team-contact-button" type="button" onClick={() => setSupportOpen(true)}>
+                联系团队 / 进入 MSKPP 技术支撑群 <ArrowRightOutlined />
+              </button>
+            ) : null}
+          </div>
           {team.members.length ? (
             <div className="team-member-grid">
               {team.members.map((member) => (
@@ -62,12 +69,6 @@ export function TeamPage() {
               ))}
             </div>
           ) : <div className="team-empty"><Empty description="团队成员配置待补充" /></div>}
-          {supportEnabled ? (
-            <div className="team-contact-row">
-              <span>需要团队协作或技术支持？</span>
-              <button type="button" onClick={() => setSupportOpen(true)}>联系团队 / 进入 MSKPP 技术支撑群 →</button>
-            </div>
-          ) : null}
         </>
       ) : (
         <>

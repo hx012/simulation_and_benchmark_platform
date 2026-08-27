@@ -63,7 +63,10 @@ admin = admin_client.post("/api/auth/login", json={
 })
 assert admin.status_code == 200, admin.text
 assert admin.json()["role"] == "admin"
-assert set(admin.json()["permissions"]) == {"normal", "benchmark_access", "simulation_log"}
+assert set(admin.json()["permissions"]) == {
+    "normal", "benchmark_access", "simulation_log",
+    "performance_access", "team_access", "demand_access",
+}
 
 pending = admin_client.get("/api/admin/permission-requests")
 assert pending.status_code == 200, pending.text
@@ -78,8 +81,29 @@ refreshed = alice_client.get("/api/auth/me")
 assert set(refreshed.json()["permissions"]) == {"normal", "benchmark_access", "simulation_log"}
 assert alice_client.get("/api/benchmark/status").status_code == 200
 
+resources = admin_client.get("/api/admin/resources").json()
+resource_modes = {item["code"]: item["access_mode"] for item in resources}
+assert resource_modes == {
+    "admin.manage": "admin",
+    "analytics.usage": "admin",
+    "benchmark.view": "permission",
+    "demand.view": "normal",
+    "performance.view": "normal",
+    "permission.manage": "admin",
+    "simulation.log": "permission",
+    "simulation.task": "normal",
+    "team.view": "normal",
+}
+benchmark_resource = next(item for item in resources if item["code"] == "benchmark.view")
+assert benchmark_resource["authorized_users"] == [{
+    "user_id": "permission-alice", "display_name": "permission-alice",
+}]
+admin_users = admin_client.get("/api/admin/users").json()
+bootstrap_admin = next(item for item in admin_users if item["user_id"] == "admin")
+assert bootstrap_admin["bootstrap_admin"] is True
+
 # A DB policy change immediately makes Benchmark a normal-user module.
-resource = next(item for item in admin_client.get("/api/admin/resources").json() if item["code"] == "benchmark.view")
+resource = benchmark_resource
 resource["access_mode"] = "normal"
 resource["permission_codes"] = []
 updated = admin_client.put("/api/admin/resources/benchmark.view", json=resource)
@@ -89,6 +113,15 @@ bob_client = TestClient(app)
 bob = bob_client.post("/api/auth/login", json={"employee_id": "permission-bob", "auth_mode": "normal"})
 assert "benchmark.view" in bob.json()["resources"]
 assert bob_client.get("/api/benchmark/status").status_code == 200
+
+# Switching back to approval mode reuses the hidden permission mapping.
+resource = updated.json()
+resource["access_mode"] = "permission"
+resource["permission_codes"] = []
+restricted_again = admin_client.put("/api/admin/resources/benchmark.view", json=resource)
+assert restricted_again.status_code == 200, restricted_again.text
+assert restricted_again.json()["permission_codes"] == ["benchmark_access"]
+assert bob_client.get("/api/benchmark/status").status_code == 403
 
 # Admin account can deliberately use ordinary mode and then has no admin API access.
 ordinary_admin_client = TestClient(app)

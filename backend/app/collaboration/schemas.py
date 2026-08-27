@@ -83,7 +83,31 @@ class FeedbackResponse(BaseModel):
     page_path: str
     content: str
     status: str
+    resolution: str
+    handler_name: str = ""
+    messages: list["FeedbackMessageResponse"] = Field(default_factory=list)
     created_at: datetime
+    updated_at: datetime
+    can_withdraw: bool = False
+    can_reply: bool = False
+
+
+class FeedbackMessageCreate(BaseModel):
+    content: str = Field(min_length=2, max_length=5000)
+
+
+class FeedbackMessageResponse(BaseModel):
+    message_id: str
+    author_name: str
+    author_role: str
+    content: str
+    created_at: datetime
+
+
+class FeedbackAdminUpdate(BaseModel):
+    status: Literal["pending", "processing", "needs_info", "resolved", "closed"]
+    resolution: str = Field(default="", max_length=5000)
+    reply: str = Field(default="", max_length=5000)
 
 
 class DemandCreate(BaseModel):
@@ -111,11 +135,17 @@ class DemandResponse(BaseModel):
     status: str
     conclusion: str
     visibility: str
+    priority: str
+    planned_time: str
+    handler_name: str = ""
     support_count: int
     voted_by_me: bool
     is_own: bool
     created_at: datetime
     updated_at: datetime
+    can_edit: bool = False
+    can_withdraw: bool = False
+    history: list["DemandEventResponse"] = Field(default_factory=list)
 
 
 class DemandListResponse(BaseModel):
@@ -127,3 +157,29 @@ class DemandVoteResponse(BaseModel):
     demand_id: str
     support_count: int
     voted_by_me: bool
+
+
+class DemandUpdate(DemandCreate):
+    pass
+
+
+class DemandAdminUpdate(BaseModel):
+    status: Literal[
+        "pending", "needs_info", "accepted", "planned", "in_progress",
+        "delivered", "deferred", "rejected",
+    ]
+    conclusion: str = Field(default="", max_length=10000)
+    visibility: Literal["private", "public"] = "private"
+    priority: Literal["low", "normal", "high", "urgent"] = "normal"
+    planned_time: str = Field(default="", max_length=64)
+
+
+class DemandEventResponse(BaseModel):
+    event_id: str
+    actor_name: str
+    actor_role: str
+    event_type: str
+    from_status: str
+    to_status: str
+    comment: str
+    created_at: datetime

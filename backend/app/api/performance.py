@@ -10,7 +10,7 @@ from chip_performance_analysis import (
     normalize_trace_json,
 )
 
-from app.auth.constants import SIMULATION_TASK_RESOURCE
+from app.auth.constants import PERFORMANCE_VIEW_RESOURCE
 from app.auth.service import require_resource
 from app.common.config import get_settings
 from app.common.database import get_db
@@ -25,7 +25,7 @@ from app.simulation.task_service import SimulationTaskService
 router = APIRouter(
     prefix="/api/performance",
     tags=["performance"],
-    dependencies=[Depends(require_resource(SIMULATION_TASK_RESOURCE))],
+    dependencies=[Depends(require_resource(PERFORMANCE_VIEW_RESOURCE))],
 )
 
 settings = get_settings()

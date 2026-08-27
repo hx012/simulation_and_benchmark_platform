@@ -18,6 +18,7 @@ export interface ProtectedResourceRecord {
   description: string;
   access_mode: 'normal' | 'permission' | 'admin' | 'disabled';
   permission_codes: PermissionCode[];
+  authorized_users: Array<{ user_id: string; display_name: string }>;
   system_managed: boolean;
 }
 
@@ -27,6 +28,7 @@ export interface AdminUserRecord {
   role: PlatformRole;
   active: boolean;
   password_configured: boolean;
+  bootstrap_admin: boolean;
   last_login_at: string | null;
 }
 

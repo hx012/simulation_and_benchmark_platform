@@ -82,7 +82,13 @@ class ProtectedResourceResponse(BaseModel):
     description: str
     access_mode: Literal["normal", "permission", "admin", "disabled"]
     permission_codes: list[str]
+    authorized_users: list["ResourceAuthorizedUserResponse"] = Field(default_factory=list)
     system_managed: bool
+
+
+class ResourceAuthorizedUserResponse(BaseModel):
+    user_id: str
+    display_name: str
 
 
 class ProtectedResourceUpdate(BaseModel):
@@ -98,6 +104,7 @@ class AdminUserResponse(BaseModel):
     role: Literal["normal", "admin"]
     active: bool
     password_configured: bool
+    bootstrap_admin: bool = False
     last_login_at: datetime | None
 
 

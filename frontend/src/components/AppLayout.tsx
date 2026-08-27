@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Button, Dropdown, Form, Input, Layout, message, Modal, Select, Typography } from 'antd';
+import { Button, Dropdown, Layout, Typography } from 'antd';
 import {
   BarChartOutlined,
   LineChartOutlined,
   BulbOutlined,
   CommentOutlined,
   ExperimentOutlined,
-  GlobalOutlined,
   HomeOutlined,
   LogoutOutlined,
   MenuOutlined,
@@ -16,15 +15,15 @@ import {
   PlusSquareOutlined,
   QuestionCircleOutlined,
   SafetyCertificateOutlined,
+  SolutionOutlined,
   UnorderedListOutlined,
   TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { collaborationApi, type CommunityLink, type FeedbackPayload } from '../api/collaboration';
-import { trackAnalyticsEventQuietly } from '../api/analytics';
 import { AnalyticsTracker } from './AnalyticsTracker';
+import { FeedbackCenterDrawer } from './FeedbackCenterDrawer';
 import { SupportGroupModal } from './SupportGroupModal';
 
 const { Header, Sider, Content } = Layout;
@@ -82,6 +81,7 @@ const navGroups: NavGroup[] = [
     label: '管理中心',
     items: [
       { path: '/permissions', label: '权限中心', icon: <SafetyCertificateOutlined /> },
+      { path: '/collaboration-admin', label: '共建管理', icon: <SolutionOutlined />, adminOnly: true },
       { path: '/usage-analytics', label: '使用分析', icon: <LineChartOutlined />, adminOnly: true },
     ],
   },
@@ -105,11 +105,8 @@ export function AppLayout() {
     demands: true,
     management: true,
   });
-  const [communities, setCommunities] = useState<CommunityLink[]>([]);
   const [supportOpen, setSupportOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
-  const [feedbackForm] = Form.useForm<FeedbackPayload>();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -128,40 +125,13 @@ export function AppLayout() {
     if (location.pathname.startsWith('/demands')) return '需求池';
     if (location.pathname.startsWith('/permissions')) return '权限中心';
     if (location.pathname.startsWith('/usage-analytics')) return '使用分析';
+    if (location.pathname.startsWith('/collaboration-admin')) return '共建管理';
     return 'AI Chip Platform';
   }, [location.pathname]);
 
   useEffect(() => {
-    void collaborationApi.getPlatformConfig()
-      .then((config) => setCommunities(config.communities))
-      .catch(() => setCommunities([]));
-  }, []);
-
-  useEffect(() => {
     setMobileNavOpen(false);
   }, [location.pathname]);
-
-  async function submitFeedback(values: FeedbackPayload) {
-    setFeedbackSubmitting(true);
-    try {
-      await collaborationApi.submitFeedback({
-        ...values,
-        page_title: pageTitle,
-        page_path: `${location.pathname}${location.search}`,
-      });
-      trackAnalyticsEventQuietly({
-        event_name: 'feedback.submit',
-        result: 'success',
-      });
-      message.success('反馈已提交，感谢你的建议');
-      feedbackForm.resetFields();
-      setFeedbackOpen(false);
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : '反馈提交失败');
-    } finally {
-      setFeedbackSubmitting(false);
-    }
-  }
 
   async function handleLogout() {
     await logout();
@@ -263,16 +233,6 @@ export function AppLayout() {
           <div className="header-user">
             <Dropdown trigger={['click']} menu={{
               items: [
-                ...communities.map((item) => ({
-                  key: item.key,
-                  label: item.enabled ? item.name : `${item.name}（暂未配置）`,
-                  disabled: !item.enabled,
-                  icon: <GlobalOutlined />,
-                  onClick: () => {
-                    if (item.enabled) window.open(item.url, '_blank', 'noopener,noreferrer');
-                  },
-                })),
-                { type: 'divider' as const },
                 { key: 'support-group', label: 'MSKPP 技术支撑群', icon: <QuestionCircleOutlined />, onClick: () => setSupportOpen(true) },
                 { key: 'feedback', label: '意见反馈', icon: <CommentOutlined />, onClick: () => setFeedbackOpen(true) },
               ],
@@ -320,35 +280,12 @@ export function AppLayout() {
           <Outlet />
         </Content>
       </Layout>
-      <Modal
-        title="意见反馈"
+      <FeedbackCenterDrawer
         open={feedbackOpen}
-        onCancel={() => setFeedbackOpen(false)}
-        onOk={() => feedbackForm.submit()}
-        confirmLoading={feedbackSubmitting}
-        okText="提交反馈"
-      >
-        <Form
-          form={feedbackForm}
-          layout="vertical"
-          initialValues={{ feedback_type: 'experience', page_title: '', page_path: '', content: '' }}
-          onFinish={(values) => void submitFeedback(values)}
-        >
-          <Form.Item label="反馈页面"><Input value={pageTitle} disabled /></Form.Item>
-          <Form.Item name="feedback_type" label="反馈类型" rules={[{ required: true }]}>
-            <Select options={[
-              { value: 'experience', label: '体验建议' },
-              { value: 'function', label: '功能问题' },
-              { value: 'data', label: '数据问题' },
-              { value: 'other', label: '其他' },
-            ]} />
-          </Form.Item>
-          <Form.Item name="content" label="反馈内容" rules={[{ required: true, min: 2, message: '请至少输入 2 个字符' }]}>
-            <Input.TextArea rows={5} maxLength={5000} showCount placeholder="请描述遇到的问题或改进建议" />
-          </Form.Item>
-          <div className="feedback-attachment-note">截图和附件将在后续版本支持。</div>
-        </Form>
-      </Modal>
+        pageTitle={pageTitle}
+        pagePath={`${location.pathname}${location.search}`}
+        onClose={() => setFeedbackOpen(false)}
+      />
       <SupportGroupModal open={supportOpen} onClose={() => setSupportOpen(false)} />
     </Layout>
   );

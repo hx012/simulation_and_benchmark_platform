@@ -1,129 +1,126 @@
 team:
   name: 芯片仿真与性能分析团队
   description: 团队面向芯片架构研究与负载建模，围绕 Benchmark 筛选、MSKPP 芯片仿真、Trace 与性能分析开展平台和工具建设，持续沉淀可复用的仿真能力、Benchmark 和性能分析工具，为芯片性能看护、瓶颈定位、需求分析和微架构优化提供支撑。
-  team_size: ""
-  specialties: []
+  team_size: 7 人
+  specialties: [芯片微架构, MSKPP 内源仿真器, NpuSim 开源仿真器]
   members:
-    - employee_id: h00517730
-      name: 郝雪桐
-      direction: 性能分析 · Trace 工具
-      description: 负责 Trace 分析工具与性能报告建设，重点关注执行流水和关键路径瓶颈。
-      tags: [Trace, 性能瓶颈]
+    - employee_id: h00517656
+      name: 魏富春
+      direction: 芯片微架构 · 仿真器架构设计
+      description: 负责芯片微架构研究与需求分析，以及仿真器架构设计。
+      tags: [芯片微架构, 需求分析, 仿真器架构]
       order: 10
       enabled: true
-    - employee_id: h00000002
-      name: 陈晨
-      direction: 架构仿真 · 调度优化
-      description: 负责 MSKPP 调度模型和仿真验证，研究任务粒度、流水并行与预取优化。
-      tags: [MSKPP, 调度优化]
+    - employee_id: h00517730
+      name: 郝雪桐
+      direction: STARS 任务与资源调度
+      description: 负责 STARS 任务与资源调度方向的微架构研究，以及 MSKPP 内源仿真器相关模块开发。
+      tags: [STARS, 任务调度, 资源调度, MSKPP]
       order: 20
       enabled: true
-    - employee_id: h00000003
-      name: 李林
-      direction: 内存系统 · 分析工具
-      description: 负责内存热力图和数据聚合组件，关注 HBM、Cache 与访存行为分析。
-      tags: [Memory, 热力图]
+    - employee_id: h00833452
+      name: 苏文翀
+      direction: AI Core · SIMT/SIMD 微架构
+      description: 负责 AI Core SIMT/SIMD 微架构研究，以及 MSKPP 内源仿真器相关模块开发。
+      tags: [AI Core, SIMT, SIMD, MSKPP]
       order: 30
       enabled: true
-    - employee_id: h00000004
-      name: 赵冉
-      direction: 负载建模 · Benchmark
-      description: 负责典型业务负载建模和性能基线建设，推动 Benchmark 规范化沉淀。
-      tags: [Workload, Benchmark]
+    - employee_id: h00595238
+      name: 童安哲
+      direction: NoC 微架构
+      description: 负责 NoC 微架构研究，以及 MSKPP 内源仿真器相关模块开发。
+      tags: [NoC, 芯片互联, 微架构, MSKPP]
       order: 40
       enabled: true
-    - employee_id: h00000005
-      name: 王博
-      direction: 微架构分析 · 性能看护
-      description: 负责芯片性能看护和跨配置对比分析，沉淀微架构瓶颈定位方法。
-      tags: [微架构, 性能看护]
+    - employee_id: h00994199
+      name: 赵研
+      direction: Vector 微架构
+      description: 负责 Vector 微架构研究，以及 MSKPP 内源仿真器相关模块开发。
+      tags: [Vector, 微架构, MSKPP]
       order: 50
       enabled: true
-    - employee_id: h00000006
-      name: 周宁
-      direction: 平台工程 · 数据集成
-      description: 负责仿真、Benchmark 与分析数据的流程集成和平台工程能力建设。
-      tags: [平台工程, 数据集成]
+    - employee_id: h00943468
+      name: 吴瑞泽
+      direction: NpuSim · 开源仿真器架构
+      description: 负责 NpuSim 开源仿真器的整体架构设计与核心能力开发。
+      tags: [NpuSim, 开源仿真器, 架构设计]
       order: 60
       enabled: true
+    - employee_id: h00929963
+      name: 徐问问
+      direction: NpuSim · Vector 模块
+      description: 负责 NpuSim 开源仿真器 Vector 模块的方案设计与功能开发。
+      tags: [NpuSim, Vector, 模块设计]
+      order: 70
+      enabled: true
   achievements:
-    - id: stars-scheduling-optimization
-      title: STARS 调度优化：端到端性能提升 12.4%
-      category: MSKPP 芯片仿真器
-      summary: 通过关键路径分析调整任务粒度与预取时机，形成可复核的优化结论。
-      contributors: 陈晨等 4 人
-      date: "2026-08"
+    - id: mskpp-simulator-development
+      title: MSKPP 内源仿真器开发与多代次芯片适配
+      category: 芯片仿真
+      summary: 持续建设 MSKPP 内源仿真器，已完成 A2、A3、A5 多代次芯片仿真适配，支撑芯片架构验证与优化分析，并识别多项芯片优化需求。
+      contributors: 团队共建
+      date: ""
       featured: true
       featured_order: 10
       enabled: true
       detail_url: ""
-    - id: memory-heatmap-analysis
-      title: 内存热力图分析组件
-      category: 性能分析
-      summary: 支持按地址、Core 和时间窗口聚合，为仿真结果分析提供基础能力。
-      contributors: 团队共建
-      date: "2026-08"
-      featured: true
-      featured_order: 30
-      enabled: true
-      detail_url: ""
-    - id: trace-attribution
-      title: Trace 自动归因方法验证
-      category: 分析方法
-      summary: 围绕关键路径与等待事件建立可复核的分析方法。
-      contributors: 性能分析组
-      date: "2026-08"
-      featured: false
-      featured_order: 40
-      enabled: true
-      detail_url: ""
-    - id: v310-memory-system
-      title: V310 Memory System 性能分析
-      category: 分析报告
-      summary: 综合 HBM、L2 与 Trace 数据，沉淀配置建议和后续验证方向。
-      contributors: 王博等 3 人
-      date: "2026-08"
-      featured: false
-      featured_order: 50
-      enabled: true
-      detail_url: ""
-    - id: workload-feature-extraction
-      title: 面向芯片仿真的负载特征抽取方法
-      category: 专利 / 论文
-      summary: 形成统一负载描述和特征抽取流程，支持跨版本 Benchmark 复用。
-      contributors: 周宁等 3 人
-      date: "2026-06"
-      featured: false
-      featured_order: 60
-      enabled: true
-      detail_url: ""
-    - id: v300-v310-cube-comparison
-      title: V300 与 V310 Cube 性能对比
+    - id: benchmark-system-development
+      title: Benchmark 体系建设与多代次芯片质量看护
       category: Benchmark
-      summary: 对比两代芯片的 Cube 吞吐、利用率和访存行为，形成回归基线。
-      contributors: 赵冉等 2 人
-      date: "2026-05"
+      summary: 构建体系化的 Benchmark 架构与评测方法，持续筛选和沉淀典型工作负载，有效支撑 A2、A3、A5、A6 等多代次芯片的性能与质量看护。
+      contributors: 团队共建
+      date: ""
       featured: true
       featured_order: 20
       enabled: true
       detail_url: ""
+    - id: performance-analysis-toolchain
+      title: 芯片性能分析工具链建设
+      category: 性能分析
+      summary: 建设 5+ 项芯片性能分析工具，覆盖关键性能指标观测、瓶颈定位与对比分析等场景，持续沉淀分析方法并形成系列性能分析文档。
+      contributors: 团队共建
+      date: ""
+      featured: true
+      featured_order: 30
+      enabled: true
+      detail_url: ""
   all_achievements_url: ""
   contributions:
-    - member: 林晓
-      contribution: Trace 分析工具、性能报告
-      achievement_count: 5
-      contribution_score: 860
-      views: 2341
-    - member: 陈晨
-      contribution: 调度优化、Benchmark
-      achievement_count: 4
-      contribution_score: 720
-      views: 1896
-    - member: 李林
-      contribution: 内存分析组件
-      achievement_count: 3
-      contribution_score: 610
-      views: 1428
+    - member: 魏富春
+      contribution: 芯片微架构研究、需求分析与仿真器架构设计
+      achievement_count: 0
+      contribution_score: 100
+      views: 0
+    - member: 郝雪桐
+      contribution: STARS 任务与资源调度、MSKPP 模块开发
+      achievement_count: 0
+      contribution_score: 100
+      views: 0
+    - member: 苏文翀
+      contribution: AI Core SIMT/SIMD 微架构、MSKPP 模块开发
+      achievement_count: 0
+      contribution_score: 100
+      views: 0
+    - member: 童安哲
+      contribution: NoC 微架构研究、MSKPP 模块开发
+      achievement_count: 0
+      contribution_score: 100
+      views: 0
+    - member: 赵研
+      contribution: Vector 微架构研究、MSKPP 模块开发
+      achievement_count: 0
+      contribution_score: 100
+      views: 0
+    - member: 吴瑞泽
+      contribution: NpuSim 开源仿真器架构设计与开发
+      achievement_count: 0
+      contribution_score: 100
+      views: 0
+    - member: 徐问问
+      contribution: NpuSim Vector 模块设计与开发
+      achievement_count: 0
+      contribution_score: 100
+      views: 0
 
 communities:
   - key: jiaxian

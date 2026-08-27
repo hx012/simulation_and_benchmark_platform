@@ -46,12 +46,6 @@ def load_team_config(settings: Settings) -> TeamConfigResponse:
             "platform content enables %s featured achievements; the home page shows only 5",
             featured_count,
         )
-    if len(result.members) > 8:
-        logger.warning(
-            "platform content enables %s team members; the V1.2 layout is designed for at most 8",
-            len(result.members),
-        )
-        result.members = result.members[:8]
     return result
 
 
