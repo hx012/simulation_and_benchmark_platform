@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { InputHTMLAttributes } from 'react';
-import { Alert, Button, Empty, Input, message, Space, Spin, Tree } from 'antd';
+import { Alert, Button, Empty, Input, message, Space, Spin, Tooltip, Tree } from 'antd';
 import {
   FileOutlined,
   FolderOpenOutlined,
@@ -186,9 +186,11 @@ export function RemoteBundleEditor({
           <Button icon={<ReloadOutlined />} disabled={!uploadSessionId} onClick={() => void loadFiles()}>
             刷新
           </Button>
-          <Button icon={<FolderOpenOutlined />} loading={uploading} onClick={() => inputRef.current?.click()}>
-            重新上传
-          </Button>
+          <Tooltip title={`请选择 ${title} 目录上传，不支持单个文件或压缩包`}>
+            <Button icon={<FolderOpenOutlined />} loading={uploading} onClick={() => inputRef.current?.click()}>
+              重新上传
+            </Button>
+          </Tooltip>
           <input
             ref={inputRef}
             className="hidden-file-input"
