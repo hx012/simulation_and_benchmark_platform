@@ -71,7 +71,9 @@ button, input, textarea, select { font: inherit; }
   border-radius: 8px;
   background: #171717;
   color: #fff;
-  font-size: 18px;
+  font-size: 13px;
+  font-weight: 780;
+  letter-spacing: -.02em;
 }
 .brand-copy { min-width: 0; }
 .brand-title { font-weight: 700; font-size: 15px; color: #111827; white-space: nowrap; }
@@ -2051,6 +2053,34 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px s
 .platform-achievement-row { grid-template-columns: 104px minmax(0,1fr) auto; }
 .platform-achievement-category { color: #657a91; font-size: 11px; font-weight: 700; }
 .platform-home-empty-row { min-height: 126px; display: grid; place-items: center; color: #8b9aab; }
+.platform-feature-release-card.ant-card { margin-top: 14px; overflow: hidden; border-radius: 15px; }
+.platform-feature-release-card .ant-card-head { min-height: 56px; padding: 0 17px; }
+.platform-feature-release-card .ant-card-head-title { font-size: 14px; }
+.platform-feature-release-card .ant-card-body { padding: 0 17px; }
+.platform-feature-release-card .ant-card-extra .ant-btn-link { padding-inline: 0; }
+.platform-feature-release-heading { display: inline-flex; align-items: center; gap: 9px; }
+.platform-feature-release-icon { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; background: #edf3ff; color: #3168e8; font-size: 15px; }
+.platform-feature-release-row { width: 100%; min-height: 72px; padding: 9px 0; display: grid; grid-template-columns: 96px minmax(0,1fr) auto; align-items: center; gap: 14px; border: 0; border-bottom: 1px solid #e8eef5; background: transparent; color: #10233f; text-align: left; cursor: pointer; }
+.platform-feature-release-row:last-child { border-bottom: 0; }
+.platform-feature-release-row:not(:disabled):hover .platform-feature-release-title strong { color: #3168e8; }
+.platform-feature-release-row:disabled { cursor: default; }
+.platform-feature-release-date strong, .platform-feature-release-date small { display: block; }
+.platform-feature-release-date strong { color: #3168e8; font-size: 15px; font-variant-numeric: tabular-nums; }
+.platform-feature-release-date small { margin-top: 3px; color: #7b8da1; font-size: 11px; }
+.platform-feature-release-copy { min-width: 0; }
+.platform-feature-release-title { min-width: 0; display: flex; align-items: center; gap: 7px; }
+.platform-feature-release-title strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.platform-feature-release-title .ant-tag { margin-inline-end: 0; line-height: 19px; }
+.platform-feature-release-copy > small { display: block; margin-top: 5px; overflow: hidden; color: #7b8da1; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.platform-feature-release-drawer .ant-drawer-header { min-height: 58px; }
+.platform-feature-release-drawer .ant-drawer-body { padding: 0 20px; }
+.platform-feature-release-history-row { width: 100%; min-height: 76px; padding: 12px 0; display: grid; grid-template-columns: 92px minmax(0,1fr) auto; align-items: center; gap: 14px; border: 0; border-bottom: 1px solid #e8eef5; background: transparent; color: #10233f; text-align: left; cursor: pointer; }
+.platform-feature-release-history-row:not(:disabled):hover strong { color: #3168e8; }
+.platform-feature-release-history-row:disabled { cursor: default; }
+.platform-feature-release-history-row time { color: #536b86; font-size: 12px; font-variant-numeric: tabular-nums; }
+.platform-feature-release-history-row strong, .platform-feature-release-history-row small { display: block; }
+.platform-feature-release-history-row strong { font-size: 14px; }
+.platform-feature-release-history-row small { margin-top: 5px; color: #7b8da1; font-size: 12px; line-height: 1.55; }
 .platform-co-build-card { margin-top: 14px; border-radius: 13px; background: linear-gradient(100deg,rgba(49,104,232,.08),rgba(8,169,183,.09)); }
 .platform-co-build-card .ant-card-body { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 17px; }
 .platform-co-build-card h3 { margin: 0 0 3px; font-size: 14px; }
@@ -2146,6 +2176,8 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px s
   .team-member-grid { grid-template-columns: 1fr; }
   .benchmark-detail-grid { grid-template-columns: 1fr; }
   .platform-home-panels { gap: 16px; }
+  .platform-feature-release-history-row { grid-template-columns: 82px minmax(0,1fr); }
+  .platform-feature-release-history-row .platform-row-action { grid-column: 2; }
 }
 @media (max-width: 560px) {
   .portal-header-inner, .portal-hero, .portal-section, .portal-team-inner { width: min(100% - 28px,1180px); }
@@ -2162,6 +2194,8 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px s
   .platform-core-grid { gap: 12px; }
   .platform-achievement-row { grid-template-columns: minmax(0,1fr) auto; }
   .platform-achievement-category { display: none; }
+  .platform-feature-release-row { grid-template-columns: 76px minmax(0,1fr); }
+  .platform-feature-release-row .platform-row-action { grid-column: 2; }
   .platform-row-action { max-width: 82px; overflow: hidden; text-overflow: ellipsis; }
   .platform-co-build-card .ant-card-body { align-items: stretch; flex-direction: column; }
   .team-section-heading { align-items: flex-start; flex-direction: column; }

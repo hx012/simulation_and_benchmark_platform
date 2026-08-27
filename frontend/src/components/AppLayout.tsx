@@ -6,7 +6,6 @@ import {
   LineChartOutlined,
   BulbOutlined,
   CommentOutlined,
-  ExperimentOutlined,
   HomeOutlined,
   LogoutOutlined,
   MenuOutlined,
@@ -155,7 +154,7 @@ export function AppLayout() {
           title="返回平台展示页"
           aria-label="返回平台展示页"
         >
-          <div className="brand-mark"><ExperimentOutlined /></div>
+          <div className="brand-mark" aria-hidden="true">AI</div>
           {!collapsed ? (
             <div className="brand-copy">
               <div className="brand-title">AI Chip Platform</div>

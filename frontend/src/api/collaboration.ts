@@ -21,6 +21,24 @@ export interface PlatformConfig {
   support: PlatformSupport;
 }
 
+export interface FeatureReleaseItem {
+  id: string;
+  title: string;
+  description: string;
+  launched_at: string;
+  action_text: string;
+  action_url: string;
+  enabled: boolean;
+}
+
+export interface FeatureReleaseConfig {
+  enabled: boolean;
+  title: string;
+  max_items: number;
+  new_badge_days: number;
+  items: FeatureReleaseItem[];
+}
+
 export interface TeamAchievement {
   id: string;
   title: string;
@@ -147,6 +165,7 @@ export interface DemandAdminPayload {
 export const collaborationApi = {
   getPlatformConfig: () => apiRequest<PlatformConfig>('/api/platform-config'),
   getTeam: () => apiRequest<TeamConfig>('/api/team'),
+  getFeatureReleases: () => apiRequest<FeatureReleaseConfig>('/api/feature-releases'),
   submitFeedback: (payload: FeedbackPayload) => apiRequest<FeedbackItem>('/api/feedback', {
     method: 'POST',
     body: JSON.stringify(payload),

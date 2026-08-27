@@ -4,7 +4,7 @@ team:
   team_size: 7 人
   specialties: [芯片微架构, MSKPP 内源仿真器, NpuSim 开源仿真器]
   members:
-    - employee_id: h00517656
+    - employee_id: w00517656
       name: 魏富春
       direction: 芯片微架构 · 仿真器架构设计
       description: 负责芯片微架构研究与需求分析，以及仿真器架构设计。
@@ -18,35 +18,35 @@ team:
       tags: [STARS, 任务调度, 资源调度, MSKPP]
       order: 20
       enabled: true
-    - employee_id: h00833452
+    - employee_id: s00833452
       name: 苏文翀
       direction: AI Core · SIMT/SIMD 微架构
       description: 负责 AI Core SIMT/SIMD 微架构研究，以及 MSKPP 内源仿真器相关模块开发。
       tags: [AI Core, SIMT, SIMD, MSKPP]
       order: 30
       enabled: true
-    - employee_id: h00595238
+    - employee_id: a00595238
       name: 童安哲
       direction: NoC 微架构
       description: 负责 NoC 微架构研究，以及 MSKPP 内源仿真器相关模块开发。
       tags: [NoC, 芯片互联, 微架构, MSKPP]
       order: 40
       enabled: true
-    - employee_id: h00994199
+    - employee_id: z00994199
       name: 赵研
       direction: Vector 微架构
       description: 负责 Vector 微架构研究，以及 MSKPP 内源仿真器相关模块开发。
       tags: [Vector, 微架构, MSKPP]
       order: 50
       enabled: true
-    - employee_id: h00943468
+    - employee_id: w00943468
       name: 吴瑞泽
       direction: NpuSim · 开源仿真器架构
       description: 负责 NpuSim 开源仿真器的整体架构设计与核心能力开发。
       tags: [NpuSim, 开源仿真器, 架构设计]
       order: 60
       enabled: true
-    - employee_id: h00929963
+    - employee_id: x00929963
       name: 徐问问
       direction: NpuSim · Vector 模块
       description: 负责 NpuSim 开源仿真器 Vector 模块的方案设计与功能开发。
@@ -121,6 +121,29 @@ team:
       achievement_count: 0
       contribution_score: 100
       views: 0
+
+# 首页仅展示按 launched_at 倒序排列的前 max_items 条；“查看全部”展示全部历史条目。
+# launched_at 使用 YYYY-MM-DD，未来日期不会提前显示；new_badge_days 设为 0 可关闭 NEW 标签。
+feature_releases:
+  enabled: true
+  title: 新特性上线
+  max_items: 3
+  new_badge_days: 14
+  items:
+    - id: benchmark-unified-framework
+      title: 构建 Benchmark 统一框架
+      description: 涵盖 A5、A6 等多代际 Benchmark，实现统一的注册、运行与结果汇总。
+      launched_at: "2026-07-30"
+      action_text: 查看 Benchmark
+      action_url: /benchmark
+      enabled: true
+    - id: mskpp-a5-simt-functional-simulation
+      title: MSKPP 仿真器支持 A5 SIMT 功能仿真
+      description: 已正式上线 A5 SIMT 功能仿真，性能仿真预计 9 月 30 日上线。
+      launched_at: "2026-05-30"
+      action_text: 查看任务
+      action_url: /simulation/tasks
+      enabled: true
 
 communities:
   - key: jiaxian
