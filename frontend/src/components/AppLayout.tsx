@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Button, Dropdown, Layout, Typography } from 'antd';
+import { Button, Dropdown, Layout, Tooltip, Typography } from 'antd';
 import {
   BarChartOutlined,
   LineChartOutlined,
@@ -235,7 +235,16 @@ export function AppLayout() {
             <Dropdown trigger={['click']} menu={{
               items: [
                 { key: 'support-group', label: 'MSKPP 技术支撑群', icon: <QuestionCircleOutlined />, onClick: () => setSupportOpen(true) },
-                { key: 'feedback', label: '意见反馈', icon: <CommentOutlined />, onClick: () => setFeedbackOpen(true) },
+                {
+                  key: 'feedback',
+                  label: (
+                    <Tooltip title="反馈当前界面问题" placement="left">
+                      <span>意见反馈</span>
+                    </Tooltip>
+                  ),
+                  icon: <CommentOutlined />,
+                  onClick: () => setFeedbackOpen(true),
+                },
               ],
             }}>
               <Button type="text" icon={<QuestionCircleOutlined />}>帮助与反馈</Button>
