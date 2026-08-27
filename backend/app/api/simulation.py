@@ -168,7 +168,10 @@ def _upload_session_response(upload_session) -> UploadSessionResponse:
 )
 def get_simulation_capabilities() -> SimulationCapabilitiesResponse:
     return SimulationCapabilitiesResponse(
-        mskpp_guide_url=profile_registry.mskpp_guide_url,
+        # Keep the capability endpoint available during rolling or patch-based
+        # deployments where the API module may be newer than the in-memory
+        # registry instance. A complete restart will restore the configured URL.
+        mskpp_guide_url=getattr(profile_registry, "mskpp_guide_url", ""),
         simulators=[
             SimulatorCapabilityResponse(
                 key=simulator.key,

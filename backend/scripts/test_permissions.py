@@ -77,6 +77,15 @@ capabilities = admin_client.get("/api/simulation/capabilities")
 assert capabilities.status_code == 200, capabilities.text
 assert "mskpp_guide_url" in capabilities.json()
 
+configured_guide_url = simulation_api.profile_registry.mskpp_guide_url
+del simulation_api.profile_registry.mskpp_guide_url
+try:
+    legacy_capabilities = admin_client.get("/api/simulation/capabilities")
+    assert legacy_capabilities.status_code == 200, legacy_capabilities.text
+    assert legacy_capabilities.json()["mskpp_guide_url"] == ""
+finally:
+    simulation_api.profile_registry.mskpp_guide_url = configured_guide_url
+
 config_template = admin_client.get(
     "/api/simulation/config-template",
     params={
