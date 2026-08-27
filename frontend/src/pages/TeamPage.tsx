@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRightOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { ArrowRightOutlined, DeleteOutlined, EditOutlined, PlusOutlined, UserAddOutlined } from '@ant-design/icons';
 import {
   Button, Checkbox, Drawer, Empty, Form, Input, InputNumber, message, Modal,
-  Popconfirm, Popover, Select, Skeleton, Space, Table, Tabs, Tag,
+  Popconfirm, Popover, Select, Skeleton, Space, Table, Tabs, Tag, Typography,
 } from 'antd';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -13,7 +13,6 @@ import { useAuth } from '../auth/AuthContext';
 import { apiResourceUrl } from '../api/client';
 import { PageHeading } from '../components/PageHeading';
 import { ResultWatermark } from '../components/ResultWatermark';
-import { SupportGroupModal } from '../components/SupportGroupModal';
 
 function openConfiguredUrl(url: string, navigate: (path: string) => void) {
   if (url.startsWith('/')) navigate(url);
@@ -38,8 +37,7 @@ export function TeamPage() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [team, setTeam] = useState<TeamConfig | null>(null);
-  const [supportEnabled, setSupportEnabled] = useState(false);
-  const [supportOpen, setSupportOpen] = useState(false);
+  const [joinOpen, setJoinOpen] = useState(false);
   const [archiveMember, setArchiveMember] = useState<TeamMember | null>(null);
   const [archiveItems, setArchiveItems] = useState<TeamAchievementArchiveItem[]>([]);
   const [archiveLoading, setArchiveLoading] = useState(false);
@@ -56,7 +54,6 @@ export function TeamPage() {
 
   useEffect(() => {
     void loadTeam();
-    void collaborationApi.getPlatformConfig().then((config) => setSupportEnabled(config.support.enabled)).catch(() => setSupportEnabled(false));
   }, []);
 
   async function loadArchive(member: TeamMember) {
@@ -113,8 +110,8 @@ export function TeamPage() {
 
     {activeTab === 'intro' ? <>
       <section className="team-intro-panel"><h2>{team.name}</h2><p>{team.description}</p></section>
-      <div className="team-section-heading"><h2>团队成员</h2>{supportEnabled ? <button className="team-contact-button" type="button" onClick={() => setSupportOpen(true)}>联系团队 / 进入 MSKPP 技术支撑群 <ArrowRightOutlined /></button> : null}</div>
-      {team.members.length ? <div className="team-member-grid">{team.members.map((member) => <article className="team-member-card" key={member.employee_id}><MemberPhoto member={member} /><div className="team-member-content"><div className="team-member-name"><h3>{member.name} <span>{member.employee_id}</span></h3>{member.is_team_member ? <Tag color="cyan">团队成员</Tag> : null}</div><strong>{member.direction}</strong><p>{member.description}</p>{member.tags?.length ? <div className="team-member-tags">{member.tags.map((tag) => <span key={tag}>{tag}</span>)}</div> : null}<Button type="link" size="small" onClick={() => void loadArchive(member)}>查看成果档案</Button></div></article>)}</div> : <div className="team-empty"><Empty description="团队成员配置待补充" /></div>}
+      <div className="team-section-heading"><h2>团队成员</h2><button className="team-contact-button" type="button" onClick={() => setJoinOpen(true)}><UserAddOutlined /> 加入团队 <ArrowRightOutlined /></button></div>
+      {team.members.length ? <div className="team-member-grid">{team.members.map((member) => <article className="team-member-card" key={member.employee_id}><MemberPhoto member={member} /><div className="team-member-content"><div className="team-member-name"><h3>{member.name} <span>{member.employee_id}</span></h3>{member.is_team_member ? <Tag color="cyan">团队成员</Tag> : null}</div><strong>{member.direction}</strong><p>{member.description}</p>{member.tags?.length ? <div className="team-member-tags">{member.tags.map((tag) => <span key={tag}>{tag}</span>)}</div> : null}</div></article>)}</div> : <div className="team-empty"><Empty description="团队成员配置待补充" /></div>}
     </> : <>
       <div className="team-section-heading team-results-heading"><h2>重点成果</h2><Button type="link" disabled={!team.all_achievements_url} onClick={() => team.all_achievements_url && openConfiguredUrl(team.all_achievements_url, navigate)}>查看全部成果 <ArrowRightOutlined /></Button></div>
       {team.achievements.length ? <div className="team-achievement-grid">{team.achievements.slice(0, 3).map((item) => <button type="button" className="team-achievement-card" key={item.id || `${item.title}-${item.date}`} disabled={!item.detail_url} onClick={() => item.detail_url && openConfiguredUrl(item.detail_url, navigate)}><span>{item.category}</span><h3>{item.title}</h3><p>{item.summary}</p><small>{item.contributors}{item.date ? ` · ${item.date}` : ''}</small>{item.detail_url ? <em>查看成果 →</em> : null}</button>)}</div> : <div className="team-empty"><Empty description="暂无团队成果" /></div>}
@@ -140,6 +137,10 @@ export function TeamPage() {
         <Form.Item name="representative" valuePropName="checked"><Checkbox>设为代表成果</Checkbox></Form.Item>
       </Form>
     </Modal>
-    <SupportGroupModal open={supportOpen} onClose={() => setSupportOpen(false)} />
+    <Modal title="加入团队" open={joinOpen} footer={null} onCancel={() => setJoinOpen(false)}>
+      <Typography.Paragraph style={{ margin: 0, lineHeight: 1.8 }}>
+        欢迎对芯片微架构、MSKPP 仿真器、Benchmark 和性能分析感兴趣的同学加入。可联系管理员郝雪桐 h00517730。
+      </Typography.Paragraph>
+    </Modal>
   </div>;
 }

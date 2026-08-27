@@ -2102,7 +2102,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px s
 .team-contact-button { display: inline-flex; align-items: center; gap: 7px; padding: 4px 0; border: 0; background: transparent; color: #3168e8; font-size: 12px; line-height: 20px; cursor: pointer; }
 .team-contact-button:hover { color: #1e4fca; }
 .team-member-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
-.team-member-card { min-height: 172px; padding: 17px; display: flex; align-items: flex-start; gap: 16px; border: 1px solid #d7e1ed; border-top: 2px solid #3168e8; border-radius: 13px; background: #fff; }
+.team-member-card { min-height: 0; padding: 14px 17px; display: flex; align-items: flex-start; gap: 16px; border: 1px solid #d7e1ed; border-top: 2px solid #3168e8; border-radius: 13px; background: #fff; }
 .team-member-card:nth-child(3n + 2) { border-top-color: #08a9b7; }
 .team-member-card:nth-child(3n) { border-top-color: #7c5ce7; }
 .team-member-photo { position: relative; width: 72px; height: 90px; flex: 0 0 auto; display: grid; place-items: center; overflow: hidden; border: 1px solid #c8d4e2; border-radius: 8px; background: linear-gradient(145deg,#edf3f9,#dfe9f4); color: #536b86; font-size: 16px; font-weight: 700; }
@@ -2116,7 +2116,6 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px s
 .team-member-card p { margin: 8px 0 0; color: #687b94; font-size: 11px; line-height: 1.55; }
 .team-member-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
 .team-member-tags span { padding: 3px 7px; border-radius: 999px; background: #f2f6fb; color: #687b94; font-size: 9px; }
-.team-member-content > .ant-btn { height: auto; margin-top: 8px; padding: 0; font-size: 11px; }
 .team-results-heading { margin-top: 4px; }
 .team-achievement-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
 .team-achievement-card { min-height: 172px; padding: 18px; display: flex; flex-direction: column; align-items: flex-start; border: 1px solid #d7e1ed; border-radius: 14px; background: #fff; color: #10233f; text-align: left; cursor: pointer; }
