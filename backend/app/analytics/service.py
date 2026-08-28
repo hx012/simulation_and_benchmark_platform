@@ -63,6 +63,13 @@ EVENT_LABELS = {
     "demand.create": "提交需求",
     "demand.vote": "需求投票",
     "feedback.submit": "提交反馈",
+    "team.achievement_archive_view": "查看成果档案",
+    "team.achievement_create": "新增成果",
+    "team.achievement_update": "编辑成果",
+    "team.achievement_delete": "删除成果",
+    "team.achievement_core_set": "设为核心成果",
+    "team.achievement_core_unset": "取消核心成果",
+    "team.achievement_score": "评分与评价成果",
 }
 
 FEATURE_EVENTS = set(EVENT_LABELS) - {"page_view", "page_active_time"}
@@ -425,6 +432,12 @@ def get_user_detail(db: Session, employee_id: str, days: int) -> AnalyticsUserDe
             benchmark_name=event.benchmark_name,
             simulator_version=event.simulator_version,
             chip_variant=event.chip_variant,
+            target_type=event.target_type,
+            target_id=event.target_id,
+            target_name=event.target_name,
+            target_user_id=event.target_user_id,
+            auth_mode=event.auth_mode,
+            change_summary=event.change_summary,
         )
         for event in events if event.event_name != "page_active_time"
     ][:30]

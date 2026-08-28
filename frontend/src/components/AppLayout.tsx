@@ -283,7 +283,7 @@ export function AppLayout() {
               <button type="button" className="header-user-button">
                 <UserOutlined />
                 <span>{user?.userId}</span>
-                {user?.authMode === 'admin' ? <span className="admin-mode-badge">管理员</span> : null}
+                {user?.accountRole === 'admin' ? <span className="admin-mode-badge">管理用户</span> : user?.isTeamMember ? <span className="admin-mode-badge">团队成员</span> : null}
               </button>
             </Dropdown>
           </div>

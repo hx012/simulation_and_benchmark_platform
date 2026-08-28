@@ -22,6 +22,7 @@ from app.collaboration.schemas import (
     PlatformConfigResponse,
     TeamConfigResponse,
     TeamAchievementCreate,
+    TeamAchievementRepresentativeUpdate,
     TeamAchievementResponse,
     TeamAchievementScoreUpdate,
     TeamAchievementUpdate,
@@ -32,6 +33,7 @@ from app.collaboration.team_service import (
     enrich_team_members,
     list_achievements,
     score_achievement,
+    set_representative,
     update_achievement,
 )
 from app.collaboration.service import (
@@ -124,6 +126,16 @@ def edit_team_achievement(
     return update_achievement(db, current, achievement_id, payload)
 
 
+@router.patch("/team/achievement-archives/{achievement_id}/representative", response_model=TeamAchievementResponse)
+def mark_team_achievement_representative(
+    achievement_id: str,
+    payload: TeamAchievementRepresentativeUpdate,
+    db: Session = Depends(get_db),
+    current: AuthenticatedUser = Depends(require_resource(TEAM_VIEW_RESOURCE)),
+) -> TeamAchievementResponse:
+    return set_representative(db, current, achievement_id, payload)
+
+
 @router.delete("/team/achievement-archives/{achievement_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_team_achievement(
     achievement_id: str,
@@ -140,7 +152,7 @@ def rate_team_achievement(
     db: Session = Depends(get_db),
     current: AuthenticatedUser = Depends(require_admin),
 ) -> TeamAchievementResponse:
-    return score_achievement(db, current, achievement_id, payload.score)
+    return score_achievement(db, current, achievement_id, payload)
 
 
 @router.get("/feature-releases", response_model=FeatureReleaseConfigResponse)

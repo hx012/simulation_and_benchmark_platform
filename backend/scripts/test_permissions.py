@@ -316,6 +316,15 @@ assert team_client.get("/api/analytics/overview").status_code == 200
 assert team_client.get("/api/admin/analytics/users").status_code == 403
 assert team_client.get("/api/admin/users").status_code == 403
 
+ordered_users = admin_client.get("/api/admin/users")
+assert ordered_users.status_code == 200, ordered_users.text
+ordered_users = ordered_users.json()
+priorities = [
+    0 if item["role"] == "admin" else 1 if item["is_team_member"] else 2
+    for item in ordered_users
+]
+assert priorities == sorted(priorities)
+
 with TestingSession() as session:
     session.add(simulation_models.SimulationTask(
         queue_seq=3,

@@ -78,6 +78,10 @@ export interface TeamAchievementArchiveItem {
   reference_url: string;
   representative: boolean;
   score: number | null;
+  evaluation: string;
+  scored_by_employee_id: string;
+  scored_by_name: string;
+  scored_at: string | null;
   can_edit: boolean;
   can_delete: boolean;
   can_score: boolean;
@@ -92,7 +96,6 @@ export interface TeamAchievementPayload {
   summary: string;
   completion_date: string;
   reference_url: string;
-  representative: boolean;
 }
 
 export interface TeamConfig {
@@ -214,9 +217,14 @@ export const collaborationApi = {
   deleteTeamAchievement: (achievementId: string) => apiRequest<void>(
     `/api/team/achievement-archives/${encodeURIComponent(achievementId)}`, { method: 'DELETE' },
   ),
-  scoreTeamAchievement: (achievementId: string, score: number | null) => apiRequest<TeamAchievementArchiveItem>(
+  setTeamAchievementRepresentative: (achievementId: string, representative: boolean) => apiRequest<TeamAchievementArchiveItem>(
+    `/api/team/achievement-archives/${encodeURIComponent(achievementId)}/representative`, {
+      method: 'PATCH', body: JSON.stringify({ representative }),
+    },
+  ),
+  scoreTeamAchievement: (achievementId: string, payload: { score: number | null; evaluation: string }) => apiRequest<TeamAchievementArchiveItem>(
     `/api/admin/team/achievement-archives/${encodeURIComponent(achievementId)}/score`, {
-      method: 'PATCH', body: JSON.stringify({ score }),
+      method: 'PATCH', body: JSON.stringify(payload),
     },
   ),
   getFeatureReleases: () => apiRequest<FeatureReleaseConfig>('/api/feature-releases'),

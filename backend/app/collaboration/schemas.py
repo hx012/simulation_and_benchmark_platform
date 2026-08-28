@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import Literal
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class CommunityLink(BaseModel):
@@ -102,7 +102,6 @@ class TeamAchievementCreate(BaseModel):
     summary: str = Field(default="", max_length=5000)
     completion_date: date
     reference_url: str = Field(default="", max_length=2048)
-    representative: bool = False
 
     @field_validator("reference_url")
     @classmethod
@@ -124,7 +123,6 @@ class TeamAchievementUpdate(BaseModel):
     summary: str = Field(default="", max_length=5000)
     completion_date: date
     reference_url: str = Field(default="", max_length=2048)
-    representative: bool = False
 
     @field_validator("reference_url")
     @classmethod
@@ -134,6 +132,20 @@ class TeamAchievementUpdate(BaseModel):
 
 class TeamAchievementScoreUpdate(BaseModel):
     score: int | None = Field(default=None, ge=0, le=100)
+    evaluation: str = Field(default="", max_length=300)
+
+    @model_validator(mode="after")
+    def validate_evaluation(self):
+        self.evaluation = self.evaluation.strip()
+        if self.score is not None and len(self.evaluation) < 10:
+            raise ValueError("管理员评价至少 10 个字")
+        if self.score is None:
+            self.evaluation = ""
+        return self
+
+
+class TeamAchievementRepresentativeUpdate(BaseModel):
+    representative: bool
 
 
 class TeamAchievementResponse(BaseModel):
@@ -147,6 +159,10 @@ class TeamAchievementResponse(BaseModel):
     reference_url: str
     representative: bool
     score: int | None = None
+    evaluation: str = ""
+    scored_by_employee_id: str = ""
+    scored_by_name: str = ""
+    scored_at: datetime | None = None
     can_edit: bool = False
     can_delete: bool = False
     can_score: bool = False

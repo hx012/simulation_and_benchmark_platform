@@ -155,6 +155,11 @@ class TeamAchievementRecord(Base):
     reference_url: Mapped[str] = mapped_column(String(2048), nullable=False, default="")
     representative: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     score: Mapped[int | None] = mapped_column(Integer)
+    evaluation: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    scored_by_user_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    scored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -165,4 +170,5 @@ class TeamAchievementRecord(Base):
     __table_args__ = (
         Index("ix_team_achievement_owner_completion", "owner_user_id", "completion_date"),
         Index("ix_team_achievement_representative", "representative"),
+        Index("ix_team_achievement_scored_by", "scored_by_user_id"),
     )

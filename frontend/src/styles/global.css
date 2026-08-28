@@ -2147,8 +2147,12 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px s
 .team-archive-meta .ant-tag { margin: 0; }
 .team-archive-item h3 { margin: 10px 0 7px; font-size: 15px; }
 .team-archive-item p { margin: 0 0 8px; color: #687b94; line-height: 1.65; }
-.team-archive-score { min-height: 34px; margin-top: 12px; padding-top: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #e7edf4; color: #536b86; }
-.team-archive-score .ant-input-number { width: 92px; }
+.team-archive-review { min-height: 34px; margin-top: 12px; padding-top: 10px; display: grid; gap: 10px; border-top: 1px solid #e7edf4; color: #536b86; }
+.team-archive-review p { margin: 6px 0 0; color: #536b86; white-space: pre-wrap; }
+.team-archive-review small { display: block; margin-top: 5px; color: #8392a7; }
+.team-archive-review-editor { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: start; gap: 8px; }
+.team-archive-review-editor .ant-input-number { width: 92px; }
+.team-archive-review-editor .ant-btn { grid-column: 2; justify-self: end; }
 .team-archive-actions { margin-top: 10px; }
 .team-empty { padding: 40px; border: 1px solid #d7e1ed; border-radius: 14px; background: #fff; }
 .benchmark-detail-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }

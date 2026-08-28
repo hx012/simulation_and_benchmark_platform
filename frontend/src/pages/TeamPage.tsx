@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowRightOutlined, DeleteOutlined, EditOutlined, PlusOutlined, UserAddOutlined } from '@ant-design/icons';
+import { useEffect, useState } from 'react';
+import { ArrowRightOutlined, DeleteOutlined, EditOutlined, PlusOutlined, StarFilled, StarOutlined, UserAddOutlined } from '@ant-design/icons';
 import {
-  Button, Checkbox, Drawer, Empty, Form, Input, InputNumber, message, Modal,
-  Popconfirm, Popover, Select, Skeleton, Space, Table, Tabs, Tag, Typography,
+  Button, Drawer, Empty, Form, Input, InputNumber, message, Modal,
+  Popconfirm, Popover, Skeleton, Space, Table, Tabs, Tag, Typography,
 } from 'antd';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -27,7 +27,7 @@ function RepresentativeAchievements({ items }: { items: string[] }) {
   if (!items.length) return <span className="team-summary-empty">暂未设置</span>;
   const visible = items.slice(0, 2);
   const remaining = items.length - visible.length;
-  return <div className="team-representative-cell"><span>{visible.join(' · ')}</span>{remaining > 0 ? <Popover trigger="click" title={`代表成果（${items.length}）`} content={<ol className="team-representative-popover">{items.map((item) => <li key={item}>{item}</li>)}</ol>}><Button type="link" size="small">+{remaining} 项</Button></Popover> : null}</div>;
+  return <div className="team-representative-cell"><span>{visible.join(' · ')}</span>{remaining > 0 ? <Popover trigger="click" title={`核心成果（${items.length}）`} content={<ol className="team-representative-popover">{items.map((item) => <li key={item}>{item}</li>)}</ol>}><Button type="link" size="small">+{remaining} 项</Button></Popover> : null}</div>;
 }
 
 type AchievementFormValues = TeamAchievementPayload;
@@ -44,6 +44,7 @@ export function TeamPage() {
   const [editing, setEditing] = useState<TeamAchievementArchiveItem | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [scoreDrafts, setScoreDrafts] = useState<Record<string, number | null>>({});
+  const [evaluationDrafts, setEvaluationDrafts] = useState<Record<string, string>>({});
   const [form] = Form.useForm<AchievementFormValues>();
   const activeTab = searchParams.get('tab') === 'results' ? 'results' : 'intro';
 
@@ -58,20 +59,26 @@ export function TeamPage() {
 
   async function loadArchive(member: TeamMember) {
     setArchiveLoading(true);
-    try { const items = await collaborationApi.listTeamAchievementArchive(member.employee_id); setArchiveMember(member); setArchiveItems(items); setScoreDrafts(Object.fromEntries(items.map((item) => [item.achievement_id, item.score]))); }
+    try {
+      const items = await collaborationApi.listTeamAchievementArchive(member.employee_id);
+      setArchiveMember(member);
+      setArchiveItems(items);
+      setScoreDrafts(Object.fromEntries(items.map((item) => [item.achievement_id, item.score])));
+      setEvaluationDrafts(Object.fromEntries(items.map((item) => [item.achievement_id, item.evaluation])));
+    }
     catch (error) { message.error(error instanceof Error ? error.message : String(error)); }
     finally { setArchiveLoading(false); }
   }
 
-  function openCreate(ownerEmployeeId?: string) {
+  function openCreate() {
     setEditing(null);
-    form.setFieldsValue({ owner_employee_id: ownerEmployeeId || user?.userId || '', title: '', category: '工作成果', summary: '', completion_date: '', reference_url: '', representative: false });
+    form.setFieldsValue({ owner_employee_id: user?.userId || '', title: '', category: '工作成果', summary: '', completion_date: '', reference_url: '' });
     setEditorOpen(true);
   }
 
   function openEdit(item: TeamAchievementArchiveItem) {
     setEditing(item);
-    form.setFieldsValue({ owner_employee_id: item.owner_employee_id, title: item.title, category: item.category, summary: item.summary, completion_date: item.completion_date, reference_url: item.reference_url, representative: item.representative });
+    form.setFieldsValue({ owner_employee_id: item.owner_employee_id, title: item.title, category: item.category, summary: item.summary, completion_date: item.completion_date, reference_url: item.reference_url });
     setEditorOpen(true);
   }
 
@@ -89,12 +96,26 @@ export function TeamPage() {
   }
 
   async function saveScore(item: TeamAchievementArchiveItem) {
-    try { await collaborationApi.scoreTeamAchievement(item.achievement_id, scoreDrafts[item.achievement_id] ?? null); message.success('评分已保存'); if (archiveMember) await loadArchive(archiveMember); }
+    const score = scoreDrafts[item.achievement_id] ?? null;
+    const evaluation = (evaluationDrafts[item.achievement_id] || '').trim();
+    if (score !== null && evaluation.length < 10) {
+      message.error('填写评分时，评价至少需要 10 个字');
+      return;
+    }
+    try { await collaborationApi.scoreTeamAchievement(item.achievement_id, { score, evaluation }); message.success('评分与评价已保存'); if (archiveMember) await loadArchive(archiveMember); }
     catch (error) { message.error(error instanceof Error ? error.message : String(error)); }
   }
 
-  const canCreate = Boolean(team?.viewer_is_team_member || team?.viewer_is_admin);
-  const memberOptions = useMemo(() => team?.members.filter((member) => member.is_team_member).map((member) => ({ value: member.employee_id, label: `${member.name} · ${member.employee_id}` })) || [], [team]);
+  async function toggleRepresentative(item: TeamAchievementArchiveItem) {
+    try {
+      await collaborationApi.setTeamAchievementRepresentative(item.achievement_id, !item.representative);
+      message.success(item.representative ? '已取消核心成果' : '已设为核心成果');
+      if (archiveMember) await loadArchive(archiveMember);
+      await loadTeam();
+    } catch (error) { message.error(error instanceof Error ? error.message : String(error)); }
+  }
+
+  const canCreate = Boolean(team?.viewer_is_team_member && !team?.viewer_is_admin);
   if (!team) return <div className="page-container"><Skeleton active /></div>;
 
   const summaryColumns = [
@@ -105,7 +126,7 @@ export function TeamPage() {
   ];
 
   return <div className="page-container team-page">
-    <PageHeading title="团队风采" actions={canCreate ? <Button type="primary" icon={<PlusOutlined />} disabled={team.viewer_is_admin && !memberOptions.length} onClick={() => openCreate(team.viewer_is_admin ? memberOptions[0]?.value : user?.userId)}>{team.viewer_is_admin ? '新增成员成果' : '新增我的成果'}</Button> : undefined} />
+    <PageHeading title="团队风采" actions={canCreate ? <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新增我的成果</Button> : undefined} />
     <Tabs className="team-tabs" activeKey={activeTab} onChange={(key) => setSearchParams(key === 'results' ? { tab: 'results' } : {}, { replace: true })} items={[{ key: 'intro', label: '团队介绍' }, { key: 'results', label: '成果与贡献' }]} />
 
     {activeTab === 'intro' ? <>
@@ -121,20 +142,26 @@ export function TeamPage() {
 
     <Drawer size={560} open={Boolean(archiveMember)} onClose={() => setArchiveMember(null)} title={archiveMember ? `${archiveMember.name}的成果档案` : '成果档案'}>
       <ResultWatermark className="team-archive-watermark">
-        {archiveMember ? <div className="team-archive-profile"><MemberPhoto member={archiveMember} /><div><h3>{archiveMember.name}</h3><p>{archiveMember.direction}</p></div>{archiveMember.is_team_member && (team.viewer_is_admin || archiveMember.employee_id === user?.userId) ? <Button type="primary" icon={<PlusOutlined />} onClick={() => openCreate(archiveMember.employee_id)}>新增成果</Button> : null}</div> : null}
-        {archiveLoading ? <Skeleton active /> : archiveItems.length ? <div className="team-archive-list">{archiveItems.map((item) => <article className="team-archive-item" key={item.achievement_id}><div className="team-archive-meta"><time>{item.completion_date}</time><Tag>{item.category}</Tag>{item.representative ? <Tag color="blue">代表成果</Tag> : null}</div><h3>{item.title}</h3>{item.summary ? <p>{item.summary}</p> : null}{item.reference_url ? <a href={item.reference_url} target="_blank" rel="noreferrer">查看关联材料 <ArrowRightOutlined /></a> : null}<div className="team-archive-score"><span>评分：{item.score ?? '未评分'}</span>{item.can_score ? <Space><InputNumber min={0} max={100} value={scoreDrafts[item.achievement_id]} placeholder="0-100" onChange={(value) => setScoreDrafts((current) => ({ ...current, [item.achievement_id]: value }))} /><Button size="small" onClick={() => void saveScore(item)}>保存评分</Button></Space> : null}</div>{(item.can_edit || item.can_delete) ? <div className="team-archive-actions"><Space>{item.can_edit ? <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(item)}>编辑</Button> : null}{item.can_delete ? <Popconfirm title="删除这条成果？" okText="删除" cancelText="取消" onConfirm={() => void removeAchievement(item)}><Button danger size="small" icon={<DeleteOutlined />}>删除</Button></Popconfirm> : null}</Space></div> : null}</article>)}</div> : <Empty description="暂无成果记录" />}
+        {archiveMember ? <div className="team-archive-profile"><MemberPhoto member={archiveMember} /><div><h3>{archiveMember.name}</h3><p>{archiveMember.direction}</p></div>{canCreate && archiveMember.employee_id === user?.userId ? <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新增成果</Button> : null}</div> : null}
+        {archiveLoading ? <Skeleton active /> : archiveItems.length ? <div className="team-archive-list">{archiveItems.map((item) => <article className="team-archive-item" key={item.achievement_id}>
+          <div className="team-archive-meta"><time>{item.completion_date}</time><Tag>{item.category}</Tag>{item.representative ? <Tag color="blue">核心成果</Tag> : null}</div>
+          <h3>{item.title}</h3>{item.summary ? <p>{item.summary}</p> : null}{item.reference_url ? <a href={item.reference_url} target="_blank" rel="noreferrer">查看关联材料 <ArrowRightOutlined /></a> : null}
+          <div className="team-archive-review">
+            <div><strong>评分：{item.score ?? '未评分'}</strong>{item.evaluation ? <p>评价：{item.evaluation}</p> : null}{item.scored_at ? <small>{item.scored_by_name || item.scored_by_employee_id} · {new Date(item.scored_at).toLocaleString('zh-CN', { hour12: false })}</small> : null}</div>
+            {item.can_score ? <div className="team-archive-review-editor"><InputNumber min={0} max={100} value={scoreDrafts[item.achievement_id]} placeholder="0-100" onChange={(value) => setScoreDrafts((current) => ({ ...current, [item.achievement_id]: value }))} /><Input.TextArea rows={3} maxLength={300} showCount value={evaluationDrafts[item.achievement_id]} placeholder="管理员评价（评分时至少 10 个字）" onChange={(event) => setEvaluationDrafts((current) => ({ ...current, [item.achievement_id]: event.target.value }))} /><Button size="small" type="primary" onClick={() => void saveScore(item)}>保存评分与评价</Button></div> : null}
+          </div>
+          {(item.can_edit || item.can_delete) ? <div className="team-archive-actions"><Space wrap>{item.can_edit ? <Button size="small" icon={item.representative ? <StarFilled /> : <StarOutlined />} onClick={() => void toggleRepresentative(item)}>{item.representative ? '取消核心成果' : '设为核心成果'}</Button> : null}{item.can_edit ? <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(item)}>编辑</Button> : null}{item.can_delete ? <Popconfirm title="删除这条成果？" okText="删除" cancelText="取消" onConfirm={() => void removeAchievement(item)}><Button danger size="small" icon={<DeleteOutlined />}>删除</Button></Popconfirm> : null}</Space></div> : null}
+        </article>)}</div> : <Empty description="暂无成果记录" />}
       </ResultWatermark>
     </Drawer>
 
     <Modal title={editing ? '编辑成果' : '新增成果'} open={editorOpen} onCancel={() => setEditorOpen(false)} onOk={() => void saveAchievement()} okText="保存">
       <Form form={form} layout="vertical">
-        {team.viewer_is_admin && !editing ? <Form.Item label="成果成员" name="owner_employee_id" rules={[{ required: true, message: '请选择成员' }]}><Select options={memberOptions} /></Form.Item> : null}
         <Form.Item label="成果标题" name="title" rules={[{ required: true, message: '请输入成果标题' }]}><Input maxLength={255} /></Form.Item>
         <Form.Item label="成果类型" name="category" rules={[{ required: true, message: '请输入成果类型' }]}><Input maxLength={64} /></Form.Item>
         <Form.Item label="成果完成日期" name="completion_date" rules={[{ required: true, message: '请选择成果完成日期' }]}><Input type="date" /></Form.Item>
         <Form.Item label="成果内容" name="summary"><Input.TextArea rows={4} maxLength={5000} showCount /></Form.Item>
         <Form.Item label="关联材料地址" name="reference_url"><Input placeholder="内部文档、代码或任务地址" maxLength={2048} /></Form.Item>
-        <Form.Item name="representative" valuePropName="checked"><Checkbox>设为代表成果</Checkbox></Form.Item>
       </Form>
     </Modal>
     <Modal title="加入团队" open={joinOpen} footer={null} onCancel={() => setJoinOpen(false)}>

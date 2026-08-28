@@ -59,7 +59,7 @@ export function PermissionCenterPage() {
   const [resourceDrafts, setResourceDrafts] = useState<Record<string, ProtectedResourceRecord>>({});
   const [expandedResources, setExpandedResources] = useState<string[]>([]);
   const [userSearch, setUserSearch] = useState('');
-  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'admin' | 'normal'>('all');
+  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'admin' | 'team' | 'normal'>('all');
   const [userStatusFilter, setUserStatusFilter] = useState<'all' | 'active' | 'blocked'>('all');
   const [adminEditing, setAdminEditing] = useState<AdminUserRecord | null>(null);
   const [passwordOpen, setPasswordOpen] = useState(false);
@@ -86,14 +86,18 @@ export function PermissionCenterPage() {
     const keyword = userSearch.trim().toLocaleLowerCase();
     return [...users]
       .sort((left, right) => (
-        Number(right.role === 'admin') - Number(left.role === 'admin')
+        (left.role === 'admin' ? 0 : left.is_team_member ? 1 : 2)
+        - (right.role === 'admin' ? 0 : right.is_team_member ? 1 : 2)
         || left.user_id.localeCompare(right.user_id, 'zh-CN')
       ))
       .filter((item) => (
         (!keyword
           || item.user_id.toLocaleLowerCase().includes(keyword)
           || item.display_name.toLocaleLowerCase().includes(keyword))
-        && (userRoleFilter === 'all' || item.role === userRoleFilter)
+        && (userRoleFilter === 'all'
+          || (userRoleFilter === 'admin' && item.role === 'admin')
+          || (userRoleFilter === 'team' && item.role !== 'admin' && item.is_team_member)
+          || (userRoleFilter === 'normal' && item.role !== 'admin' && !item.is_team_member))
         && (userStatusFilter === 'all'
           || (userStatusFilter === 'active' ? item.active : !item.active))
       ));
@@ -380,10 +384,10 @@ export function PermissionCenterPage() {
 
   const userManagement = (
     <div className="permission-user-panel">
-      <div className="permission-admin-toolbar"><div><strong>统一管理平台用户</strong><p>管理员固定排在前面，可配置管理员身份或屏蔽用户登录；屏蔽不会删除历史任务和数据。</p></div><Button onClick={() => setPasswordOpen(true)}>修改我的密码</Button></div>
+      <div className="permission-admin-toolbar"><div><strong>统一管理平台用户</strong><p>按管理员、团队成员、普通用户排序，可配置管理员身份或屏蔽用户登录；屏蔽不会删除历史任务和数据。</p></div><Button onClick={() => setPasswordOpen(true)}>修改我的密码</Button></div>
       <div className="permission-user-filters">
         <Input allowClear prefix={<SearchOutlined />} placeholder="搜索姓名或工号" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} />
-        <Select value={userRoleFilter} onChange={setUserRoleFilter} options={[{ value: 'all', label: '全部身份' }, { value: 'admin', label: '管理员' }, { value: 'normal', label: '普通用户' }]} />
+        <Select value={userRoleFilter} onChange={setUserRoleFilter} options={[{ value: 'all', label: '全部身份' }, { value: 'admin', label: '管理员' }, { value: 'team', label: '团队成员' }, { value: 'normal', label: '普通用户' }]} />
         <Select value={userStatusFilter} onChange={setUserStatusFilter} options={[{ value: 'all', label: '全部状态' }, { value: 'active', label: '正常' }, { value: 'blocked', label: '已屏蔽' }]} />
       </div>
       <Table rowKey="user_id" columns={userColumns} dataSource={filteredUsers} loading={loading} pagination={{ pageSize: 10, hideOnSinglePage: true }} scroll={{ x: 900 }} />

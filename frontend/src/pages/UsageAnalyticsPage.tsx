@@ -428,7 +428,7 @@ export function UsageAnalyticsPage() {
               <h3>最近行为</h3>
               <Timeline items={userDetail.recent_events.map((event) => ({
                 children: (
-                  <div><strong>{event.label}</strong><span className="analytics-event-time">{formatDateTime(event.occurred_at)}</span><div className="analytics-event-context">{[event.vendor, event.chip, event.benchmark_name, event.simulator_version, event.chip_variant].filter(Boolean).join(' / ')}</div></div>
+                  <div><strong>{event.label}</strong><span className="analytics-event-time">{formatDateTime(event.occurred_at)}</span><div className="analytics-event-context">{[event.target_name, event.target_user_id ? `成员：${event.target_user_id}` : '', event.auth_mode ? `登录模式：${event.auth_mode === 'admin' ? '管理员' : '普通'}` : '', event.change_summary, event.vendor, event.chip, event.benchmark_name, event.simulator_version, event.chip_variant].filter(Boolean).join(' / ')}</div></div>
                 ),
               }))} />
             </div>
