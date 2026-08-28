@@ -22,11 +22,15 @@ class AnalyticsEventCreate(BaseModel):
     target_type: str | None = Field(default=None, max_length=64)
     target_id: str | None = Field(default=None, max_length=512)
     target_name: str | None = Field(default=None, max_length=255)
+    target_user_id: str | None = Field(default=None, max_length=128)
+    auth_mode: str = Field(default="", max_length=32)
+    change_summary: str = Field(default="", max_length=1000)
 
     @field_validator(
         "page_key", "result", "vendor", "chip", "benchmark_name", "benchmark_type",
         "test_target", "simulator_version", "chip_variant", "simulation_mode",
-        "target_type", "target_id", "target_name",
+        "target_type", "target_id", "target_name", "target_user_id",
+        "auth_mode", "change_summary",
     )
     @classmethod
     def strip_optional_text(cls, value: str | None) -> str | None:
@@ -139,6 +143,12 @@ class AnalyticsUserEventItem(BaseModel):
     benchmark_name: str | None = None
     simulator_version: str | None = None
     chip_variant: str | None = None
+    target_type: str | None = None
+    target_id: str | None = None
+    target_name: str | None = None
+    target_user_id: str | None = None
+    auth_mode: str = ""
+    change_summary: str = ""
 
 
 class AnalyticsUserDetailResponse(BaseModel):

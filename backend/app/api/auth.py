@@ -3,7 +3,7 @@ from urllib.parse import urlencode
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import case, select
 from sqlalchemy.orm import Session
 
 from app.auth.constants import CORE_ADMIN_RESOURCES, NORMAL_PERMISSION, SESSION_COOKIE_NAME
@@ -101,6 +101,7 @@ def _admin_user_response(user: User) -> AdminUserResponse:
         display_name=user.display_name,
         role="admin" if user.role == "admin" else "normal",
         active=user.active,
+        is_team_member=user.is_team_member,
         password_configured=bool(user.password_hash),
         bootstrap_admin=user.employee_id == bootstrap_id,
         last_login_at=user.last_login_at,
@@ -375,7 +376,12 @@ def list_users(
     _: AuthenticatedUser = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> list[AdminUserResponse]:
-    users = db.scalars(select(User).order_by(User.role, User.employee_id)).all()
+    identity_priority = case(
+        (User.role == "admin", 0),
+        (User.is_team_member.is_(True), 1),
+        else_=2,
+    )
+    users = db.scalars(select(User).order_by(identity_priority, User.employee_id)).all()
     return [_admin_user_response(user) for user in users]
 
 
@@ -394,5 +400,6 @@ def configure_user(
         request.display_name,
         request.password,
         request.active,
+        request.is_team_member,
     )
     return _admin_user_response(user)

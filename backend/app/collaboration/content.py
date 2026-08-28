@@ -2,6 +2,7 @@ from datetime import date
 from pathlib import Path
 import logging
 from urllib.parse import urlparse
+from urllib.parse import quote
 
 import yaml
 
@@ -53,6 +54,12 @@ def load_team_config(settings: Settings) -> TeamConfigResponse:
         (member for member in result.members if member.enabled),
         key=lambda member: member.order,
     )
+    for member in result.members:
+        filename = Path(member.avatar_file).name
+        if filename == member.avatar_file and Path(filename).suffix.lower() in {".webp", ".png", ".jpg", ".jpeg"}:
+            member.avatar_url = f"/api/team/avatars/{quote(filename)}"
+        else:
+            member.avatar_url = ""
     result.achievements = [item for item in result.achievements if item.enabled]
     featured_count = sum(1 for item in result.achievements if item.featured)
     if featured_count > 5:

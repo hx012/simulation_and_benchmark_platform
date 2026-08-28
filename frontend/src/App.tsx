@@ -46,6 +46,14 @@ function RequireAdmin({ children }: { children: ReactElement }) {
   return children;
 }
 
+function RequireAnalyticsAccess({ children }: { children: ReactElement }) {
+  const { user } = useAuth();
+  if (!user?.isTeamMember && user?.authMode !== 'admin') {
+    return <Navigate to="/home" replace />;
+  }
+  return children;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -67,7 +75,7 @@ export default function App() {
         <Route path="/performance" element={<PermissionGate resource="performance.view" fallbackPermission="performance_access"><PerformancePage /></PermissionGate>} />
         <Route path="/team" element={<PermissionGate resource="team.view" fallbackPermission="team_access"><TeamPage /></PermissionGate>} />
         <Route path="/demands" element={<PermissionGate resource="demand.view" fallbackPermission="demand_access"><DemandPoolPage /></PermissionGate>} />
-        <Route path="/usage-analytics" element={<RequireAdmin><UsageAnalyticsPage /></RequireAdmin>} />
+        <Route path="/usage-analytics" element={<RequireAnalyticsAccess><UsageAnalyticsPage /></RequireAnalyticsAccess>} />
         <Route path="/collaboration-admin" element={<RequireAdmin><CollaborationAdminPage /></RequireAdmin>} />
         <Route path="/benchmark" element={<PermissionGate resource="benchmark.view" fallbackPermission="benchmark_access"><BenchmarkBrowsePage /></PermissionGate>} />
         <Route path="/benchmark/chips/:vendor/:chip" element={<PermissionGate resource="benchmark.view" fallbackPermission="benchmark_access"><ChipBenchmarkPage /></PermissionGate>} />

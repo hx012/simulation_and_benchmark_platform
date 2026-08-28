@@ -27,6 +27,7 @@ export interface AdminUserRecord {
   display_name: string;
   role: PlatformRole;
   active: boolean;
+  is_team_member: boolean;
   password_configured: boolean;
   bootstrap_admin: boolean;
   last_login_at: string | null;
@@ -50,6 +51,7 @@ export interface PlatformUser {
   role: PlatformRole;
   accountRole: PlatformRole;
   authMode: AuthMode;
+  isTeamMember: boolean;
   permissions: PermissionCode[];
   resources: string[];
   resourcePermissions: Record<string, PermissionCode[]>;
@@ -62,6 +64,7 @@ export interface CurrentUserApiResponse {
   role: PlatformRole;
   account_role: PlatformRole;
   auth_mode: AuthMode;
+  is_team_member: boolean;
   permissions: PermissionCode[];
   resources: string[];
   resource_permissions: Record<string, PermissionCode[]>;
@@ -75,6 +78,7 @@ export function mapCurrentUser(value: CurrentUserApiResponse): PlatformUser {
     role: value.role,
     accountRole: value.account_role,
     authMode: value.auth_mode,
+    isTeamMember: value.is_team_member,
     permissions: value.permissions,
     resources: value.resources,
     resourcePermissions: value.resource_permissions,

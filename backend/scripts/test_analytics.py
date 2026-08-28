@@ -74,6 +74,17 @@ def main() -> None:
             benchmark_type="MICRO",
             test_target="Cube",
         ))
+        create_event(db, alice, event(
+            "event-team-achievement-001",
+            event_name="team.achievement_update",
+            page_key="team",
+            target_type="team_achievement",
+            target_id="achievement-001",
+            target_name="调度模型验证",
+            target_user_id="alice",
+            auth_mode="normal",
+            change_summary="修改字段：成果内容",
+        ))
         create_event(db, bob, event(
             "event-page-bob-00001",
             session_id="session-analytics-002",
@@ -140,7 +151,10 @@ def main() -> None:
         assert detail is not None
         assert detail.pages[0].page_key == "benchmark.detail"
         assert detail.pages[0].active_seconds == 125
-        assert detail.recent_events[0].event_name == "benchmark.detail_view"
+        assert any(item.event_name == "benchmark.detail_view" for item in detail.recent_events)
+        team_event = next(item for item in detail.recent_events if item.event_name == "team.achievement_update")
+        assert team_event.target_user_id == "alice"
+        assert team_event.change_summary == "修改字段：成果内容"
 
         event_count = db.scalar(select(func.count()).select_from(AnalyticsEvent)) or 0
         db.add(AnalyticsEvent(

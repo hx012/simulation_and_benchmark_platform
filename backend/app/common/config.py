@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     platform_community_jiaxian_name: str = "稼先社区"
     platform_community_jiaxian_url: str = ""
     platform_content_config: Path = BACKEND_ROOT / "config" / "platform_content.yml"
+    platform_team_avatar_dir: Path | None = None
     platform_recent_activity_config: Path = BACKEND_ROOT / "config" / "recent_activity.yml"
 
     task_root: Path = Path("./data/simulation_tasks")

@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, UniqueConstraint, func
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.common.database import Base
@@ -36,6 +36,9 @@ class AnalyticsEvent(Base):
     target_type: Mapped[str | None] = mapped_column(String(64))
     target_id: Mapped[str | None] = mapped_column(String(512))
     target_name: Mapped[str | None] = mapped_column(String(255))
+    target_user_id: Mapped[str | None] = mapped_column(String(128))
+    auth_mode: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    change_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
     occurred_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

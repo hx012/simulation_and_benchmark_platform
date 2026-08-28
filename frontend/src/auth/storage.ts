@@ -14,6 +14,7 @@ export function readStoredUser(): PlatformUser | null {
       role: value.role === 'admin' ? 'admin' : 'normal',
       accountRole: value.accountRole === 'admin' ? 'admin' : 'normal',
       authMode: value.authMode === 'admin' ? 'admin' : 'normal',
+      isTeamMember: Boolean(value.isTeamMember),
       permissions: Array.isArray(value.permissions) ? value.permissions : ['normal'],
       resources: Array.isArray(value.resources) ? value.resources : [],
       resourcePermissions: value.resourcePermissions && typeof value.resourcePermissions === 'object' ? value.resourcePermissions : {},
