@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Card,
+  DatePicker,
   Drawer,
   Form,
   Input,
   message,
   Modal,
   Popconfirm,
+  Radio,
   Select,
   Skeleton,
   Tabs,
@@ -38,7 +40,14 @@ const eventLabels: Record<string, string> = {
   withdrawn: '撤回需求',
   reviewed: '平台审视',
   status_changed: '状态更新',
+  delivery_feedback: '交付反馈',
 };
+
+const deliveryFeedbackLabels = {
+  resolved: '已解决',
+  partially_resolved: '部分解决',
+  unresolved: '未解决',
+} as const;
 
 const domainOptions = ['仿真', '性能分析', 'Benchmark', '平台体验'];
 
@@ -54,8 +63,10 @@ export function DemandPoolPage() {
   const [editing, setEditing] = useState<DemandItem | null>(null);
   const [selected, setSelected] = useState<DemandItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
   const [domain, setDomain] = useState('all');
   const [query, setQuery] = useState('');
+  const [createdRange, setCreatedRange] = useState<[number, number] | null>(null);
   const [form] = Form.useForm<DemandPayload>();
 
   async function load() {
@@ -79,8 +90,10 @@ export function DemandPoolPage() {
   const filtered = useMemo(() => (source || []).filter((item) => {
     const domainMatch = domain === 'all' || item.domain === domain;
     const text = `${item.title} ${item.request_no} ${item.submitter_name}`.toLowerCase();
-    return domainMatch && text.includes(query.trim().toLowerCase());
-  }), [domain, query, source]);
+    const createdAt = new Date(item.created_at).getTime();
+    const timeMatch = !createdRange || (createdAt >= createdRange[0] && createdAt <= createdRange[1]);
+    return domainMatch && timeMatch && text.includes(query.trim().toLowerCase());
+  }), [createdRange, domain, query, source]);
 
   const metrics = useMemo(() => ({
     publicCount: publicItems?.length || 0,
@@ -171,6 +184,21 @@ export function DemandPoolPage() {
     }
   }
 
+  async function submitDeliveryFeedback(
+    item: DemandItem,
+    resolution: keyof typeof deliveryFeedbackLabels,
+  ) {
+    setFeedbackSubmitting(true);
+    try {
+      replaceItem(await collaborationApi.setDemandDeliveryFeedback(item.demand_id, resolution));
+      message.success(`已反馈：${deliveryFeedbackLabels[resolution]}`);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '交付反馈保存失败');
+    } finally {
+      setFeedbackSubmitting(false);
+    }
+  }
+
   return (
     <div className="page-container demand-page">
       <PageHeading
@@ -199,6 +227,16 @@ export function DemandPoolPage() {
             { value: 'all', label: '全部领域' },
             ...domainOptions.map((value) => ({ value, label: value })),
           ]} />
+          <DatePicker.RangePicker
+            allowClear
+            format="YYYY-MM-DD"
+            placeholder={['提出时间开始', '提出时间结束']}
+            onChange={(values) => {
+              setCreatedRange(values?.[0] && values?.[1]
+                ? [values[0].startOf('day').valueOf(), values[1].endOf('day').valueOf()]
+                : null);
+            }}
+          />
           <Input.Search allowClear placeholder="搜索标题、编号或提交人" value={query} onChange={(event) => setQuery(event.target.value)} />
         </div>
 
@@ -276,6 +314,30 @@ export function DemandPoolPage() {
             <section><h3>需求内容</h3><p>{selected.description}</p></section>
             <section><h3>业务价值</h3><p>{selected.business_value}</p></section>
             {selected.conclusion ? <section className="demand-detail-conclusion"><h3>平台审视结论</h3><p>{selected.conclusion}</p></section> : null}
+            {selected.status === 'delivered' && selected.is_own ? (
+              <section className="demand-delivery-feedback">
+                <h3>交付反馈（选填）</h3>
+                <p>请确认本次交付是否解决了你的需求。</p>
+                <Radio.Group
+                  optionType="button"
+                  buttonStyle="solid"
+                  disabled={feedbackSubmitting}
+                  value={selected.delivery_feedback || undefined}
+                  options={Object.entries(deliveryFeedbackLabels).map(([value, label]) => ({ value, label }))}
+                  onChange={(event) => void submitDeliveryFeedback(
+                    selected,
+                    event.target.value as keyof typeof deliveryFeedbackLabels,
+                  )}
+                />
+              </section>
+            ) : selected.delivery_feedback ? (
+              <section className="demand-delivery-feedback">
+                <h3>提交人交付反馈</h3>
+                <Tag color={selected.delivery_feedback === 'resolved' ? 'green' : selected.delivery_feedback === 'partially_resolved' ? 'orange' : 'red'}>
+                  {deliveryFeedbackLabels[selected.delivery_feedback]}
+                </Tag>
+              </section>
+            ) : null}
             <section>
               <h3>处理记录</h3>
               <Timeline items={selected.history.map((event) => ({

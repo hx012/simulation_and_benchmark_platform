@@ -1,0 +1,14 @@
+daw:
+  device_id: 0
+  chip_count: 1
+  ai_core_count: 8
+  vector_core_count: 2
+
+memory:
+  global_memory_mb: 8192
+  l2_cache_mb: 32
+  bandwidth_gbps: 128
+
+frequency:
+  ai_core_mhz: 1000
+  vector_core_mhz: 800

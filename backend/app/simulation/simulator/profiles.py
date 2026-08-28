@@ -62,6 +62,8 @@ class SimulatorProfile:
     simulation_mode_label: str
     entry_script: str
     sst_args: list[str]
+    chip_config_template_path: Path
+    workload_template_path: Path
 
 
 @dataclass(frozen=True)
@@ -95,6 +97,15 @@ class SimulatorProfileRegistry:
     ) -> None:
         self.config_path = config_path
         self.profiles = self._load_profiles()
+
+    def _resolve_template_path(self, value: object, field_name: str) -> Path:
+        normalized = str(value or "").strip()
+        if not normalized:
+            raise ValueError(f"Simulator profile is missing {field_name}")
+        path = Path(normalized).expanduser()
+        if not path.is_absolute():
+            path = self.config_path.resolve().parent / path
+        return path.resolve()
 
     def _load_profiles(
         self,
@@ -149,6 +160,14 @@ class SimulatorProfileRegistry:
                     ),
                     entry_script=item["entry_script"],
                     sst_args=list(item.get("sst_args", [])),
+                    chip_config_template_path=self._resolve_template_path(
+                        item.get("chip_config_template_path"),
+                        "chip_config_template_path",
+                    ),
+                    workload_template_path=self._resolve_template_path(
+                        item.get("workload_template_path"),
+                        "workload_template_path",
+                    ),
                 )
             )
 

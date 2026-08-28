@@ -180,6 +180,8 @@ export interface DemandItem extends DemandPayload {
   is_own: boolean;
   created_at: string;
   updated_at: string;
+  delivery_feedback: 'resolved' | 'partially_resolved' | 'unresolved' | null;
+  delivery_feedback_at: string | null;
   can_edit: boolean;
   can_withdraw: boolean;
   history: Array<{
@@ -264,6 +266,15 @@ export const collaborationApi = {
   ),
   withdrawDemand: (demandId: string) => apiRequest<DemandItem>(
     `/api/demands/${encodeURIComponent(demandId)}/withdraw`, { method: 'POST' },
+  ),
+  setDemandDeliveryFeedback: (
+    demandId: string,
+    resolution: 'resolved' | 'partially_resolved' | 'unresolved',
+  ) => apiRequest<DemandItem>(
+    `/api/demands/${encodeURIComponent(demandId)}/delivery-feedback`, {
+      method: 'PUT',
+      body: JSON.stringify({ resolution }),
+    },
   ),
   listAdminDemands: () => apiRequest<{ items: DemandItem[]; total: number }>('/api/admin/demands'),
   reviewDemand: (demandId: string, payload: DemandAdminPayload) => apiRequest<DemandItem>(

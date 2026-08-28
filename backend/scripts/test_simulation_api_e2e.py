@@ -185,7 +185,12 @@ def main() -> None:
             "-H",
             "Content-Type: application/json",
             "-d",
-            json.dumps({"owner_id": args.owner_id}),
+            json.dumps({
+                "owner_id": args.owner_id,
+                "simulator_version": args.simulator_version,
+                "chip_variant": args.chip_variant,
+                "simulation_mode": args.simulation_mode,
+            }),
         ]
     )
     upload_session_id = session["upload_session_id"]

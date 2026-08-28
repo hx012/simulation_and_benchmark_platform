@@ -1,6 +1,9 @@
 # Default example only. Set SIMULATOR_PROFILES_FILE to an untracked deployment file for real simulators.
 # Labels are optional; when omitted the backend provides sensible fallbacks.
 # Configure an internal path or an http(s) URL for the "MSKPP 使用指南" button.
+# Template paths may be absolute or relative to this file. Workload paths may
+# be shared across chip profiles; keep Chip Config paths profile-specific until
+# the corresponding chip configurations are confirmed compatible.
 mskpp_guide_url: ""
 
 profiles:
@@ -10,6 +13,8 @@ profiles:
     chip_variant_label: 默认
     simulation_mode: SINGLE_CHIP
     simulation_mode_label: 单芯片
+    chip_config_template_path: simulation_templates/chip_configs/v310/default/single_chip
+    workload_template_path: simulation_templates/default/single_chip/workload
     entry_script: v310_deployment/test/system_test/single_chip_test.py
     sst_args: []
 
@@ -19,6 +24,8 @@ profiles:
     chip_variant_label: 默认
     simulation_mode: SINGLE_CHIP
     simulation_mode_label: 单芯片
+    chip_config_template_path: simulation_templates/chip_configs/v320/default/single_chip
+    workload_template_path: simulation_templates/default/single_chip/workload
     entry_script: path/to/v320/single_chip_test.py
     sst_args: []
 
@@ -28,6 +35,8 @@ profiles:
     chip_variant_label: 默认
     simulation_mode: MULTI_CHIP
     simulation_mode_label: 多芯片
+    chip_config_template_path: simulation_templates/chip_configs/v320/default/multi_chip
+    workload_template_path: simulation_templates/default/multi_chip/workload
     entry_script: path/to/v320/multi_chip_test.py
     sst_args: []
 
@@ -37,5 +46,7 @@ profiles:
     chip_variant_label: 高性能版
     simulation_mode: MULTI_CHIP
     simulation_mode_label: 多芯片
+    chip_config_template_path: simulation_templates/chip_configs/v320/high_perf/multi_chip
+    workload_template_path: simulation_templates/default/multi_chip/workload
     entry_script: path/to/v320/high_perf_multi_chip_test.py
     sst_args: []

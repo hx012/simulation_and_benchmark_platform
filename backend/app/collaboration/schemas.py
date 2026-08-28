@@ -246,6 +246,8 @@ class DemandResponse(BaseModel):
     is_own: bool
     created_at: datetime
     updated_at: datetime
+    delivery_feedback: str | None = None
+    delivery_feedback_at: datetime | None = None
     can_edit: bool = False
     can_withdraw: bool = False
     history: list["DemandEventResponse"] = Field(default_factory=list)
@@ -264,6 +266,10 @@ class DemandVoteResponse(BaseModel):
 
 class DemandUpdate(DemandCreate):
     pass
+
+
+class DemandDeliveryFeedbackUpdate(BaseModel):
+    resolution: Literal["resolved", "partially_resolved", "unresolved"]
 
 
 class DemandAdminUpdate(BaseModel):

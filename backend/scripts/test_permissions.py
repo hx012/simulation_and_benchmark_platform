@@ -76,6 +76,19 @@ assert set(admin.json()["permissions"]) == {
 capabilities = admin_client.get("/api/simulation/capabilities")
 assert capabilities.status_code == 200, capabilities.text
 assert "mskpp_guide_url" in capabilities.json()
+assert alice.json()["is_advanced_user"] is False
+ordinary_template = alice_client.get(
+    "/api/simulation/config-template",
+    params={
+        "simulator_version": "v310",
+        "chip_variant": "default",
+        "simulation_mode": "SINGLE_CHIP",
+    },
+)
+assert ordinary_template.status_code == 200, ordinary_template.text
+with ZipFile(BytesIO(ordinary_template.content)) as archive:
+    assert "workload/workload.yml" in archive.namelist()
+    assert not any(name.startswith("chip_config/") for name in archive.namelist())
 
 configured_guide_url = simulation_api.profile_registry.mskpp_guide_url
 del simulation_api.profile_registry.mskpp_guide_url
@@ -96,16 +109,13 @@ config_template = admin_client.get(
 )
 assert config_template.status_code == 200, config_template.text
 assert config_template.headers["content-type"].startswith("application/zip")
-assert "mskpp_config_template_v310_default_single_chip.zip" in (
+assert "mskpp_workload_template_v310_default_single_chip.zip" in (
     config_template.headers["content-disposition"]
 )
 with ZipFile(BytesIO(config_template.content)) as archive:
-    expected_template_files = {
-        "chip_config/simulator_config.yml",
-        "chip_config/daw_config.yml",
-        "workload/workload.yml",
-    }
+    expected_template_files = {"workload/workload.yml"}
     assert expected_template_files.issubset(set(archive.namelist()))
+    assert not any(name.startswith("chip_config/") for name in archive.namelist())
     v310_template_content = {
         name: archive.read(name) for name in expected_template_files
     }
@@ -134,10 +144,95 @@ multi_chip_template = admin_client.get(
 )
 assert multi_chip_template.status_code == 200, multi_chip_template.text
 with ZipFile(BytesIO(multi_chip_template.content)) as archive:
-    assert b"mode: MULTI_CHIP" in archive.read(
-        "chip_config/simulator_config.yml"
-    )
-    assert b"chip_count: 2" in archive.read("chip_config/daw_config.yml")
+    assert b"multi-chip simulation" in archive.read("workload/workload.yml")
+    assert not any(name.startswith("chip_config/") for name in archive.namelist())
+
+# Advanced-user membership grants in-page Chip Config editing without granting
+# administrator APIs. Workload template download is available to every user;
+# the profile's Chip Config is automatically provided and is not downloadable.
+advanced_alice = admin_client.put("/api/admin/users/permission-alice", json={
+    "role": "normal",
+    "display_name": "permission-alice",
+    "active": True,
+    "is_advanced_user": True,
+})
+assert advanced_alice.status_code == 200, advanced_alice.text
+assert advanced_alice.json()["is_advanced_user"] is True
+assert alice_client.get("/api/auth/me").json()["is_advanced_user"] is True
+assert alice_client.get(
+    "/api/simulation/config-template",
+    params={
+        "simulator_version": "v310",
+        "chip_variant": "default",
+        "simulation_mode": "SINGLE_CHIP",
+    },
+).status_code == 200
+assert alice_client.get("/api/admin/users").status_code == 403
+
+basic_config_client = TestClient(app)
+basic_config_login = basic_config_client.post("/api/auth/login", json={
+    "employee_id": "permission-basic-config", "auth_mode": "normal",
+})
+assert basic_config_login.status_code == 200, basic_config_login.text
+with TemporaryDirectory() as upload_root:
+    previous_task_root = simulation_api.upload_service.settings.task_root
+    simulation_api.upload_service.settings.task_root = Path(upload_root)
+    try:
+        create_payload = {
+            "owner_id": "ignored-by-server",
+            "simulator_version": "v310",
+            "chip_variant": "default",
+            "simulation_mode": "SINGLE_CHIP",
+        }
+        basic_session = basic_config_client.post(
+            "/api/simulation/upload-sessions", json=create_payload,
+        )
+        assert basic_session.status_code == 201, basic_session.text
+        basic_session_id = basic_session.json()["upload_session_id"]
+        basic_chip_files = basic_config_client.get(
+            f"/api/simulation/upload-sessions/{basic_session_id}/files",
+            params={"package_type": "chip_config"},
+        )
+        assert basic_chip_files.status_code == 200, basic_chip_files.text
+        assert basic_chip_files.json()["files"]
+        assert not any(item["editable"] for item in basic_chip_files.json()["files"])
+        denied_edit = basic_config_client.put(
+            f"/api/simulation/upload-sessions/{basic_session_id}/files/content",
+            json={
+                "package_type": "chip_config",
+                "path": "daw_config.yml",
+                "content": "daw: {}\n",
+            },
+        )
+        assert denied_edit.status_code == 403, denied_edit.text
+
+        advanced_session = alice_client.post(
+            "/api/simulation/upload-sessions", json=create_payload,
+        )
+        assert advanced_session.status_code == 201, advanced_session.text
+        advanced_session_id = advanced_session.json()["upload_session_id"]
+        advanced_chip_files = alice_client.get(
+            f"/api/simulation/upload-sessions/{advanced_session_id}/files",
+            params={"package_type": "chip_config"},
+        )
+        assert any(item["editable"] for item in advanced_chip_files.json()["files"])
+        allowed_edit = alice_client.put(
+            f"/api/simulation/upload-sessions/{advanced_session_id}/files/content",
+            json={
+                "package_type": "chip_config",
+                "path": "daw_config.yml",
+                "content": "daw:\n  chip_count: 1\n",
+            },
+        )
+        assert allowed_edit.status_code == 200, allowed_edit.text
+        denied_chip_upload = alice_client.put(
+            f"/api/simulation/upload-sessions/{advanced_session_id}/chip-config",
+            files={"files": ("daw_config.yml", b"daw: {}\n", "application/yaml")},
+            data={"relative_paths": "daw_config.yml"},
+        )
+        assert denied_chip_upload.status_code == 403, denied_chip_upload.text
+    finally:
+        simulation_api.upload_service.settings.task_root = previous_task_root
 
 # Normal users are server-bound to their own tasks. Admin mode can read every
 # task, but task mutations remain owner-only.
@@ -253,8 +348,20 @@ bob = bob_client.post("/api/auth/login", json={"employee_id": "permission-bob", 
 assert "benchmark.view" in bob.json()["resources"]
 assert bob_client.get("/api/benchmark/status").status_code == 200
 
-# Switching back to approval mode reuses the hidden permission mapping.
+# Advanced resources are available from the advanced-user tier upward, while
+# ordinary users remain blocked.
 resource = updated.json()
+resource["access_mode"] = "advanced"
+resource["permission_codes"] = []
+advanced_only = admin_client.put("/api/admin/resources/benchmark.view", json=resource)
+assert advanced_only.status_code == 200, advanced_only.text
+assert "benchmark.view" in alice_client.get("/api/auth/me").json()["resources"]
+assert alice_client.get("/api/benchmark/status").status_code == 200
+assert bob_client.get("/api/benchmark/status").status_code == 403
+assert admin_client.get("/api/benchmark/status").status_code == 200
+
+# Switching back to approval mode reuses the hidden permission mapping.
+resource = advanced_only.json()
 resource["access_mode"] = "permission"
 resource["permission_codes"] = []
 restricted_again = admin_client.put("/api/admin/resources/benchmark.view", json=resource)
@@ -316,11 +423,26 @@ assert team_client.get("/api/analytics/overview").status_code == 200
 assert team_client.get("/api/admin/analytics/users").status_code == 403
 assert team_client.get("/api/admin/users").status_code == 403
 
+team_advanced_policy = restricted_again.json()
+team_advanced_policy["access_mode"] = "advanced"
+team_advanced_policy["permission_codes"] = []
+advanced_for_team_check = admin_client.put(
+    "/api/admin/resources/benchmark.view", json=team_advanced_policy,
+)
+assert advanced_for_team_check.status_code == 200, advanced_for_team_check.text
+assert team_client.get("/api/benchmark/status").status_code == 200
+restore_permission_policy = advanced_for_team_check.json()
+restore_permission_policy["access_mode"] = "permission"
+restore_permission_policy["permission_codes"] = []
+assert admin_client.put(
+    "/api/admin/resources/benchmark.view", json=restore_permission_policy,
+).status_code == 200
+
 ordered_users = admin_client.get("/api/admin/users")
 assert ordered_users.status_code == 200, ordered_users.text
 ordered_users = ordered_users.json()
 priorities = [
-    0 if item["role"] == "admin" else 1 if item["is_team_member"] else 2
+    0 if item["role"] == "admin" else 1 if item["is_team_member"] else 2 if item["is_advanced_user"] else 3
     for item in ordered_users
 ]
 assert priorities == sorted(priorities)

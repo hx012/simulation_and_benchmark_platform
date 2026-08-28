@@ -168,6 +168,9 @@ class UploadSessionCreateRequest(BaseModel):
         min_length=1,
         max_length=128,
     )
+    simulator_version: str = Field(min_length=1, max_length=64)
+    chip_variant: str | None = Field(default="default", max_length=64)
+    simulation_mode: SimulationMode = SimulationMode.SINGLE_CHIP
 
 
 class UploadSessionResponse(BaseModel):

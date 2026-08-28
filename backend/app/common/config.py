@@ -67,8 +67,6 @@ class Settings(BaseSettings):
     sim_trace_viewer_timeout_seconds: float = 120.0
     sim_trace_viewer_max_output_bytes: int = 256 * 1024 * 1024
     sim_online_edit_max_bytes: int = 2 * 1024 * 1024
-    sim_sample_template_root: Path = BACKEND_ROOT / "config" / "simulation_templates"
-
     catapult_home: Path = BACKEND_ROOT.parent / "tools" / "catapult"
     catapult_python: Path | None = None
 

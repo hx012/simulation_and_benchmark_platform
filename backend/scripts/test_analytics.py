@@ -111,6 +111,7 @@ def main() -> None:
             background="test",
             description="test",
             business_value="test",
+            status="delivered",
         )
         feedback = FeedbackEntry(
             user_id=alice.id,
@@ -129,6 +130,13 @@ def main() -> None:
         assert overview.summary.active_seconds == 125
         assert overview.summary.simulation_tasks == 1
         assert overview.summary.demand_feedback == 2
+        assert overview.demand_pipeline.submitted == 1
+        assert overview.demand_pipeline.accepted == 1
+        assert overview.demand_pipeline.delivered == 1
+        assert next(
+            item for item in overview.demand_pipeline.statuses
+            if item.status == "delivered"
+        ).count == 1
         assert overview.chips[0].chip == "chip-a"
         assert overview.benchmarks[0].benchmark_name == "vector_add"
         assert overview.simulation_dimensions[0].chip_variant == "chip-a"

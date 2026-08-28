@@ -18,12 +18,13 @@ import { PermissionRequestButton } from '../../components/PermissionRequestButto
 const accessModeLabels: Record<ProtectedResourceRecord['access_mode'], string> = {
   normal: '普通用户可访问',
   permission: '申请后访问',
+  advanced: '高级用户可访问',
   admin: '仅管理员访问',
   disabled: '暂不开放',
 };
 
 const accessModeColors: Record<ProtectedResourceRecord['access_mode'], string> = {
-  normal: 'success', permission: 'processing', admin: 'purple', disabled: 'default',
+  normal: 'success', permission: 'processing', advanced: 'gold', admin: 'purple', disabled: 'default',
 };
 
 const fixedAdminResources = new Set(['admin.manage', 'permission.manage', 'analytics.usage']);
@@ -59,7 +60,7 @@ export function PermissionCenterPage() {
   const [resourceDrafts, setResourceDrafts] = useState<Record<string, ProtectedResourceRecord>>({});
   const [expandedResources, setExpandedResources] = useState<string[]>([]);
   const [userSearch, setUserSearch] = useState('');
-  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'admin' | 'team' | 'normal'>('all');
+  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'admin' | 'advanced' | 'team' | 'normal'>('all');
   const [userStatusFilter, setUserStatusFilter] = useState<'all' | 'active' | 'blocked'>('all');
   const [adminEditing, setAdminEditing] = useState<AdminUserRecord | null>(null);
   const [passwordOpen, setPasswordOpen] = useState(false);
@@ -86,8 +87,8 @@ export function PermissionCenterPage() {
     const keyword = userSearch.trim().toLocaleLowerCase();
     return [...users]
       .sort((left, right) => (
-        (left.role === 'admin' ? 0 : left.is_team_member ? 1 : 2)
-        - (right.role === 'admin' ? 0 : right.is_team_member ? 1 : 2)
+        (left.role === 'admin' ? 0 : left.is_team_member ? 1 : left.is_advanced_user ? 2 : 3)
+        - (right.role === 'admin' ? 0 : right.is_team_member ? 1 : right.is_advanced_user ? 2 : 3)
         || left.user_id.localeCompare(right.user_id, 'zh-CN')
       ))
       .filter((item) => (
@@ -96,8 +97,9 @@ export function PermissionCenterPage() {
           || item.display_name.toLocaleLowerCase().includes(keyword))
         && (userRoleFilter === 'all'
           || (userRoleFilter === 'admin' && item.role === 'admin')
-          || (userRoleFilter === 'team' && item.role !== 'admin' && item.is_team_member)
-          || (userRoleFilter === 'normal' && item.role !== 'admin' && !item.is_team_member))
+          || (userRoleFilter === 'advanced' && item.is_advanced_user)
+          || (userRoleFilter === 'team' && item.is_team_member)
+          || (userRoleFilter === 'normal' && item.role !== 'admin' && !item.is_advanced_user && !item.is_team_member))
         && (userStatusFilter === 'all'
           || (userStatusFilter === 'active' ? item.active : !item.active))
       ));
@@ -199,6 +201,7 @@ export function PermissionCenterPage() {
         display_name: item.display_name,
         active,
         is_team_member: item.is_team_member,
+        is_advanced_user: item.is_advanced_user,
       });
       message.success(active ? `已解除 ${item.display_name} 的登录屏蔽` : `已屏蔽 ${item.display_name} 登录`);
       await loadAdminData();
@@ -214,8 +217,25 @@ export function PermissionCenterPage() {
         display_name: item.display_name,
         active: item.active,
         is_team_member: enabled,
+        is_advanced_user: item.is_advanced_user,
       });
       message.success(enabled ? `已将 ${item.display_name} 标记为团队成员` : `已取消 ${item.display_name} 的团队成员标签`);
+      await loadAdminData();
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function setAdvancedUser(item: AdminUserRecord, enabled: boolean) {
+    try {
+      await authApi.updateUser(item.user_id, {
+        role: item.role,
+        display_name: item.display_name,
+        active: item.active,
+        is_team_member: item.is_team_member,
+        is_advanced_user: enabled,
+      });
+      message.success(enabled ? `已将 ${item.display_name} 设为高级用户` : `已取消 ${item.display_name} 的高级用户身份`);
       await loadAdminData();
     } catch (error) {
       message.error(error instanceof Error ? error.message : String(error));
@@ -273,7 +293,7 @@ export function PermissionCenterPage() {
     { title: '用户', render: (_, item) => <div><strong>{item.display_name}</strong><small className="permission-table-secondary">{item.user_id}</small></div> },
     {
       title: '身份', width: 130,
-      render: (_, item) => <Space wrap><Tag color={item.role === 'admin' ? 'purple' : 'default'}>{item.role === 'admin' ? '管理员' : '普通用户'}</Tag>{item.is_team_member ? <Tag color="cyan">团队成员</Tag> : null}{item.bootstrap_admin ? <Tag color="blue">恢复管理员</Tag> : null}</Space>,
+      render: (_, item) => <Space wrap><Tag color={item.role === 'admin' ? 'purple' : 'default'}>{item.role === 'admin' ? '管理员' : '普通用户'}</Tag>{item.is_advanced_user ? <Tag color="gold">高级用户</Tag> : null}{item.is_team_member ? <Tag color="cyan">团队成员</Tag> : null}{item.bootstrap_admin ? <Tag color="blue">恢复管理员</Tag> : null}</Space>,
     },
     {
       title: '登录状态', width: 120,
@@ -286,6 +306,11 @@ export function PermissionCenterPage() {
         const blockDisabled = item.bootstrap_admin || isSelf;
         return (
           <Space wrap>
+            {item.is_advanced_user ? (
+              <Popconfirm title="取消高级用户身份？" description="该用户将不能再在页面内修改 Chip Config。" okText="确认" cancelText="取消" onConfirm={() => void setAdvancedUser(item, false)}>
+                <Button size="small">取消高级用户</Button>
+              </Popconfirm>
+            ) : <Button size="small" onClick={() => void setAdvancedUser(item, true)}>设为高级用户</Button>}
             {item.is_team_member ? (
               <Popconfirm title="取消团队成员标签？" description="历史成果保留，但该用户将不能再访问完整成果档案。" okText="确认" cancelText="取消" onConfirm={() => void setTeamMember(item, false)}>
                 <Button size="small">取消团队成员</Button>
@@ -372,7 +397,7 @@ export function PermissionCenterPage() {
                     <div><strong>已授权用户</strong><Tag>{item.authorized_users.length} 人</Tag></div>
                     <div className="permission-authorized-tags">{item.authorized_users.length ? item.authorized_users.map((authorizedUser) => <Tag key={authorizedUser.user_id}>{authorizedUser.display_name} · {authorizedUser.user_id}</Tag>) : <span>暂无已授权用户，用户提交申请后由管理员审批。</span>}</div>
                   </div>
-                ) : <div className="permission-mode-hint">{draft.access_mode === 'normal' ? '所有已登录普通用户均可直接访问。' : draft.access_mode === 'admin' ? '仅管理员登录模式可以访问。' : '该模块将对所有用户隐藏并拒绝访问。'}</div>}
+                ) : <div className="permission-mode-hint">{draft.access_mode === 'normal' ? '所有已登录用户均可直接访问。' : draft.access_mode === 'advanced' ? '高级用户、团队成员和管理员可以访问；普通用户不可访问。' : draft.access_mode === 'admin' ? '仅管理员登录模式可以访问。' : '该模块将对所有用户隐藏并拒绝访问。'}</div>}
                 <div className="permission-resource-actions"><Button onClick={() => setExpandedResources((current) => current.filter((code) => code !== item.code))}>取消</Button><Button type="primary" onClick={() => void saveResource(item)}>保存配置</Button></div>
               </div>
             );
@@ -384,10 +409,10 @@ export function PermissionCenterPage() {
 
   const userManagement = (
     <div className="permission-user-panel">
-      <div className="permission-admin-toolbar"><div><strong>统一管理平台用户</strong><p>按管理员、团队成员、普通用户排序，可配置管理员身份或屏蔽用户登录；屏蔽不会删除历史任务和数据。</p></div><Button onClick={() => setPasswordOpen(true)}>修改我的密码</Button></div>
+      <div className="permission-admin-toolbar"><div><strong>统一管理平台用户</strong><p>按管理员、团队成员、高级用户、普通用户排序；身份可叠加，高级用户可以在页面内修改 Chip Config。</p></div><Button onClick={() => setPasswordOpen(true)}>修改我的密码</Button></div>
       <div className="permission-user-filters">
         <Input allowClear prefix={<SearchOutlined />} placeholder="搜索姓名或工号" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} />
-        <Select value={userRoleFilter} onChange={setUserRoleFilter} options={[{ value: 'all', label: '全部身份' }, { value: 'admin', label: '管理员' }, { value: 'team', label: '团队成员' }, { value: 'normal', label: '普通用户' }]} />
+        <Select value={userRoleFilter} onChange={setUserRoleFilter} options={[{ value: 'all', label: '全部身份' }, { value: 'admin', label: '管理员' }, { value: 'advanced', label: '高级用户' }, { value: 'team', label: '团队成员' }, { value: 'normal', label: '普通用户' }]} />
         <Select value={userStatusFilter} onChange={setUserStatusFilter} options={[{ value: 'all', label: '全部状态' }, { value: 'active', label: '正常' }, { value: 'blocked', label: '已屏蔽' }]} />
       </div>
       <Table rowKey="user_id" columns={userColumns} dataSource={filteredUsers} loading={loading} pagination={{ pageSize: 10, hideOnSinglePage: true }} scroll={{ x: 900 }} />

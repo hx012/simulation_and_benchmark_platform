@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.analytics.models import AnalyticsEvent
 from app.analytics.schemas import (
+    AnalyticsDemandPipeline,
+    AnalyticsDemandStatusItem,
     AnalyticsEventCreate,
     AnalyticsOverviewResponse,
     AnalyticsRankingItem,
@@ -73,6 +75,18 @@ EVENT_LABELS = {
 }
 
 FEATURE_EVENTS = set(EVENT_LABELS) - {"page_view", "page_active_time"}
+
+DEMAND_STATUS_LABELS = (
+    ("pending", "待审视"),
+    ("needs_info", "待补充"),
+    ("accepted", "已采纳"),
+    ("planned", "已规划"),
+    ("in_progress", "实现中"),
+    ("delivered", "已交付"),
+    ("deferred", "暂缓"),
+    ("rejected", "未采纳"),
+    ("withdrawn", "已撤回"),
+)
 
 
 def _as_utc(value: datetime) -> datetime:
@@ -215,6 +229,38 @@ def _simulation_dimensions(
     return sorted(results, key=lambda item: item.tasks, reverse=True)[:10]
 
 
+def _demand_pipeline(
+    db: Session, start_at: datetime, end_at: datetime
+) -> AnalyticsDemandPipeline:
+    rows = list(db.scalars(
+        select(Demand).where(
+            Demand.created_at >= start_at,
+            Demand.created_at <= end_at,
+        )
+    ).all())
+    counts = Counter(item.status for item in rows)
+    accepted_unplanned = int(counts["accepted"])
+    planned = int(counts["planned"])
+    in_progress = int(counts["in_progress"])
+    delivered = int(counts["delivered"])
+    return AnalyticsDemandPipeline(
+        submitted=len(rows),
+        accepted=accepted_unplanned + planned + in_progress + delivered,
+        accepted_unplanned=accepted_unplanned,
+        planned=planned,
+        in_progress=in_progress,
+        delivered=delivered,
+        statuses=[
+            AnalyticsDemandStatusItem(
+                status=status,
+                label=label,
+                count=int(counts[status]),
+            )
+            for status, label in DEMAND_STATUS_LABELS
+        ],
+    )
+
+
 def get_overview(db: Session, days: int) -> AnalyticsOverviewResponse:
     start_at, end_at = _range(days)
     events = _events_in_range(db, start_at, end_at)
@@ -297,6 +343,7 @@ def get_overview(db: Session, days: int) -> AnalyticsOverviewResponse:
         chips=chips,
         benchmarks=benchmarks,
         simulation_dimensions=_simulation_dimensions(db, start_at, end_at),
+        demand_pipeline=_demand_pipeline(db, start_at, end_at),
     )
 
 

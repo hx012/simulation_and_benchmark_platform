@@ -20,5 +20,10 @@ assert.match(
   /<ResultWatermark className="analytics-user-detail-watermark">/,
   'identified user analytics drawer must use ResultWatermark',
 );
+assert.match(
+  analyticsPageSource,
+  /<ResultWatermark className="analytics-demand-watermark">/,
+  'demand analytics must use ResultWatermark',
+);
 
 console.log('Result watermark checks passed');
