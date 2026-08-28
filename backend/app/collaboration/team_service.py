@@ -28,8 +28,6 @@ def require_archive_access(current: AuthenticatedUser, visibility: str = "team_o
 
 
 def require_archive_editor(current: AuthenticatedUser) -> None:
-    if current.is_admin_mode:
-        raise HTTPException(status_code=403, detail="管理员登录模式仅可评分和评价成果")
     if not current.user.is_team_member:
         raise HTTPException(status_code=403, detail="仅团队成员可以维护成果档案")
 
@@ -73,8 +71,7 @@ def achievement_response(
 ) -> TeamAchievementResponse:
     scorer = db.get(User, item.scored_by_user_id) if item.scored_by_user_id else None
     editable = (
-        not current.is_admin_mode
-        and current.user.is_team_member
+        current.user.is_team_member
         and item.owner_user_id == current.user.id
     )
     return TeamAchievementResponse(

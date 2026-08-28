@@ -512,6 +512,7 @@ def get_simulation_queue(
 def get_simulation_log(
     task_id: str,
     offset: int = Query(default=0, ge=0),
+    tail: bool = Query(default=False),
     limit_bytes: int = Query(
         default=64 * 1024,
         ge=1,
@@ -526,6 +527,7 @@ def get_simulation_log(
             task,
             offset=offset,
             limit_bytes=limit_bytes,
+            tail=tail,
         )
     except TaskIOError as exc:
         raise HTTPException(
@@ -539,6 +541,7 @@ def get_simulation_log(
     return SimulationLogResponse(
         task_id=task_id,
         available=chunk.available,
+        file_size=chunk.file_size,
         offset=chunk.offset,
         next_offset=chunk.next_offset,
         eof=chunk.eof,

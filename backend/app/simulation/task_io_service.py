@@ -10,6 +10,7 @@ from app.simulation.models import SimulationTask
 @dataclass(frozen=True)
 class LogChunk:
     available: bool
+    file_size: int
     offset: int
     next_offset: int
     eof: bool
@@ -38,6 +39,7 @@ class SimulationTaskIOService:
         *,
         offset: int,
         limit_bytes: int,
+        tail: bool = False,
     ) -> LogChunk:
         if offset < 0:
             raise TaskIOError("Log offset must be >= 0")
@@ -57,6 +59,7 @@ class SimulationTaskIOService:
         if not log_path.is_file():
             return LogChunk(
                 available=False,
+                file_size=0,
                 offset=offset,
                 next_offset=offset,
                 eof=True,
@@ -65,7 +68,7 @@ class SimulationTaskIOService:
             )
 
         file_size = log_path.stat().st_size
-        actual_offset = offset
+        actual_offset = max(0, file_size - limit_bytes) if tail else offset
         reset = False
 
         if actual_offset > file_size:
@@ -84,6 +87,7 @@ class SimulationTaskIOService:
 
         return LogChunk(
             available=True,
+            file_size=file_size,
             offset=actual_offset,
             next_offset=next_offset,
             eof=next_offset >= file_size,

@@ -86,11 +86,11 @@ export const simulationApi = {
     );
   },
 
-  getLogs(taskId: string, offset = 0, limitBytes = 64 * 1024) {
+  getLogs(taskId: string, offset = 0, limitBytes = 64 * 1024, tail = false) {
     return apiRequest<SimulationLogResponse>(
       `${BASE}/tasks/${encodeURIComponent(taskId)}/logs`,
       {},
-      { offset, limit_bytes: limitBytes },
+      { offset, limit_bytes: limitBytes, tail: tail || undefined },
     );
   },
 

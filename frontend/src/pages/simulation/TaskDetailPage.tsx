@@ -27,6 +27,7 @@ import { useTaskPolling } from '../../hooks/useTaskPolling';
 import type { SimulationQueueResponse } from '../../types/simulation';
 import { useAuth } from '../../auth/AuthContext';
 import { PermissionRequestButton } from '../../components/PermissionRequestButton';
+import { ResultWatermark } from '../../components/ResultWatermark';
 import {
   executionPhaseText,
   formatDateTime,
@@ -35,7 +36,8 @@ import {
   isTerminalStatus,
 } from '../../utils/format';
 
-const LOG_CHUNK_BYTES = 512 * 1024;
+const LOG_CHUNK_BYTES = 128 * 1024;
+const LOG_RENDER_CHAR_LIMIT = 256 * 1024;
 
 export function TaskDetailPage() {
   const { taskId } = useParams();
@@ -47,10 +49,12 @@ export function TaskDetailPage() {
   const [logText, setLogText] = useState('');
   const [logAvailable, setLogAvailable] = useState(false);
   const [logEof, setLogEof] = useState(false);
+  const [logTruncated, setLogTruncated] = useState(false);
   const [logFullscreen, setLogFullscreen] = useState(false);
   const logOffset = useRef(0);
   const logBoxRef = useRef<HTMLPreElement>(null);
   const fullscreenLogRef = useRef<HTMLPreElement>(null);
+  const followLogTailRef = useRef(true);
 
   useEffect(() => {
     if (!taskId || !task || !canViewLog) return;
@@ -66,12 +70,15 @@ export function TaskDetailPage() {
     setLogText('');
     setLogAvailable(false);
     setLogEof(false);
+    setLogTruncated(false);
+    followLogTailRef.current = true;
   }, [taskId]);
 
   useEffect(() => {
     if (!taskId || !task) return;
     let cancelled = false;
     let timer: number | null = null;
+    let initialRead = logOffset.current === 0;
 
     const read = async () => {
       try {
@@ -79,22 +86,31 @@ export function TaskDetailPage() {
           taskId,
           logOffset.current,
           LOG_CHUNK_BYTES,
+          initialRead,
         );
         if (cancelled) return;
+        if (chunk.available) initialRead = false;
 
         setLogAvailable(chunk.available);
         setLogEof(chunk.eof);
         if (chunk.reset) {
           setLogText(chunk.text);
         } else if (chunk.text) {
-          setLogText((current) => current + chunk.text);
+          setLogText((current) => {
+            const combined = current + chunk.text;
+            if (combined.length <= LOG_RENDER_CHAR_LIMIT) return combined;
+            return combined.slice(-LOG_RENDER_CHAR_LIMIT);
+          });
+        }
+        if (chunk.offset > 0 || chunk.file_size > LOG_RENDER_CHAR_LIMIT) {
+          setLogTruncated(true);
         }
         logOffset.current = chunk.next_offset;
 
-        // 文件还没有读到 EOF 时立即继续拉下一块。这样已经完成的任务
-        // 也会从 offset=0 一直读到日志末尾，而不是只显示首个 64KB。
+        // 只追赶首次读取后新增的内容；首屏直接从文件末尾开始，避免把
+        // 数十 MB 的历史日志全部下载并渲染到一个 <pre> 中。
         if (!chunk.eof) {
-          timer = window.setTimeout(read, 30);
+          timer = window.setTimeout(read, 150);
           return;
         }
       } catch {
@@ -123,19 +139,25 @@ export function TaskDetailPage() {
   }, [logFullscreen]);
 
   useEffect(() => {
-    if (logBoxRef.current) {
+    if (followLogTailRef.current && logBoxRef.current) {
       logBoxRef.current.scrollTop = logBoxRef.current.scrollHeight;
     }
-    if (fullscreenLogRef.current) {
+    if (followLogTailRef.current && fullscreenLogRef.current) {
       fullscreenLogRef.current.scrollTop = fullscreenLogRef.current.scrollHeight;
     }
   }, [logText]);
 
   function scrollLog(target: 'top' | 'bottom') {
+    followLogTailRef.current = target === 'bottom';
     const nodes = [logBoxRef.current, fullscreenLogRef.current].filter(Boolean) as HTMLPreElement[];
     nodes.forEach((node) => {
       node.scrollTop = target === 'top' ? 0 : node.scrollHeight;
     });
+  }
+
+  function handleLogScroll(event: React.UIEvent<HTMLPreElement>) {
+    const node = event.currentTarget;
+    followLogTailRef.current = node.scrollHeight - node.scrollTop - node.clientHeight < 48;
   }
 
   async function terminate() {
@@ -252,7 +274,7 @@ export function TaskDetailPage() {
           extra={(
             <Space size={8}>
               <span className="muted-text">
-                {terminal && logEof ? '完整日志' : '增量读取'}
+                {logTruncated ? '仅显示最近 256 KB' : terminal && logEof ? '完整日志' : '增量读取'}
               </span>
               <Button size="small" icon={<VerticalAlignTopOutlined />} onClick={() => scrollLog('top')}>顶部</Button>
               <Button size="small" icon={<VerticalAlignBottomOutlined />} onClick={() => scrollLog('bottom')}>末尾</Button>
@@ -260,7 +282,7 @@ export function TaskDetailPage() {
             </Space>
           )}
         >
-          <pre ref={logBoxRef} className="log-viewer">
+          <pre ref={logBoxRef} className="log-viewer" onScroll={handleLogScroll}>
             {logAvailable ? (logText || '等待新的日志输出…') : '日志文件尚未生成…'}
           </pre>
         </Card>
@@ -281,22 +303,24 @@ export function TaskDetailPage() {
       )}
 
       {logFullscreen ? (
-        <div className="log-fullscreen" role="dialog" aria-modal="true" aria-label="运行日志全屏查看">
-          <div className="log-fullscreen-head">
-            <div>
-              <strong>运行日志</strong>
-              <span>{task.task_name}</span>
+        <ResultWatermark className="log-fullscreen">
+          <div className="log-fullscreen-content" role="dialog" aria-modal="true" aria-label="运行日志全屏查看">
+            <div className="log-fullscreen-head">
+              <div>
+                <strong>运行日志</strong>
+                <span>{task.task_name}</span>
+              </div>
+              <Space>
+                <Button icon={<VerticalAlignTopOutlined />} onClick={() => scrollLog('top')}>顶部</Button>
+                <Button icon={<VerticalAlignBottomOutlined />} onClick={() => scrollLog('bottom')}>末尾</Button>
+                <Button icon={<CloseOutlined />} onClick={() => setLogFullscreen(false)}>退出全屏</Button>
+              </Space>
             </div>
-            <Space>
-              <Button icon={<VerticalAlignTopOutlined />} onClick={() => scrollLog('top')}>顶部</Button>
-              <Button icon={<VerticalAlignBottomOutlined />} onClick={() => scrollLog('bottom')}>末尾</Button>
-              <Button icon={<CloseOutlined />} onClick={() => setLogFullscreen(false)}>退出全屏</Button>
-            </Space>
+            <pre ref={fullscreenLogRef} className="log-viewer log-viewer-fullscreen" onScroll={handleLogScroll}>
+              {logAvailable ? (logText || '等待新的日志输出…') : '日志文件尚未生成…'}
+            </pre>
           </div>
-          <pre ref={fullscreenLogRef} className="log-viewer log-viewer-fullscreen">
-            {logAvailable ? (logText || '等待新的日志输出…') : '日志文件尚未生成…'}
-          </pre>
-        </div>
+        </ResultWatermark>
       ) : null}
     </div>
   );

@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 const watermarkSource = readFileSync(new URL('../src/components/ResultWatermark.tsx', import.meta.url), 'utf8');
 const teamPageSource = readFileSync(new URL('../src/pages/TeamPage.tsx', import.meta.url), 'utf8');
 const analyticsPageSource = readFileSync(new URL('../src/pages/UsageAnalyticsPage.tsx', import.meta.url), 'utf8');
+const taskDetailPageSource = readFileSync(new URL('../src/pages/simulation/TaskDetailPage.tsx', import.meta.url), 'utf8');
 
 assert.match(
   watermarkSource,
@@ -19,6 +20,11 @@ assert.match(
   analyticsPageSource,
   /<ResultWatermark className="analytics-user-detail-watermark">/,
   'identified user analytics drawer must use ResultWatermark',
+);
+assert.match(
+  taskDetailPageSource,
+  /<ResultWatermark className="log-fullscreen"/,
+  'fullscreen simulation logs must use ResultWatermark',
 );
 assert.match(
   analyticsPageSource,

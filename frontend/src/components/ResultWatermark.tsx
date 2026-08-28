@@ -1,15 +1,13 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { Watermark } from 'antd';
 import { useAuth } from '../auth/AuthContext';
 
-interface ResultWatermarkProps {
+interface ResultWatermarkProps extends Omit<ComponentProps<typeof Watermark>, 'children' | 'content'> {
   children: ReactNode;
-  className?: string;
   enabled?: boolean;
-  style?: CSSProperties;
 }
 
-export function ResultWatermark({ children, className, enabled = true, style }: ResultWatermarkProps) {
+export function ResultWatermark({ children, enabled = true, ...watermarkProps }: ResultWatermarkProps) {
   const { user } = useAuth();
   const employeeId = user?.userId || 'UNKNOWN';
 
@@ -17,8 +15,7 @@ export function ResultWatermark({ children, className, enabled = true, style }: 
 
   return (
     <Watermark
-      className={className}
-      style={style}
+      {...watermarkProps}
       inherit={false}
       content={`MSKPP&AIBench + ${employeeId}`}
       rotate={-22}

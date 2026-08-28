@@ -122,6 +122,7 @@ export interface SimulationQueuedTaskResponse {
 export interface SimulationLogResponse {
   task_id: string;
   available: boolean;
+  file_size: number;
   offset: number;
   next_offset: number;
   eof: boolean;

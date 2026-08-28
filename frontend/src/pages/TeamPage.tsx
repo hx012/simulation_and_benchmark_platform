@@ -115,7 +115,7 @@ export function TeamPage() {
     } catch (error) { message.error(error instanceof Error ? error.message : String(error)); }
   }
 
-  const canCreate = Boolean(team?.viewer_is_team_member && !team?.viewer_is_admin);
+  const canCreate = Boolean(team?.viewer_is_team_member);
   if (!team) return <div className="page-container"><Skeleton active /></div>;
 
   const summaryColumns = [

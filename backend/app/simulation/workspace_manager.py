@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 from pathlib import Path
@@ -5,6 +6,9 @@ from uuid import uuid4
 
 from app.common.config import Settings
 from app.simulation.exceptions import TaskWorkspaceError
+
+
+logger = logging.getLogger(__name__)
 
 
 class TaskWorkspaceManager:
@@ -107,10 +111,19 @@ class TaskWorkspaceManager:
         workspace = Path(workspace_path).resolve()
 
         if workspace != expected_workspace:
-            raise TaskWorkspaceError(
-                "Task workspace does not match TASK_ROOT/task_id: "
-                f"{workspace}"
+            # Legacy/sample rows may contain an obsolete absolute workspace
+            # path (for example /tmp/SIM-TEST-003). Never delete that
+            # database-supplied path. Continue with the canonical location
+            # derived from the configured TASK_ROOT and validated task ID so
+            # the stale database record can still be removed safely.
+            logger.warning(
+                "Ignoring mismatched task workspace during deletion: "
+                "task_id=%s stored=%s expected=%s",
+                task_id,
+                workspace,
+                expected_workspace,
             )
+            workspace = expected_workspace
 
         # 清理可能残留的 staging。
         shutil.rmtree(
