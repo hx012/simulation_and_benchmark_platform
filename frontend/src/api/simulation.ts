@@ -151,10 +151,14 @@ export const simulationApi = {
     );
   },
 
-  createUploadSession(ownerId: string) {
+  createUploadSession(ownerId: string, payload: {
+    simulator_version: string;
+    chip_variant: string | null;
+    simulation_mode: SimulationMode;
+  }) {
     return apiRequest<UploadSession>(`${BASE}/upload-sessions`, {
       method: 'POST',
-      body: JSON.stringify({ owner_id: ownerId }),
+      body: JSON.stringify({ owner_id: ownerId, ...payload }),
     });
   },
 

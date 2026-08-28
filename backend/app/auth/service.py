@@ -343,19 +343,23 @@ def current_user_response(db: Session, current: AuthenticatedUser) -> CurrentUse
             ResourcePermissionSet.resource_code == resource.code
         )).all())
         resource_permissions[resource.code] = required
-        team_business_access = (
-            current.user.is_team_member
-            and resource.access_mode in {"normal", "permission"}
-        )
-        allowed = resource.access_mode != "disabled" and (
-            current.is_admin_mode or team_business_access or resource.access_mode == "normal"
-        )
-        if resource.access_mode == "permission" and not team_business_access:
-            allowed = bool(required) and set(required).issubset(permissions)
+        team_business_access = current.user.is_team_member and resource.access_mode in {
+            "normal", "permission"
+        }
+        if resource.access_mode == "disabled":
+            allowed = False
+        elif resource.access_mode == "advanced":
+            allowed = (
+                current.user.is_advanced_user
+                or current.user.is_team_member
+                or current.is_admin_mode
+            )
         elif resource.access_mode == "admin":
             allowed = current.is_admin_mode
-        elif resource.access_mode == "disabled":
-            allowed = False
+        elif current.is_admin_mode or team_business_access or resource.access_mode == "normal":
+            allowed = True
+        else:
+            allowed = bool(required) and set(required).issubset(permissions)
         if allowed:
             accessible_resources.append(resource.code)
     return CurrentUserResponse(
@@ -365,6 +369,7 @@ def current_user_response(db: Session, current: AuthenticatedUser) -> CurrentUse
         account_role="admin" if current.user.role == "admin" else "normal",
         auth_mode="admin" if current.is_admin_mode else "normal",
         is_team_member=current.user.is_team_member,
+        is_advanced_user=current.user.is_advanced_user,
         permissions=sorted(permissions),
         resources=accessible_resources,
         resource_permissions=resource_permissions,
@@ -421,6 +426,14 @@ def require_resource(resource_code: str):
             raise HTTPException(status_code=403, detail="资源尚未配置，默认拒绝访问")
         if resource.access_mode == "disabled":
             raise HTTPException(status_code=403, detail="该模块当前未开放")
+        if resource.access_mode == "advanced":
+            if (
+                current.user.is_advanced_user
+                or current.user.is_team_member
+                or current.is_admin_mode
+            ):
+                return current
+            raise HTTPException(status_code=403, detail="需要高级用户身份")
         if current.is_admin_mode:
             return current
         if current.user.is_team_member and resource.access_mode in {"normal", "permission"}:
@@ -570,6 +583,7 @@ def update_admin_user(
     password: str | None,
     active: bool,
     is_team_member: bool | None = None,
+    is_advanced_user: bool | None = None,
 ) -> User:
     normalized = employee_id.strip()
     bootstrap_id = get_settings().platform_bootstrap_admin_id.strip()
@@ -600,6 +614,8 @@ def update_admin_user(
     user.active = active
     if is_team_member is not None:
         user.is_team_member = is_team_member
+    if is_advanced_user is not None:
+        user.is_advanced_user = is_advanced_user
     if display_name:
         user.display_name = display_name.strip()
     if not active:

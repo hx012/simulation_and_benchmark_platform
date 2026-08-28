@@ -60,6 +60,22 @@ export interface AnalyticsSimulationDimensionItem {
   simulation_mode: string | null;
 }
 
+export interface AnalyticsDemandStatusItem {
+  status: string;
+  label: string;
+  count: number;
+}
+
+export interface AnalyticsDemandPipeline {
+  submitted: number;
+  accepted: number;
+  accepted_unplanned: number;
+  planned: number;
+  in_progress: number;
+  delivered: number;
+  statuses: AnalyticsDemandStatusItem[];
+}
+
 export interface AnalyticsOverview {
   start_at: string;
   end_at: string;
@@ -70,6 +86,7 @@ export interface AnalyticsOverview {
   chips: AnalyticsRankingItem[];
   benchmarks: AnalyticsRankingItem[];
   simulation_dimensions: AnalyticsSimulationDimensionItem[];
+  demand_pipeline: AnalyticsDemandPipeline;
 }
 
 export type AnalyticsUserSort =

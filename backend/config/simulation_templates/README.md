@@ -1,39 +1,54 @@
 # Simulation Samples
 
-The repository keeps one shared template per simulation topology. Every
-simulator version and chip variant loads from the same mode directory:
+Template locations are configured per entry in `simulator_profiles.yml`:
+
+```yaml
+chip_config_template_path: simulation_templates/chip_configs/v310/default/single_chip
+workload_template_path: simulation_templates/default/single_chip/workload
+```
+
+Relative paths are resolved from the directory containing the active
+`simulator_profiles.yml`; absolute paths are also supported for server-local
+deployments. Chip Config paths are independent per chip profile today. A path
+may be shared later without changing application code. Workload templates can
+already be reused by multiple chip profiles.
+
+The repository example layout is:
 
 ```text
 config/simulation_templates/default/
 ├── single_chip/
-│   ├── chip_config/
 │   └── workload/
 └── multi_chip/
-    ├── chip_config/
     └── workload/
+config/simulation_templates/chip_configs/
+├── v310/default/single_chip/
+└── v320/
+    ├── default/single_chip/
+    ├── default/multi_chip/
+    └── high_perf/multi_chip/
 ```
 
-The platform chooses only by `simulation_mode`, then copies the shared files
-into the user's UploadSession when "载入配置样例" is selected. The selected
-Simulator Version and Chip Variant do not change the template source.
+When an upload session is created, the selected profile's Chip Config is copied
+into the session automatically. Ordinary users can preview it but cannot edit
+or replace it. Advanced users and administrators can edit/replace Chip Config
+and download the combined Chip Config + Workload template ZIP.
 
 To install or replace a validated runtime input package, run:
 
 ```bash
 uv run python scripts/seed_simulation_sample.py \
   --source ../runtime/SIM-V310-RUN-002/input \
-  --simulation-mode single_chip
+  --chip-config-target config/simulation_templates/chip_configs/v310/default/single_chip \
+  --workload-target config/simulation_templates/default/single_chip/workload
 ```
 
-The installation layout is:
+After installing files, point the relevant profile paths at the resulting Chip
+Config and Workload directories. Different profiles can reference the same
+Workload directory.
 
-```text
-config/simulation_templates/default/single_chip/
-├── chip_config/
-└── workload/
-```
-
-The task creation page exposes the selected template as a ZIP download. The
+The task creation page exposes the selected template as a ZIP download to
+advanced users and administrators. The
 archive keeps the upload-ready top-level directories:
 
 ```text

@@ -91,6 +91,8 @@ class Demand(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
     withdrawn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    delivery_feedback: Mapped[str | None] = mapped_column(String(32))
+    delivery_feedback_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     __table_args__ = (
         Index("ix_demands_user_created", "user_id", "created_at"),

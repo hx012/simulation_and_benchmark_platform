@@ -23,6 +23,7 @@ class User(Base):
     password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_team_member: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_advanced_user: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

@@ -2,24 +2,13 @@ import argparse
 import shutil
 from pathlib import Path
 
-
-BACKEND_ROOT = Path(__file__).resolve().parents[1]
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Install a validated simulation input as a read-only default template."
+        description="Install validated Chip Config and Workload template directories."
     )
     parser.add_argument("--source", required=True, help="Directory containing chip_config/ and workload/")
-    parser.add_argument(
-        "--simulation-mode",
-        default="single_chip",
-        choices=("single_chip", "multi_chip"),
-    )
-    parser.add_argument(
-        "--target-root",
-        default=str(BACKEND_ROOT / "config" / "simulation_templates"),
-    )
+    parser.add_argument("--chip-config-target", required=True)
+    parser.add_argument("--workload-target", required=True)
     args = parser.parse_args()
 
     source = Path(args.source).resolve()
@@ -30,22 +19,19 @@ def main() -> None:
             "Source must contain chip_config/ and workload/ directories"
         )
 
-    target = (
-        Path(args.target_root).resolve()
-        / "default"
-        / args.simulation_mode
+    targets = (
+        ("chip_config", chip, Path(args.chip_config_target).resolve()),
+        ("workload", workload, Path(args.workload_target).resolve()),
     )
-    staging = target.parent / f".{target.name}.installing"
-    shutil.rmtree(staging, ignore_errors=True)
-    staging.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(chip, staging / "chip_config")
-    shutil.copytree(workload, staging / "workload")
-    shutil.rmtree(target, ignore_errors=True)
-    staging.replace(target)
-
-    print(f"sample installed: {target}")
-    print(f"chip_config files: {sum(1 for p in (target / 'chip_config').rglob('*') if p.is_file())}")
-    print(f"workload files: {sum(1 for p in (target / 'workload').rglob('*') if p.is_file())}")
+    for label, source_dir, target in targets:
+        staging = target.parent / f".{target.name}.installing"
+        shutil.rmtree(staging, ignore_errors=True)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(source_dir, staging)
+        shutil.rmtree(target, ignore_errors=True)
+        staging.replace(target)
+        count = sum(1 for path in target.rglob("*") if path.is_file())
+        print(f"{label} installed: {target} ({count} files)")
 
 
 if __name__ == "__main__":

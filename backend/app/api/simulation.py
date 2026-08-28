@@ -97,7 +97,6 @@ upload_service = UploadSessionService(
 )
 upload_validator = UploadSessionValidator()
 sample_service = SimulationSampleService(
-    settings=settings,
     upload_repository=upload_repository,
 )
 upload_file_service = UploadSessionFileService(
@@ -201,18 +200,15 @@ def download_simulation_config_template(
     simulator_version: str = Query(min_length=1, max_length=64),
     chip_variant: str | None = Query(default="default", max_length=64),
     simulation_mode: SimulationMode = Query(default=SimulationMode.SINGLE_CHIP),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> StreamingResponse:
     try:
-        profile_registry.get_profile(
+        profile = profile_registry.get_profile(
             simulator_version=simulator_version,
             chip_variant=chip_variant,
             simulation_mode=simulation_mode,
         )
-        filename, content = sample_service.build_template_archive(
-            simulator_version=simulator_version,
-            chip_variant=chip_variant,
-            simulation_mode=simulation_mode,
-        )
+        filename, content = sample_service.build_workload_template_archive(profile=profile)
     except Exception as exc:
         _raise_upload_http_error(exc)
         raise
@@ -290,6 +286,18 @@ def _require_owned_upload_session(
             f"Upload session not found: {upload_session_id}"
         )
     return upload_session
+
+
+def _require_chip_config_manager(current_user: AuthenticatedUser) -> None:
+    if current_user.is_admin_mode or current_user.user.is_advanced_user:
+        return
+    raise HTTPException(status_code=403, detail="只有高级用户或管理员可以修改 Chip Config")
+
+
+def _require_chip_config_uploader(current_user: AuthenticatedUser) -> None:
+    if current_user.is_admin_mode:
+        return
+    raise HTTPException(status_code=403, detail="Chip Config 仅支持高级用户在页面内编辑")
 
 
 def _upload_package(
@@ -802,13 +810,27 @@ def create_upload_session(
     db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> UploadSessionResponse:
-    upload_session = upload_service.create_session(
-        db,
-        owner_id=current_user.user.employee_id,
-    )
-
-    db.commit()
-    db.refresh(upload_session)
+    try:
+        profile = profile_registry.get_profile(
+            simulator_version=request.simulator_version,
+            chip_variant=request.chip_variant,
+            simulation_mode=request.simulation_mode,
+        )
+        upload_session = upload_service.create_session(
+            db,
+            owner_id=current_user.user.employee_id,
+        )
+        sample_service.apply_chip_config(
+            db,
+            upload_session_id=upload_session.upload_session_id,
+            profile=profile,
+        )
+        db.commit()
+        db.refresh(upload_session)
+    except Exception as exc:
+        db.rollback()
+        _raise_upload_http_error(exc)
+        raise
     return _upload_session_response(upload_session)
 
 
@@ -843,6 +865,7 @@ def upload_chip_config(
     db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> UploadFilesResponse:
+    _require_chip_config_uploader(current_user)
     return _upload_package(
         upload_session_id=upload_session_id,
         package_type="chip_config",
@@ -887,7 +910,7 @@ def apply_simulation_sample(
     try:
         _require_owned_upload_session(db, upload_session_id, current_user)
         # Validate the selected capability tuple before looking up a sample.
-        profile_registry.get_profile(
+        profile = profile_registry.get_profile(
             simulator_version=request.simulator_version,
             chip_variant=request.chip_variant,
             simulation_mode=request.simulation_mode,
@@ -895,9 +918,7 @@ def apply_simulation_sample(
         chip_count, workload_count = sample_service.apply_sample(
             db,
             upload_session_id=upload_session_id,
-            simulator_version=request.simulator_version,
-            chip_variant=request.chip_variant,
-            simulation_mode=request.simulation_mode,
+            profile=profile,
         )
         upload_session = upload_service.get_session(
             db,
@@ -949,7 +970,11 @@ def list_upload_session_files(
                 path=item.path,
                 name=item.name,
                 size_bytes=item.size_bytes,
-                editable=item.editable,
+                editable=item.editable and (
+                    package_type != "chip_config"
+                    or current_user.is_admin_mode
+                    or current_user.user.is_advanced_user
+                ),
             )
             for item in files
         ],
@@ -985,7 +1010,11 @@ def get_upload_session_file_content(
         path=info.path,
         name=info.name,
         size_bytes=info.size_bytes,
-        editable=info.editable,
+        editable=info.editable and (
+            package_type != "chip_config"
+            or current_user.is_admin_mode
+            or current_user.user.is_advanced_user
+        ),
         content=content,
     )
 
@@ -1002,6 +1031,8 @@ def update_upload_session_file_content(
 ) -> UploadFileContentUpdateResponse:
     try:
         _require_owned_upload_session(db, upload_session_id, current_user)
+        if request.package_type == "chip_config":
+            _require_chip_config_manager(current_user)
         info = upload_file_service.write_content(
             db,
             upload_session_id=upload_session_id,

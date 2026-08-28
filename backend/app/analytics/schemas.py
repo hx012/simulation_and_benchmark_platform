@@ -84,6 +84,22 @@ class AnalyticsSimulationDimensionItem(BaseModel):
     simulation_mode: str | None = None
 
 
+class AnalyticsDemandStatusItem(BaseModel):
+    status: str
+    label: str
+    count: int
+
+
+class AnalyticsDemandPipeline(BaseModel):
+    submitted: int
+    accepted: int
+    accepted_unplanned: int
+    planned: int
+    in_progress: int
+    delivered: int
+    statuses: list[AnalyticsDemandStatusItem]
+
+
 class AnalyticsOverviewResponse(BaseModel):
     start_at: datetime
     end_at: datetime
@@ -94,6 +110,7 @@ class AnalyticsOverviewResponse(BaseModel):
     chips: list[AnalyticsRankingItem]
     benchmarks: list[AnalyticsRankingItem]
     simulation_dimensions: list[AnalyticsSimulationDimensionItem]
+    demand_pipeline: AnalyticsDemandPipeline
 
 
 AnalyticsUserSort = Literal[

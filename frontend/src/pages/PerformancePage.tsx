@@ -45,42 +45,108 @@ const capabilityPlaceholders = [
   },
 ];
 
-type CycleDistributionProps = {
+type CycleTableProps = {
   items: TraceTimeItem[];
   producer: TraceProducer;
-  maxCycles: number;
+  totalCycles: number;
   fullscreen?: boolean;
 };
 
-function CycleDistribution({
+type CycleHierarchy = {
+  chip: string;
+  aiCore: string;
+  engine: string;
+  unit: string;
+};
+
+type CycleFilters = CycleHierarchy;
+
+const emptyCycleFilters: CycleFilters = { chip: '', aiCore: '', engine: '', unit: '' };
+const hierarchyCollator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+
+function parseCycleHierarchy(name: string): CycleHierarchy {
+  const tokens = name.toUpperCase().split(/[_\s.-]+/).filter(Boolean);
+  const chip = tokens.find((token) => /^CHIP\d+$/.test(token)) || '';
+  const aiCore = tokens.find((token) => /^AICORE\d+$/.test(token)) || '';
+  const engineIndex = tokens.findIndex((token) => /^(AIC|AIV)\d*$/.test(token));
+  const engine = engineIndex >= 0 ? tokens[engineIndex] : '';
+  const unit = engineIndex >= 0 ? tokens.slice(engineIndex + 1).join('_') : '';
+  return { chip, aiCore, engine, unit };
+}
+
+function compareCycleItems(left: TraceTimeItem, right: TraceTimeItem) {
+  const leftHierarchy = parseCycleHierarchy(left.name);
+  const rightHierarchy = parseCycleHierarchy(right.name);
+  for (const key of ['chip', 'aiCore', 'engine', 'unit'] as const) {
+    const leftValue = leftHierarchy[key];
+    const rightValue = rightHierarchy[key];
+    if (leftValue && !rightValue) return -1;
+    if (!leftValue && rightValue) return 1;
+    const compared = hierarchyCollator.compare(leftValue, rightValue);
+    if (compared) return compared;
+  }
+  return hierarchyCollator.compare(left.name, right.name);
+}
+
+function uniqueHierarchyValues(items: TraceTimeItem[], key: keyof CycleHierarchy) {
+  return [...new Set(items.map((item) => parseCycleHierarchy(item.name)[key]).filter(Boolean))]
+    .sort(hierarchyCollator.compare);
+}
+
+function CycleTable({
   items,
   producer,
-  maxCycles,
+  totalCycles,
   fullscreen = false,
-}: CycleDistributionProps) {
+}: CycleTableProps) {
+  const rows = [
+    { name: 'TOTAL', cycles: totalCycles, ratio_percent: 100, total: true },
+    ...items.map((item) => ({ ...item, total: false })),
+  ];
   return (
-    <div className={`performance-cycle-distribution${fullscreen ? ' is-fullscreen' : ''}`}>
-      <div className="performance-bars-header">
-        <span>{producer === 'esl' ? 'TID' : 'Pipe'}</span>
-        <span>周期分布</span>
-        <span>时长 (cycle) / 占比</span>
-      </div>
-      <div className="performance-bars">
-        {items.map((item) => (
-          <div className="performance-bar-row" key={item.name}>
-            <strong title={item.name}>{item.name}</strong>
-            <div className="performance-bar-track">
-              <div
-                className="performance-bar-fill"
-                style={{ width: `${Math.max(item.cycles / maxCycles * 100, 1)}%` }}
-              />
-            </div>
-            <span>
-              {formatNumber(item.cycles)} / {item.ratio_percent.toFixed(2)}%
-            </span>
-          </div>
-        ))}
-      </div>
+    <div className={`performance-cycle-table-wrap${fullscreen ? ' is-fullscreen' : ''}`}>
+      <table className="performance-cycle-table" aria-label="耗时与占比统计">
+        <thead><tr><th>{producer === 'esl' ? 'TID' : 'Pipe'}</th><th>耗时 (cycle)</th><th>占比</th></tr></thead>
+        <tbody>
+          {rows.map((item) => (
+            <tr className={item.total ? 'is-total' : undefined} key={item.name}>
+              <td title={item.name}>{item.name}</td>
+              <td>{formatNumber(item.cycles)}</td>
+              <td>{item.ratio_percent.toFixed(2)}%</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+type CycleFilterToolbarProps = {
+  producer: TraceProducer;
+  filters: CycleFilters;
+  options: Record<keyof CycleHierarchy, string[]>;
+  search: string;
+  onFiltersChange: (filters: CycleFilters) => void;
+  onSearchChange: (value: string) => void;
+};
+
+function CycleFilterToolbar({
+  producer, filters, options, search, onFiltersChange, onSearchChange,
+}: CycleFilterToolbarProps) {
+  const selectOptions = (values: string[]) => values.map((value) => ({ value, label: value }));
+  return (
+    <div className="performance-cycle-filters">
+      <Input.Search
+        allowClear
+        value={search}
+        placeholder={`搜索 ${producer === 'esl' ? 'TID' : 'Pipe'} 名称`}
+        onChange={(event) => onSearchChange(event.target.value)}
+      />
+      {options.chip.length ? <Select allowClear value={filters.chip || undefined} placeholder="Chip" options={selectOptions(options.chip)} onChange={(chip) => onFiltersChange({ chip: chip || '', aiCore: '', engine: '', unit: '' })} /> : null}
+      {options.aiCore.length ? <Select allowClear value={filters.aiCore || undefined} placeholder="AICore" options={selectOptions(options.aiCore)} onChange={(aiCore) => onFiltersChange({ ...filters, aiCore: aiCore || '', engine: '', unit: '' })} /> : null}
+      {options.engine.length ? <Select allowClear value={filters.engine || undefined} placeholder="AIC / AIV" options={selectOptions(options.engine)} onChange={(engine) => onFiltersChange({ ...filters, engine: engine || '', unit: '' })} /> : null}
+      {options.unit.length ? <Select allowClear value={filters.unit || undefined} placeholder="执行单元" options={selectOptions(options.unit)} onChange={(unit) => onFiltersChange({ ...filters, unit: unit || '' })} /> : null}
+      <Button onClick={() => { onSearchChange(''); onFiltersChange(emptyCycleFilters); }}>重置</Button>
     </div>
   );
 }
@@ -104,6 +170,7 @@ export function PerformancePage() {
   const [result, setResult] = useState<TraceTimeAnalysisResponse | null>(null);
   const [cycleFullscreen, setCycleFullscreen] = useState(false);
   const [cycleSearch, setCycleSearch] = useState('');
+  const [cycleFilters, setCycleFilters] = useState<CycleFilters>(emptyCycleFilters);
 
   useEffect(() => {
     let cancelled = false;
@@ -147,6 +214,8 @@ export function PerformancePage() {
     setAnalyzing(true);
     setError(null);
     setResult(null);
+    setCycleSearch('');
+    setCycleFilters({ ...emptyCycleFilters });
     try {
       const analysis = await performanceApi.analyzeTaskTrace(taskId);
       setResult(analysis);
@@ -183,6 +252,8 @@ export function PerformancePage() {
     setAnalyzing(true);
     setError(null);
     setResult(null);
+    setCycleSearch('');
+    setCycleFilters({ ...emptyCycleFilters });
     try {
       setResult(await performanceApi.analyzeUploadedTrace(localFile, producer));
     } catch (err) {
@@ -198,19 +269,42 @@ export function PerformancePage() {
     setError(null);
   }
 
-  const maxCycles = useMemo(
-    () => Math.max(...(result?.items.map((item) => item.cycles) || [0]), 1),
+  const sortedCycleItems = useMemo(
+    () => [...(result?.items || [])].sort(compareCycleItems),
     [result],
   );
 
-  const fullscreenItems = useMemo(() => {
+  const cycleFilterOptions = useMemo(() => {
+    const matches = (item: TraceTimeItem, filters: Partial<CycleFilters>) => {
+      const hierarchy = parseCycleHierarchy(item.name);
+      return Object.entries(filters).every(([key, value]) => (
+        !value || hierarchy[key as keyof CycleHierarchy] === value
+      ));
+    };
+    const aiCoreItems = sortedCycleItems.filter((item) => matches(item, { chip: cycleFilters.chip }));
+    const engineItems = aiCoreItems.filter((item) => matches(item, { aiCore: cycleFilters.aiCore }));
+    const unitItems = engineItems.filter((item) => matches(item, { engine: cycleFilters.engine }));
+    return {
+      chip: uniqueHierarchyValues(sortedCycleItems, 'chip'),
+      aiCore: uniqueHierarchyValues(aiCoreItems, 'aiCore'),
+      engine: uniqueHierarchyValues(engineItems, 'engine'),
+      unit: uniqueHierarchyValues(unitItems, 'unit'),
+    };
+  }, [cycleFilters.aiCore, cycleFilters.chip, cycleFilters.engine, sortedCycleItems]);
+
+  const filteredCycleItems = useMemo(() => {
     const query = cycleSearch.trim().toLowerCase();
-    if (!query) return result?.items || [];
-    return result?.items.filter((item) => item.name.toLowerCase().includes(query)) || [];
-  }, [cycleSearch, result]);
+    return sortedCycleItems.filter((item) => {
+      const hierarchy = parseCycleHierarchy(item.name);
+      return (!query || item.name.toLowerCase().includes(query))
+        && (!cycleFilters.chip || hierarchy.chip === cycleFilters.chip)
+        && (!cycleFilters.aiCore || hierarchy.aiCore === cycleFilters.aiCore)
+        && (!cycleFilters.engine || hierarchy.engine === cycleFilters.engine)
+        && (!cycleFilters.unit || hierarchy.unit === cycleFilters.unit);
+    });
+  }, [cycleFilters, cycleSearch, sortedCycleItems]);
 
   function openCycleFullscreen() {
-    setCycleSearch('');
     setCycleFullscreen(true);
   }
 
@@ -375,11 +469,11 @@ export function PerformancePage() {
                 />
               ) : null}
               <Card
-                title="周期分布"
+                title="耗时统计"
                 extra={(
                   <Space size={10}>
                     <span className="muted-text">
-                      共 {result.items.length} 个{result.producer === 'esl' ? ' TID' : ' Pipe'}
+                      显示 {filteredCycleItems.length} / {result.items.length} 个{result.producer === 'esl' ? ' TID' : ' Pipe'}
                     </span>
                     <Button size="small" icon={<FullscreenOutlined />} onClick={openCycleFullscreen}>
                       全屏查看
@@ -388,15 +482,23 @@ export function PerformancePage() {
                 )}
                 className="clean-card performance-chart-card"
               >
-                <CycleDistribution
-                  items={result.items}
+                <CycleFilterToolbar
                   producer={result.producer}
-                  maxCycles={maxCycles}
+                  filters={cycleFilters}
+                  options={cycleFilterOptions}
+                  search={cycleSearch}
+                  onFiltersChange={setCycleFilters}
+                  onSearchChange={setCycleSearch}
+                />
+                <CycleTable
+                  items={filteredCycleItems}
+                  producer={result.producer}
+                  totalCycles={result.total_cycles}
                 />
               </Card>
             <Modal
               className="performance-cycle-modal"
-              title={`周期分布 · ${result.source_name}`}
+              title={`耗时统计 · ${result.source_name}`}
               open={cycleFullscreen}
               footer={null}
               width="calc(100vw - 48px)"
@@ -405,26 +507,24 @@ export function PerformancePage() {
             >
               <ResultWatermark className="performance-cycle-watermark">
                 <div className="performance-cycle-modal-toolbar">
-                  <Input.Search
-                    allowClear
-                    value={cycleSearch}
-                    placeholder={`搜索 ${result.producer === 'esl' ? 'TID' : 'Pipe'} 名称`}
-                    onChange={(event) => setCycleSearch(event.target.value)}
+                  <CycleFilterToolbar
+                    producer={result.producer}
+                    filters={cycleFilters}
+                    options={cycleFilterOptions}
+                    search={cycleSearch}
+                    onFiltersChange={setCycleFilters}
+                    onSearchChange={setCycleSearch}
                   />
                   <span>
-                    显示 {fullscreenItems.length} / {result.items.length}
+                    显示 {filteredCycleItems.length} / {result.items.length}
                   </span>
                 </div>
-                {fullscreenItems.length ? (
-                  <CycleDistribution
-                    items={fullscreenItems}
-                    producer={result.producer}
-                    maxCycles={maxCycles}
-                    fullscreen
-                  />
-                ) : (
-                  <div className="performance-cycle-empty">没有匹配的 Pipe/TID</div>
-                )}
+                <CycleTable
+                  items={filteredCycleItems}
+                  producer={result.producer}
+                  totalCycles={result.total_cycles}
+                  fullscreen
+                />
               </ResultWatermark>
             </Modal>
           </>

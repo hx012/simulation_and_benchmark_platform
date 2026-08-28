@@ -11,6 +11,7 @@ from app.collaboration.models import Demand, DemandEvent, DemandVote, FeedbackEn
 from app.collaboration.schemas import (
     DemandAdminUpdate,
     DemandCreate,
+    DemandDeliveryFeedbackUpdate,
     DemandEventResponse,
     DemandResponse,
     DemandUpdate,
@@ -24,6 +25,11 @@ from app.collaboration.schemas import (
 
 DEMAND_OWNER_EDITABLE = {"pending", "needs_info"}
 FEEDBACK_USER_ACTIVE = {"pending", "processing", "needs_info", "resolved"}
+DELIVERY_FEEDBACK_LABELS = {
+    "resolved": "已解决",
+    "partially_resolved": "部分解决",
+    "unresolved": "未解决",
+}
 
 
 def _now() -> datetime:
@@ -273,6 +279,8 @@ def demand_response(db: Session, item: Demand, submitter: User, current: Authent
         is_own=is_own,
         created_at=item.created_at,
         updated_at=item.updated_at,
+        delivery_feedback=item.delivery_feedback,
+        delivery_feedback_at=item.delivery_feedback_at,
         can_edit=is_own and item.status in DEMAND_OWNER_EDITABLE,
         can_withdraw=is_own and item.status in DEMAND_OWNER_EDITABLE and int(support_count) == 0,
         history=_demand_history(db, item.id),
@@ -355,6 +363,35 @@ def withdraw_demand(db: Session, demand_id: str, current: AuthenticatedUser) -> 
     return demand_response(db, item, submitter, current)
 
 
+def set_delivery_feedback(
+    db: Session,
+    demand_id: str,
+    current: AuthenticatedUser,
+    payload: DemandDeliveryFeedbackUpdate,
+) -> DemandResponse:
+    item, submitter = get_visible_demand(db, demand_id, current)
+    if item.user_id != current.user.id:
+        raise HTTPException(status_code=403, detail="仅需求提交人可以反馈交付结果")
+    if item.status != "delivered":
+        raise HTTPException(status_code=409, detail="需求交付后才可以反馈解决情况")
+
+    item.delivery_feedback = payload.resolution
+    item.delivery_feedback_at = _now()
+    item.updated_at = item.delivery_feedback_at
+    db.add(DemandEvent(
+        demand_id=item.id,
+        actor_user_id=current.user.id,
+        actor_role="user",
+        event_type="delivery_feedback",
+        from_status=item.status,
+        to_status=item.status,
+        comment=f"提交人反馈：{DELIVERY_FEEDBACK_LABELS[payload.resolution]}",
+    ))
+    db.commit()
+    db.refresh(item)
+    return demand_response(db, item, submitter, current)
+
+
 def review_demand(
     db: Session,
     demand_id: str,
@@ -375,6 +412,9 @@ def review_demand(
     item.priority = payload.priority
     item.planned_time = payload.planned_time.strip()
     item.handler_user_id = current.user.id
+    if item.status != "delivered":
+        item.delivery_feedback = None
+        item.delivery_feedback_at = None
     item.updated_at = _now()
     db.add(DemandEvent(
         demand_id=item.id,

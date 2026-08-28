@@ -28,6 +28,7 @@ import { PageHeading } from '../components/PageHeading';
 import { ResultWatermark } from '../components/ResultWatermark';
 import type {
   AnalyticsOverview,
+  AnalyticsDemandStatusItem,
   AnalyticsRankingItem,
   AnalyticsSimulationDimensionItem,
   AnalyticsTrendPoint,
@@ -294,6 +295,29 @@ export function UsageAnalyticsPage() {
     { title: '完成成功率', dataIndex: 'success_rate', align: 'right', render: (value: number) => `${value}%` },
   ];
 
+  const demandPipeline = overview?.demand_pipeline;
+  const demandPipelineCards = [
+    { label: '提出需求', value: demandPipeline?.submitted || 0 },
+    { label: '已接纳总数', value: demandPipeline?.accepted || 0 },
+    { label: '接纳待规划', value: demandPipeline?.accepted_unplanned || 0 },
+    { label: '已规划', value: demandPipeline?.planned || 0 },
+    { label: '实现中', value: demandPipeline?.in_progress || 0 },
+    { label: '已交付', value: demandPipeline?.delivered || 0 },
+  ];
+  const demandStatusColumns: TableColumnsType<AnalyticsDemandStatusItem> = [
+    { title: '当前状态', dataIndex: 'label' },
+    { title: '需求数', dataIndex: 'count', align: 'right', width: 140 },
+    {
+      title: '占提出需求比例',
+      dataIndex: 'count',
+      align: 'right',
+      width: 180,
+      render: (value: number) => demandPipeline?.submitted
+        ? `${(value / demandPipeline.submitted * 100).toFixed(1)}%`
+        : '0.0%',
+    },
+  ];
+
   return (
     <div className="page-container usage-analytics-page">
       <PageHeading
@@ -316,6 +340,7 @@ export function UsageAnalyticsPage() {
                 { label: '近 7 天', value: 7 },
                 { label: '近 30 天', value: 30 },
                 { label: '近 90 天', value: 90 },
+                { label: '近半年', value: 180 },
                 { label: '近一年', value: 365 },
               ]}
             />
@@ -359,6 +384,40 @@ export function UsageAnalyticsPage() {
                   </Col>
                 </Row>
               </>
+            ),
+          },
+          {
+            key: 'demands',
+            label: '需求统计',
+            children: (
+              <ResultWatermark className="analytics-demand-watermark">
+                <Alert
+                  className="analytics-demand-definition"
+                  type="info"
+                  showIcon
+                  title="按所选时间范围内提出的需求统计当前推进状态"
+                  description="已接纳总数包含当前处于已采纳、已规划、实现中和已交付的需求。"
+                />
+                <Row gutter={[14, 14]} className="analytics-summary-grid">
+                  {demandPipelineCards.map((item) => (
+                    <Col xs={12} md={8} xl={4} key={item.label}>
+                      <Card className="analytics-stat-card">
+                        <Statistic title={item.label} value={item.value} suffix="条" formatter={(value) => formatCount(Number(value))} />
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+                <Card title="需求状态分布" extra="按当前状态" className="clean-card analytics-panel-card">
+                  <Table<AnalyticsDemandStatusItem>
+                    rowKey="status"
+                    size="small"
+                    columns={demandStatusColumns}
+                    dataSource={demandPipeline?.statuses || []}
+                    pagination={false}
+                    locale={{ emptyText: '当前时间范围内暂无需求' }}
+                  />
+                </Card>
+              </ResultWatermark>
             ),
           },
           {

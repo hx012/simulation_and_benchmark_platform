@@ -102,6 +102,7 @@ def _admin_user_response(user: User) -> AdminUserResponse:
         role="admin" if user.role == "admin" else "normal",
         active=user.active,
         is_team_member=user.is_team_member,
+        is_advanced_user=user.is_advanced_user,
         password_configured=bool(user.password_hash),
         bootstrap_admin=user.employee_id == bootstrap_id,
         last_login_at=user.last_login_at,
@@ -379,7 +380,8 @@ def list_users(
     identity_priority = case(
         (User.role == "admin", 0),
         (User.is_team_member.is_(True), 1),
-        else_=2,
+        (User.is_advanced_user.is_(True), 2),
+        else_=3,
     )
     users = db.scalars(select(User).order_by(identity_priority, User.employee_id)).all()
     return [_admin_user_response(user) for user in users]
@@ -401,5 +403,6 @@ def configure_user(
         request.password,
         request.active,
         request.is_team_member,
+        request.is_advanced_user,
     )
     return _admin_user_response(user)

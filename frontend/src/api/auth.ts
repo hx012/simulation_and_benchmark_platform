@@ -103,6 +103,7 @@ export const authApi = {
     password?: string;
     active: boolean;
     is_team_member?: boolean;
+    is_advanced_user?: boolean;
   }) {
     return apiRequest<AdminUserRecord>(`/api/admin/users/${encodeURIComponent(employeeId)}`, {
       method: 'PUT',

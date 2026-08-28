@@ -20,6 +20,7 @@ from app.collaboration.models import Demand, DemandEvent, DemandVote, FeedbackEn
 from app.collaboration.schemas import (
     DemandAdminUpdate,
     DemandCreate,
+    DemandDeliveryFeedbackUpdate,
     FeedbackAdminUpdate,
     FeedbackCreate,
     TeamAchievementCreate,
@@ -36,6 +37,7 @@ from app.collaboration.service import (
     list_my_feedback,
     review_demand,
     review_feedback,
+    set_delivery_feedback,
     set_vote,
     withdraw_feedback,
 )
@@ -212,6 +214,33 @@ def main() -> None:
             assert vote.support_count == 1 and vote.voted_by_me
             vote = set_vote(db, demand, other_current, False)
             assert vote.support_count == 0 and not vote.voted_by_me
+
+            delivered = review_demand(db, demand.id, admin_current, DemandAdminUpdate(
+                status="delivered",
+                visibility="public",
+                priority="high",
+                conclusion="功能已交付",
+            ))
+            assert delivered.delivery_feedback is None
+            delivery_feedback = set_delivery_feedback(
+                db,
+                demand.id,
+                owner_current,
+                DemandDeliveryFeedbackUpdate(resolution="partially_resolved"),
+            )
+            assert delivery_feedback.delivery_feedback == "partially_resolved"
+            assert delivery_feedback.delivery_feedback_at is not None
+            assert delivery_feedback.history[-1].event_type == "delivery_feedback"
+            try:
+                set_delivery_feedback(
+                    db,
+                    demand.id,
+                    other_current,
+                    DemandDeliveryFeedbackUpdate(resolution="resolved"),
+                )
+                raise AssertionError("only the demand owner may submit delivery feedback")
+            except HTTPException as error:
+                assert error.status_code == 403
 
             achievement = create_achievement(db, owner_current, TeamAchievementCreate(
                 title="调度模型验证",

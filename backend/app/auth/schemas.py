@@ -51,6 +51,7 @@ class CurrentUserResponse(BaseModel):
     account_role: Literal["normal", "admin"]
     auth_mode: Literal["normal", "admin"]
     is_team_member: bool = False
+    is_advanced_user: bool = False
     permissions: list[str]
     resources: list[str]
     resource_permissions: dict[str, list[str]]
@@ -81,7 +82,7 @@ class ProtectedResourceResponse(BaseModel):
     code: str
     name: str
     description: str
-    access_mode: Literal["normal", "permission", "admin", "disabled"]
+    access_mode: Literal["normal", "permission", "advanced", "admin", "disabled"]
     permission_codes: list[str]
     authorized_users: list["ResourceAuthorizedUserResponse"] = Field(default_factory=list)
     system_managed: bool
@@ -95,7 +96,7 @@ class ResourceAuthorizedUserResponse(BaseModel):
 class ProtectedResourceUpdate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: str = Field(default="", max_length=2000)
-    access_mode: Literal["normal", "permission", "admin", "disabled"]
+    access_mode: Literal["normal", "permission", "advanced", "admin", "disabled"]
     permission_codes: list[str] = Field(default_factory=list)
 
 
@@ -105,6 +106,7 @@ class AdminUserResponse(BaseModel):
     role: Literal["normal", "admin"]
     active: bool
     is_team_member: bool = False
+    is_advanced_user: bool = False
     password_configured: bool
     bootstrap_admin: bool = False
     last_login_at: datetime | None
@@ -116,3 +118,4 @@ class AdminUserUpdate(BaseModel):
     password: str | None = Field(default=None, min_length=8, max_length=256)
     active: bool = True
     is_team_member: bool | None = None
+    is_advanced_user: bool | None = None

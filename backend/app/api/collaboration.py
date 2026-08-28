@@ -10,6 +10,7 @@ from app.collaboration.content import community_links, load_feature_releases, lo
 from app.collaboration.schemas import (
     DemandCreate,
     DemandAdminUpdate,
+    DemandDeliveryFeedbackUpdate,
     DemandListResponse,
     DemandResponse,
     DemandUpdate,
@@ -47,6 +48,7 @@ from app.collaboration.service import (
     list_my_feedback,
     review_demand,
     review_feedback,
+    set_delivery_feedback,
     set_vote,
     update_demand,
     withdraw_demand,
@@ -254,6 +256,16 @@ def cancel_demand(
     current: AuthenticatedUser = Depends(require_resource(DEMAND_VIEW_RESOURCE)),
 ) -> DemandResponse:
     return withdraw_demand(db, demand_id, current)
+
+
+@router.put("/demands/{demand_id}/delivery-feedback", response_model=DemandResponse)
+def update_demand_delivery_feedback(
+    demand_id: str,
+    payload: DemandDeliveryFeedbackUpdate,
+    db: Session = Depends(get_db),
+    current: AuthenticatedUser = Depends(require_resource(DEMAND_VIEW_RESOURCE)),
+) -> DemandResponse:
+    return set_delivery_feedback(db, demand_id, current, payload)
 
 
 @router.get("/admin/demands", response_model=DemandListResponse)
