@@ -123,6 +123,7 @@ class SimulationRerunRequest(BaseModel):
 class SimulationLogResponse(BaseModel):
     task_id: str
     available: bool
+    file_size: int
     offset: int
     next_offset: int
     eof: bool

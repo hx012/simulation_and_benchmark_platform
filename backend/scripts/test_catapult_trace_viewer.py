@@ -21,6 +21,31 @@ from app.simulation.task_io_service import SimulationTaskIOService  # noqa: E402
 
 
 class CatapultTraceViewerTest(unittest.TestCase):
+    def test_log_tail_reads_only_the_requested_window(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            task_root = Path(temp_dir).resolve()
+            workspace = task_root / "SIM-LOG-TEST"
+            log_path = workspace / "logs" / "davinci_sim.log"
+            log_path.parent.mkdir(parents=True)
+            content = "".join(f"line-{index:04d}\n" for index in range(1000))
+            log_path.write_text(content, encoding="utf-8")
+
+            settings = Settings(task_root=task_root, sim_log_max_chunk_bytes=1024)
+            task = SimpleNamespace(workspace_path=str(workspace))
+            chunk = SimulationTaskIOService(settings).read_log(
+                task,  # type: ignore[arg-type]
+                offset=0,
+                limit_bytes=256,
+                tail=True,
+            )
+
+            encoded = log_path.read_bytes()
+            self.assertEqual(chunk.file_size, len(encoded))
+            self.assertEqual(chunk.offset, len(encoded) - 256)
+            self.assertEqual(chunk.next_offset, len(encoded))
+            self.assertTrue(chunk.eof)
+            self.assertEqual(chunk.text.encode("utf-8"), encoded[-256:])
+
     def test_export_and_locate_viewer(self) -> None:
         catapult_home = PROJECT_ROOT / "tools" / "catapult"
         if not catapult_home.is_dir():

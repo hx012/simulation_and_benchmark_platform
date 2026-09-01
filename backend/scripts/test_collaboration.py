@@ -165,7 +165,8 @@ def main() -> None:
             owner = User(employee_id="owner", display_name="Owner", role="normal", is_team_member=True)
             other = User(employee_id="other", display_name="Other", role="normal")
             admin = User(employee_id="admin", display_name="Admin", role="admin")
-            db.add_all([owner, other, admin])
+            hybrid = User(employee_id="hybrid", display_name="Hybrid", role="admin", is_team_member=True)
+            db.add_all([owner, other, admin, hybrid])
             db.commit()
 
             owner_current = current(owner)
@@ -295,6 +296,38 @@ def main() -> None:
                 raise AssertionError("admin mode should not create member achievements")
             except HTTPException as error:
                 assert error.status_code == 403
+            hybrid_current = current(hybrid, "admin")
+            hybrid_achievement = create_achievement(db, hybrid_current, TeamAchievementCreate(
+                title="管理员团队成员成果",
+                category="平台建设",
+                summary="验证管理员模式保留团队成员的成果维护权限",
+                completion_date=date(2026, 8, 21),
+            ))
+            assert hybrid_achievement.can_edit is True
+            assert hybrid_achievement.can_delete is True
+            assert hybrid_achievement.can_score is True
+            hybrid_achievement = update_achievement(
+                db,
+                hybrid_current,
+                hybrid_achievement.achievement_id,
+                TeamAchievementUpdate(
+                    title="管理员团队成员成果（更新）",
+                    category="平台建设",
+                    summary="管理员模式可以维护自己的成果",
+                    completion_date=date(2026, 8, 21),
+                ),
+            )
+            assert hybrid_achievement.title.endswith("（更新）")
+            hybrid_achievement = score_achievement(
+                db,
+                hybrid_current,
+                hybrid_achievement.achievement_id,
+                TeamAchievementScoreUpdate(
+                    score=90,
+                    evaluation="暂不限制管理员对自己的成果进行评分和评价。",
+                ),
+            )
+            assert hybrid_achievement.score == 90
             event_names = set(db.scalars(select(AnalyticsEvent.event_name)).all())
             assert {
                 "team.achievement_create",
