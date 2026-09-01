@@ -38,6 +38,6 @@ GET  /api/simulation/tasks/{task_id}/trace
 GET  /api/simulation/tasks/{task_id}/trace/viewer
 ```
 
-仓库已经提供 `backend/config/simulation_templates/v310/default/single_chip/` 本地界面样例。需要替换为真实输入时，使用 Backend 的 `scripts/seed_simulation_sample.py` 按 Version / Variant / Mode 安装。
+仓库已经在 `backend/config/simulation_templates/default/` 下按 `single_chip` 和 `multi_chip` 提供统一界面样例，所有 Simulator Version 与 Chip Variant 共用。需要替换真实输入时，使用 Backend 的 `scripts/seed_simulation_sample.py` 按 Simulation Mode 安装。
 
 WSL 开发必须使用 Linux 版 Node.js。`command -v node` 和 `command -v npm` 不应指向 `/mnt/c/Program Files/nodejs`。

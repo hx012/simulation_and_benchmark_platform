@@ -8,7 +8,7 @@ import hmac
 import secrets
 
 from fastapi import Cookie, Depends, HTTPException
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app.auth.constants import (
@@ -294,7 +294,20 @@ def get_user_permissions(db: Session, current: AuthenticatedUser | User) -> set[
             UserPermissionGrant.permission_code.in_(active_codes),
         )
     ).all()
-    return {NORMAL_PERMISSION, *grants}
+    permissions = {NORMAL_PERMISSION, *grants}
+    if user.is_team_member:
+        permissions.update(db.scalars(
+            select(ResourcePermissionSet.permission_code)
+            .join(
+                ProtectedResource,
+                ProtectedResource.code == ResourcePermissionSet.resource_code,
+            )
+            .where(
+                ProtectedResource.access_mode.in_(("normal", "permission")),
+                ResourcePermissionSet.permission_code.in_(active_codes),
+            )
+        ).all())
+    return permissions
 
 
 def get_user_requests(db: Session, user: User) -> list[PermissionRequest]:
@@ -330,13 +343,23 @@ def current_user_response(db: Session, current: AuthenticatedUser) -> CurrentUse
             ResourcePermissionSet.resource_code == resource.code
         )).all())
         resource_permissions[resource.code] = required
-        allowed = resource.access_mode != "disabled" and (current.is_admin_mode or resource.access_mode == "normal")
-        if resource.access_mode == "permission":
-            allowed = bool(required) and set(required).issubset(permissions)
+        team_business_access = current.user.is_team_member and resource.access_mode in {
+            "normal", "permission"
+        }
+        if resource.access_mode == "disabled":
+            allowed = False
+        elif resource.access_mode == "advanced":
+            allowed = (
+                current.user.is_advanced_user
+                or current.user.is_team_member
+                or current.is_admin_mode
+            )
         elif resource.access_mode == "admin":
             allowed = current.is_admin_mode
-        elif resource.access_mode == "disabled":
-            allowed = False
+        elif current.is_admin_mode or team_business_access or resource.access_mode == "normal":
+            allowed = True
+        else:
+            allowed = bool(required) and set(required).issubset(permissions)
         if allowed:
             accessible_resources.append(resource.code)
     return CurrentUserResponse(
@@ -345,6 +368,8 @@ def current_user_response(db: Session, current: AuthenticatedUser) -> CurrentUse
         role=active_role,
         account_role="admin" if current.user.role == "admin" else "normal",
         auth_mode="admin" if current.is_admin_mode else "normal",
+        is_team_member=current.user.is_team_member,
+        is_advanced_user=current.user.is_advanced_user,
         permissions=sorted(permissions),
         resources=accessible_resources,
         resource_permissions=resource_permissions,
@@ -401,7 +426,17 @@ def require_resource(resource_code: str):
             raise HTTPException(status_code=403, detail="资源尚未配置，默认拒绝访问")
         if resource.access_mode == "disabled":
             raise HTTPException(status_code=403, detail="该模块当前未开放")
+        if resource.access_mode == "advanced":
+            if (
+                current.user.is_advanced_user
+                or current.user.is_team_member
+                or current.is_admin_mode
+            ):
+                return current
+            raise HTTPException(status_code=403, detail="需要高级用户身份")
         if current.is_admin_mode:
+            return current
+        if current.user.is_team_member and resource.access_mode in {"normal", "permission"}:
             return current
         if resource.access_mode == "normal":
             return current
@@ -425,6 +460,14 @@ def require_admin(current: AuthenticatedUser = Depends(get_current_user)) -> Aut
     if not current.is_admin_mode:
         raise HTTPException(status_code=403, detail="请使用管理员登录")
     return current
+
+
+def require_team_member_or_admin(
+    current: AuthenticatedUser = Depends(get_current_user),
+) -> AuthenticatedUser:
+    if current.is_admin_mode or current.user.is_team_member:
+        return current
+    raise HTTPException(status_code=403, detail="只有团队成员或管理员可以查看使用概览")
 
 
 def create_permission_request(db: Session, current: AuthenticatedUser, permission_code: str, reason: str) -> PermissionRequest:
@@ -478,36 +521,90 @@ def review_permission_request(db: Session, reviewer: AuthenticatedUser, request_
 def update_resource_policy(db: Session, resource: ProtectedResource, access_mode: str, permission_codes: list[str]) -> None:
     codes = list(dict.fromkeys(permission_codes))
     if access_mode == "permission" and not codes:
-        raise HTTPException(status_code=400, detail="权限访问模式至少需要一个 Permission Set")
+        codes = list(db.scalars(select(ResourcePermissionSet.permission_code).where(
+            ResourcePermissionSet.resource_code == resource.code
+        )).all())
+    if access_mode == "permission" and not codes:
+        generated_code = f"resource_{hashlib.sha1(resource.code.encode()).hexdigest()[:16]}"
+        permission = db.get(PermissionSet, generated_code)
+        if permission is None:
+            permission = PermissionSet(
+                code=generated_code,
+                name=f"{resource.name}访问权限",
+                description=resource.description,
+                requestable=True,
+                active=True,
+                system_managed=False,
+            )
+            db.add(permission)
+            db.flush()
+        codes = [generated_code]
     existing = set(db.scalars(select(PermissionSet.code).where(
         PermissionSet.code.in_(codes), PermissionSet.active.is_(True)
     )).all()) if codes else set()
     if existing != set(codes):
         raise HTTPException(status_code=400, detail="包含不存在或已停用的 Permission Set")
-    db.execute(delete(ResourcePermissionSet).where(ResourcePermissionSet.resource_code == resource.code))
     if access_mode == "permission":
+        db.execute(delete(ResourcePermissionSet).where(ResourcePermissionSet.resource_code == resource.code))
         for code in codes:
             db.add(ResourcePermissionSet(resource_code=resource.code, permission_code=code))
+        permissions = db.scalars(select(PermissionSet).where(PermissionSet.code.in_(codes))).all()
+        for permission in permissions:
+            permission.requestable = True
+            permission.active = True
+            permission.name = f"{resource.name}访问权限"
+            permission.description = resource.description
+    else:
+        retained_codes = db.scalars(select(ResourcePermissionSet.permission_code).where(
+            ResourcePermissionSet.resource_code == resource.code
+        )).all()
+        for code in retained_codes:
+            used_elsewhere = db.scalar(select(func.count()).select_from(ResourcePermissionSet).join(
+                ProtectedResource,
+                ProtectedResource.code == ResourcePermissionSet.resource_code,
+            ).where(
+                ResourcePermissionSet.permission_code == code,
+                ResourcePermissionSet.resource_code != resource.code,
+                ProtectedResource.access_mode == "permission",
+            )) or 0
+            permission = db.get(PermissionSet, code)
+            if permission is not None and used_elsewhere == 0 and code != NORMAL_PERMISSION:
+                permission.requestable = False
     resource.access_mode = access_mode
     db.commit()
 
 
-def update_admin_user(db: Session, employee_id: str, role: str, display_name: str | None, password: str | None, active: bool) -> User:
+def update_admin_user(
+    db: Session,
+    current: AuthenticatedUser,
+    employee_id: str,
+    role: str,
+    display_name: str | None,
+    password: str | None,
+    active: bool,
+    is_team_member: bool | None = None,
+    is_advanced_user: bool | None = None,
+) -> User:
     normalized = employee_id.strip()
     bootstrap_id = get_settings().platform_bootstrap_admin_id.strip()
     if normalized == bootstrap_id and (role != "admin" or not active):
         raise HTTPException(status_code=409, detail="启动恢复管理员不能被降级或停用")
+    if normalized == current.user.employee_id and not active:
+        raise HTTPException(status_code=409, detail="不能屏蔽当前登录账号")
+    if normalized == current.user.employee_id and role != "admin":
+        raise HTTPException(status_code=409, detail="不能移除当前登录账号的管理员身份")
     user = db.scalar(select(User).where(User.employee_id == normalized))
     if user is None:
         user = User(employee_id=normalized, display_name=display_name or normalized)
         db.add(user)
+        db.flush()
     if role == "admin" and not (password or user.password_hash):
         raise HTTPException(status_code=400, detail="管理员必须配置密码")
     if password:
         validate_admin_password(password)
         user.password_hash = hash_password(password)
         user.password_changed_at = _utcnow()
-    if user.role == "admin" and (role != "admin" or not active):
+    if user.role == "admin" and user.active and (role != "admin" or not active):
         admin_count = db.scalar(select(func.count()).select_from(User).where(
             User.role == "admin", User.active.is_(True)
         )) or 0
@@ -515,8 +612,18 @@ def update_admin_user(db: Session, employee_id: str, role: str, display_name: st
             raise HTTPException(status_code=409, detail="不能停用或移除最后一个管理员")
     user.role = role
     user.active = active
+    if is_team_member is not None:
+        user.is_team_member = is_team_member
+    if is_advanced_user is not None:
+        user.is_advanced_user = is_advanced_user
     if display_name:
         user.display_name = display_name.strip()
+    if not active:
+        db.execute(
+            update(UserSession)
+            .where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None))
+            .values(revoked_at=_utcnow())
+        )
     db.commit()
     db.refresh(user)
     return user

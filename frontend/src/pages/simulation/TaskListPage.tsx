@@ -59,6 +59,7 @@ export function TaskListPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const ownerId = user?.userId || import.meta.env.VITE_DEFAULT_OWNER_ID || 'admin';
+  const isAdmin = user?.authMode === 'admin';
   const [filter, setFilter] = useState<FilterKey>('ALL');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -74,13 +75,13 @@ export function TaskListPage() {
       ? (filter as TaskStatus)
       : undefined;
     return {
-      ownerId,
+      ownerId: isAdmin ? undefined : ownerId,
       status,
       archived: filter === 'ARCHIVED' ? true : false,
       page,
       pageSize,
     };
-  }, [filter, ownerId, page, pageSize]);
+  }, [filter, isAdmin, ownerId, page, pageSize]);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -177,6 +178,12 @@ export function TaskListPage() {
         </div>
       ),
     },
+    ...(isAdmin ? [{
+      title: '提交人',
+      dataIndex: 'owner_id',
+      width: 150,
+      render: (value: string) => <span>{value}</span>,
+    }] : []),
     {
       title: '版本',
       dataIndex: 'simulator_version',
@@ -205,7 +212,8 @@ export function TaskListPage() {
       width: 180,
       fixed: 'right',
       render: (_, task) => {
-        const menuItems = [
+        const ownsTask = task.owner_id === ownerId;
+        const menuItems = ownsTask ? [
           task.status === 'QUEUED'
             ? { key: 'cancel', label: '取消任务', icon: <DeleteOutlined /> }
             : null,
@@ -224,7 +232,7 @@ export function TaskListPage() {
           isTerminalStatus(task.status)
             ? { key: 'delete', label: '删除任务', icon: <DeleteOutlined />, danger: true }
             : null,
-        ].filter(Boolean) as { key: string; label: string; icon?: ReactNode; danger?: boolean }[];
+        ].filter(Boolean) as { key: string; label: string; icon?: ReactNode; danger?: boolean }[] : [];
 
         return (
           <Space>
@@ -270,14 +278,16 @@ export function TaskListPage() {
   ];
 
   const quotaFull = quota ? !quota.can_create : false;
-  const subtitle = quota
+  const subtitle = isAdmin
+    ? `管理员模式 · 共 ${total} 个任务 · 列表每 5 秒自动刷新`
+    : quota
     ? `已保留 ${quota.retained_count} / ${quota.limit} 个任务 · 列表每 5 秒自动刷新`
     : '列表每 5 秒自动刷新';
 
   return (
     <div className="page-container">
       <PageHeading
-        title="我的任务"
+        title={isAdmin ? '全部任务' : '我的任务'}
         subtitle={subtitle}
         actions={(
           <Tooltip title={quotaFull ? `已达到任务保留上限 ${quota?.limit} 个，请先删除不再需要的任务` : undefined}>
@@ -339,8 +349,10 @@ export function TaskListPage() {
             selectedRowKeys: selectedTaskIds,
             onChange: (keys) => setSelectedTaskIds(keys.map(String)),
             getCheckboxProps: (task) => ({
-              disabled: !isTerminalStatus(task.status),
-              title: isTerminalStatus(task.status) ? undefined : '运行中或排队中的任务不能直接删除',
+              disabled: task.owner_id !== ownerId || !isTerminalStatus(task.status),
+              title: task.owner_id !== ownerId
+                ? '管理员查看他人任务时仅支持只读访问'
+                : isTerminalStatus(task.status) ? undefined : '运行中或排队中的任务不能直接删除',
             }),
           }}
           scroll={{ x: 1120 }}

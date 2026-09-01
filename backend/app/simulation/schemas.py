@@ -30,6 +30,7 @@ class SimulatorCapabilityResponse(BaseModel):
 
 
 class SimulationCapabilitiesResponse(BaseModel):
+    mskpp_guide_url: str = ""
     simulators: list[SimulatorCapabilityResponse]
 
 
@@ -122,6 +123,7 @@ class SimulationRerunRequest(BaseModel):
 class SimulationLogResponse(BaseModel):
     task_id: str
     available: bool
+    file_size: int
     offset: int
     next_offset: int
     eof: bool
@@ -167,6 +169,9 @@ class UploadSessionCreateRequest(BaseModel):
         min_length=1,
         max_length=128,
     )
+    simulator_version: str = Field(min_length=1, max_length=64)
+    chip_variant: str | None = Field(default="default", max_length=64)
+    simulation_mode: SimulationMode = SimulationMode.SINGLE_CHIP
 
 
 class UploadSessionResponse(BaseModel):

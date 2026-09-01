@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Button,
@@ -12,10 +12,13 @@ import {
   Spin,
   Steps,
   Tabs,
+  Tooltip,
 } from 'antd';
 import {
+  BookOutlined,
   CheckCircleOutlined,
   CopyOutlined,
+  DownloadOutlined,
   RocketOutlined,
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
@@ -38,7 +41,7 @@ interface BasicFormValues {
   taskName: string;
 }
 
-type PackageSource = '未准备' | '样例' | '自定义上传';
+type PackageSource = '未准备' | '系统模板' | '样例' | '自定义上传';
 
 const validationItems = [
   'Chip Config / Workload 目录存在且包含 YAML / JSON 配置',
@@ -56,10 +59,12 @@ export function CreateTaskPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const ownerId = user?.userId || import.meta.env.VITE_DEFAULT_OWNER_ID || 'admin';
+  const canManageChipConfig = Boolean(user?.isAdvancedUser || user?.authMode === 'admin');
   const [form] = Form.useForm<BasicFormValues>();
   const [quota, setQuota] = useState<SimulationTaskQuotaResponse | null>(null);
 
   const [simulators, setSimulators] = useState<SimulatorCapability[]>([]);
+  const [mskppGuideUrl, setMskppGuideUrl] = useState('');
   const [capabilitiesLoading, setCapabilitiesLoading] = useState(true);
   const [capabilitiesError, setCapabilitiesError] = useState<string | null>(null);
   const [simulatorKey, setSimulatorKey] = useState<string | null>(null);
@@ -75,9 +80,14 @@ export function CreateTaskPage() {
   const [workloadSource, setWorkloadSource] = useState<PackageSource>('未准备');
   const [chipRefreshToken, setChipRefreshToken] = useState(0);
   const [workloadRefreshToken, setWorkloadRefreshToken] = useState(0);
+  const [chipTemplatePreparing, setChipTemplatePreparing] = useState(false);
+  const [chipTemplateError, setChipTemplateError] = useState<string | null>(null);
   const [sampleLoading, setSampleLoading] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(false);
   const [validating, setValidating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const uploadSessionCreationRef = useRef<Promise<string> | null>(null);
+  const uploadSessionGenerationRef = useRef(0);
 
   const selectedSimulator = useMemo(
     () => simulators.find((item) => item.key === simulatorKey) || null,
@@ -134,6 +144,7 @@ export function CreateTaskPage() {
       .then((response) => {
         if (cancelled) return;
         setSimulators(response.simulators);
+        setMskppGuideUrl(response.mskpp_guide_url);
         const firstSimulator = response.simulators[0];
         const firstVariant = firstSimulator?.variants[0];
         const firstMode = firstVariant?.modes[0];
@@ -164,14 +175,51 @@ export function CreateTaskPage() {
   }, [validation]);
 
   async function ensureUploadSession(): Promise<string> {
-    if (quota && !quota.can_create) {
-      throw new Error(`已达到任务保留上限 ${quota.limit} 个，请先删除不再需要的任务`);
-    }
     if (uploadSessionId) return uploadSessionId;
-    const session = await simulationApi.createUploadSession(ownerId);
-    setUploadSessionId(session.upload_session_id);
-    return session.upload_session_id;
+    if (uploadSessionCreationRef.current) return uploadSessionCreationRef.current;
+    if (!selectedSimulator || !selectedVariant || !selectedMode) {
+      throw new Error('请选择完整的仿真配置');
+    }
+    const generation = uploadSessionGenerationRef.current;
+    const creation = simulationApi.createUploadSession(ownerId, {
+      simulator_version: selectedSimulator.key,
+      chip_variant: selectedVariant.key,
+      simulation_mode: selectedMode.key,
+    }).then((session) => {
+      if (uploadSessionGenerationRef.current !== generation) {
+        throw new Error('仿真配置已切换，正在重新加载默认模板');
+      }
+      setUploadSessionId(session.upload_session_id);
+      setChipSource('系统模板');
+      setChipRefreshToken((value) => value + 1);
+      return session.upload_session_id;
+    });
+    uploadSessionCreationRef.current = creation;
+    try {
+      return await creation;
+    } finally {
+      if (uploadSessionCreationRef.current === creation) {
+        uploadSessionCreationRef.current = null;
+      }
+    }
   }
+
+  useEffect(() => {
+    if (capabilitiesLoading || !hasCapabilitySelection || uploadSessionId) return;
+    let cancelled = false;
+    setChipTemplatePreparing(true);
+    setChipTemplateError(null);
+    void ensureUploadSession()
+      .catch((error) => {
+        if (!cancelled) setChipTemplateError(error instanceof Error ? error.message : String(error));
+      })
+      .finally(() => {
+        if (!cancelled) setChipTemplatePreparing(false);
+      });
+    return () => { cancelled = true; };
+    // Selection keys intentionally trigger loading the default template for the new profile.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [capabilitiesLoading, hasCapabilitySelection, modeKey, simulatorKey, uploadSessionId, variantKey]);
 
   function invalidateValidation() {
     if (hasValidatedOnce) setValidationDirty(true);
@@ -179,9 +227,13 @@ export function CreateTaskPage() {
   }
 
   function resetPreparedConfiguration() {
+    uploadSessionGenerationRef.current += 1;
+    uploadSessionCreationRef.current = null;
     setUploadSessionId(null);
     setChipSource('未准备');
     setWorkloadSource('未准备');
+    setChipTemplatePreparing(false);
+    setChipTemplateError(null);
     setValidation(null);
     setHasValidatedOnce(false);
     setValidationDirty(false);
@@ -191,7 +243,11 @@ export function CreateTaskPage() {
   }
 
   function withCapabilityChange(apply: () => void) {
-    if (!uploadSessionId && !hasConfiguration) {
+    const hasUserPreparedConfiguration = workloadSource !== '未准备'
+      || chipSource === '自定义上传'
+      || hasValidatedOnce;
+    if (!hasUserPreparedConfiguration) {
+      resetPreparedConfiguration();
       apply();
       return;
     }
@@ -263,6 +319,31 @@ export function CreateTaskPage() {
     }
   }
 
+  async function handleDownloadTemplate() {
+    if (!selectedSimulator || !selectedVariant || !selectedMode) {
+      message.warning('请选择完整的仿真配置');
+      return;
+    }
+    setTemplateLoading(true);
+    try {
+      await simulationApi.downloadConfigTemplate({
+        simulator_version: selectedSimulator.key,
+        chip_variant: selectedVariant.key,
+        simulation_mode: selectedMode.key,
+      });
+      message.success('Workload 模板 ZIP 已开始下载');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : String(error));
+    } finally {
+      setTemplateLoading(false);
+    }
+  }
+
+  function handleOpenGuide() {
+    if (!mskppGuideUrl) return;
+    window.open(mskppGuideUrl, '_blank', 'noopener,noreferrer');
+  }
+
   async function uploadPackage(
     endpoint: 'chip-config' | 'workload',
     entries: LocalFileEntry[],
@@ -279,6 +360,23 @@ export function CreateTaskPage() {
     invalidateValidation();
   }
 
+  function handleChipChanged() {
+    setChipSource('自定义上传');
+    invalidateValidation();
+  }
+
+  async function handleRetryChipTemplate() {
+    setChipTemplatePreparing(true);
+    setChipTemplateError(null);
+    try {
+      await ensureUploadSession();
+    } catch (error) {
+      setChipTemplateError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setChipTemplatePreparing(false);
+    }
+  }
+
   async function handleValidate() {
     try {
       await form.validateFields();
@@ -287,7 +385,7 @@ export function CreateTaskPage() {
         return;
       }
       if (!uploadSessionId || !hasConfiguration) {
-        message.warning('请先载入当前样例，或分别上传 Chip Config 与 Workload');
+        message.warning('请先载入配置样例，或分别上传 Chip Config 与 Workload');
         return;
       }
 
@@ -365,31 +463,46 @@ export function CreateTaskPage() {
 
   const configTabs = [
     {
-      key: 'chip_config',
-      label: 'Chip Config',
-      children: (
-        <RemoteBundleEditor
-          title="Chip Config"
-          packageType="chip_config"
-          uploadSessionId={uploadSessionId}
-          refreshToken={chipRefreshToken}
-          onUpload={(entries) => uploadPackage('chip-config', entries)}
-          onChanged={invalidateValidation}
-        />
-      ),
-    },
-    {
       key: 'workload',
-      label: 'Workload',
+      label: 'Workload Config',
       children: (
         <RemoteBundleEditor
-          title="Workload"
+          title="Workload Config"
           packageType="workload"
           uploadSessionId={uploadSessionId}
           refreshToken={workloadRefreshToken}
           onUpload={(entries) => uploadPackage('workload', entries)}
           onChanged={invalidateValidation}
         />
+      ),
+    },
+    {
+      key: 'chip_config',
+      label: 'Chip Config',
+      children: (
+        <>
+          {chipTemplateError ? (
+            <Alert
+              className="chip-template-load-alert"
+              type="error"
+              showIcon
+              title="默认 Chip Config 模板加载失败"
+              description={chipTemplateError}
+              action={<Button size="small" onClick={() => void handleRetryChipTemplate()}>重新加载</Button>}
+            />
+          ) : null}
+          <RemoteBundleEditor
+            title="Chip Config"
+            packageType="chip_config"
+            uploadSessionId={uploadSessionId}
+            refreshToken={chipRefreshToken}
+            onUpload={(entries) => uploadPackage('chip-config', entries)}
+            onChanged={handleChipChanged}
+            readOnly={!canManageChipConfig}
+            allowUpload={user?.authMode === 'admin'}
+            preparing={chipTemplatePreparing}
+          />
+        </>
       ),
     },
   ];
@@ -479,21 +592,44 @@ export function CreateTaskPage() {
       <section className="create-major-section create-major-config">
         <div className="create-major-head">
           <h2>配置</h2>
-          <Button
-            className="sample-action-button"
-            icon={<CopyOutlined />}
-            loading={sampleLoading}
-            disabled={!hasCapabilitySelection || capabilitiesLoading || quotaFull}
-            onClick={() => void handleApplySample()}
-          >
-            载入当前样例
-          </Button>
+          <Space wrap>
+            <Tooltip title={mskppGuideUrl ? undefined : '请在 simulator_profiles.yml 中配置 mskpp_guide_url'}>
+              <span>
+                <Button
+                  className="sample-action-button"
+                  icon={<BookOutlined />}
+                  disabled={!mskppGuideUrl}
+                  onClick={handleOpenGuide}
+                >
+                  MSKPP 使用指南
+                </Button>
+              </span>
+            </Tooltip>
+            <Button
+              className="sample-action-button"
+              icon={<DownloadOutlined />}
+              loading={templateLoading}
+              disabled={!hasCapabilitySelection || capabilitiesLoading}
+              onClick={() => void handleDownloadTemplate()}
+            >
+              下载 Workload 模板
+            </Button>
+            <Button
+              className="sample-action-button"
+              icon={<CopyOutlined />}
+              loading={sampleLoading}
+              disabled={!hasCapabilitySelection || capabilitiesLoading || quotaFull}
+              onClick={() => void handleApplySample()}
+            >
+              载入配置样例
+            </Button>
+          </Space>
         </div>
 
         <Tabs
           className="config-package-tabs"
           type="card"
-          defaultActiveKey="chip_config"
+          defaultActiveKey="workload"
           items={configTabs}
         />
       </section>

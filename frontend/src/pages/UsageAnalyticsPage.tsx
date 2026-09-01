@@ -10,7 +10,7 @@ import {
   Input,
   message,
   Row,
-  Segmented,
+  Select,
   Space,
   Skeleton,
   Statistic,
@@ -23,9 +23,12 @@ import {
 import type { TableColumnsType, TableProps } from 'antd';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { analyticsApi } from '../api/analytics';
+import { useAuth } from '../auth/AuthContext';
 import { PageHeading } from '../components/PageHeading';
+import { ResultWatermark } from '../components/ResultWatermark';
 import type {
   AnalyticsOverview,
+  AnalyticsDemandStatusItem,
   AnalyticsRankingItem,
   AnalyticsSimulationDimensionItem,
   AnalyticsTrendPoint,
@@ -141,6 +144,8 @@ function RankingTable({ data, kind }: { data: AnalyticsRankingItem[]; kind: 'pag
 }
 
 export function UsageAnalyticsPage() {
+  const { user } = useAuth();
+  const canViewUserDetails = user?.authMode === 'admin';
   const [days, setDays] = useState(30);
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(true);
@@ -173,6 +178,12 @@ export function UsageAnalyticsPage() {
   }, [days]);
 
   const loadUsers = useCallback(async (silent = false) => {
+    if (!canViewUserDetails) {
+      setUsers([]);
+      setUserTotal(0);
+      setUsersLoading(false);
+      return;
+    }
     if (!silent) setUsersLoading(true);
     try {
       const response = await analyticsApi.listUsers({
@@ -190,14 +201,14 @@ export function UsageAnalyticsPage() {
     } finally {
       if (!silent) setUsersLoading(false);
     }
-  }, [days, sortBy, sortOrder, userPage, userPageSize, userSearch]);
+  }, [canViewUserDetails, days, sortBy, sortOrder, userPage, userPageSize, userSearch]);
 
   useEffect(() => { void loadOverview(); }, [loadOverview]);
-  useEffect(() => { void loadUsers(); }, [loadUsers]);
+  useEffect(() => { if (canViewUserDetails) void loadUsers(); }, [canViewUserDetails, loadUsers]);
 
   const refreshAll = useCallback(async (silent = false) => {
-    await Promise.all([loadOverview(silent), loadUsers(silent)]);
-  }, [loadOverview, loadUsers]);
+    await Promise.all(canViewUserDetails ? [loadOverview(silent), loadUsers(silent)] : [loadOverview(silent)]);
+  }, [canViewUserDetails, loadOverview, loadUsers]);
 
   useEffect(() => {
     const refreshWhenVisible = () => {
@@ -284,20 +295,55 @@ export function UsageAnalyticsPage() {
     { title: '完成成功率', dataIndex: 'success_rate', align: 'right', render: (value: number) => `${value}%` },
   ];
 
+  const demandPipeline = overview?.demand_pipeline;
+  const demandPipelineCards = [
+    { label: '提出需求', value: demandPipeline?.submitted || 0 },
+    { label: '已接纳总数', value: demandPipeline?.accepted || 0 },
+    { label: '接纳待规划', value: demandPipeline?.accepted_unplanned || 0 },
+    { label: '已规划', value: demandPipeline?.planned || 0 },
+    { label: '实现中', value: demandPipeline?.in_progress || 0 },
+    { label: '已交付', value: demandPipeline?.delivered || 0 },
+  ];
+  const demandStatusColumns: TableColumnsType<AnalyticsDemandStatusItem> = [
+    { title: '当前状态', dataIndex: 'label' },
+    { title: '需求数', dataIndex: 'count', align: 'right', width: 140 },
+    {
+      title: '占提出需求比例',
+      dataIndex: 'count',
+      align: 'right',
+      width: 180,
+      render: (value: number) => demandPipeline?.submitted
+        ? `${(value / demandPipeline.submitted * 100).toFixed(1)}%`
+        : '0.0%',
+    },
+  ];
+
   return (
     <div className="page-container usage-analytics-page">
       <PageHeading
         title="平台使用分析"
-        subtitle="按真实访问和业务行为识别重点用户、芯片与 Benchmark 需求"
+        subtitle={canViewUserDetails ? '查看平台汇总趋势及用户行为明细' : '仅展示匿名汇总趋势，不包含工号和个人行为明细'}
         actions={(
           <Space wrap className="analytics-refresh-actions">
             <Typography.Text type="secondary">
               {lastUpdatedAt ? `数据更新于 ${lastUpdatedAt.toLocaleTimeString('zh-CN', { hour12: false })}` : '正在加载数据'}
             </Typography.Text>
-            <Button icon={<ReloadOutlined />} loading={overviewLoading || usersLoading} onClick={() => void refreshAll()}>
+            <Button icon={<ReloadOutlined />} loading={overviewLoading || (canViewUserDetails && usersLoading)} onClick={() => void refreshAll()}>
               立即刷新
             </Button>
-            <Segmented<number> value={days} onChange={(value) => { setDays(value); setUserPage(1); }} options={[{ label: '近 7 天', value: 7 }, { label: '近 30 天', value: 30 }, { label: '近 90 天', value: 90 }]} />
+            <Select<number>
+              aria-label="统计时间范围"
+              value={days}
+              style={{ width: 128 }}
+              onChange={(value) => { setDays(value); setUserPage(1); }}
+              options={[
+                { label: '近 7 天', value: 7 },
+                { label: '近 30 天', value: 30 },
+                { label: '近 90 天', value: 90 },
+                { label: '近半年', value: 180 },
+                { label: '近一年', value: 365 },
+              ]}
+            />
           </Space>
         )}
       />
@@ -341,6 +387,40 @@ export function UsageAnalyticsPage() {
             ),
           },
           {
+            key: 'demands',
+            label: '需求统计',
+            children: (
+              <ResultWatermark className="analytics-demand-watermark">
+                <Alert
+                  className="analytics-demand-definition"
+                  type="info"
+                  showIcon
+                  title="按所选时间范围内提出的需求统计当前推进状态"
+                  description="已接纳总数包含当前处于已采纳、已规划、实现中和已交付的需求。"
+                />
+                <Row gutter={[14, 14]} className="analytics-summary-grid">
+                  {demandPipelineCards.map((item) => (
+                    <Col xs={12} md={8} xl={4} key={item.label}>
+                      <Card className="analytics-stat-card">
+                        <Statistic title={item.label} value={item.value} suffix="条" formatter={(value) => formatCount(Number(value))} />
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+                <Card title="需求状态分布" extra="按当前状态" className="clean-card analytics-panel-card">
+                  <Table<AnalyticsDemandStatusItem>
+                    rowKey="status"
+                    size="small"
+                    columns={demandStatusColumns}
+                    dataSource={demandPipeline?.statuses || []}
+                    pagination={false}
+                    locale={{ emptyText: '当前时间范围内暂无需求' }}
+                  />
+                </Card>
+              </ResultWatermark>
+            ),
+          },
+          {
             key: 'dimensions',
             label: '芯片与 Benchmark',
             children: (
@@ -351,7 +431,7 @@ export function UsageAnalyticsPage() {
               </Row>
             ),
           },
-          {
+          ...(canViewUserDetails ? [{
             key: 'users',
             label: '用户分析',
             children: (
@@ -382,36 +462,38 @@ export function UsageAnalyticsPage() {
                 />
               </Card>
             ),
-          },
+          }] : []),
         ]}
       />
 
-      <Drawer title="用户行为详情" size={760} open={detailOpen} onClose={() => setDetailOpen(false)}>
-        {detailLoading ? <Skeleton active /> : userDetail ? (
-          <div className="analytics-user-detail">
-            <Descriptions column={2} size="small" bordered>
-              <Descriptions.Item label="用户">{userDetail.user.display_name}（{userDetail.user.user_id}）</Descriptions.Item>
-              <Descriptions.Item label="最近活跃">{userDetail.user.last_active_at ? formatDateTime(userDetail.user.last_active_at) : '—'}</Descriptions.Item>
-              <Descriptions.Item label="活跃天数">{userDetail.user.active_days} 天</Descriptions.Item>
-              <Descriptions.Item label="有效停留">{formatActiveSeconds(userDetail.user.active_seconds)}</Descriptions.Item>
-              <Descriptions.Item label="主要关注">{userDetail.user.top_page || '—'}</Descriptions.Item>
-              <Descriptions.Item label="芯片 / Benchmark">{[userDetail.user.top_chip, userDetail.user.top_benchmark].filter(Boolean).join(' / ') || '—'}</Descriptions.Item>
-            </Descriptions>
-            <h3>页面偏好</h3>
-            <Table rowKey="page_key" size="small" pagination={false} dataSource={userDetail.pages} columns={[
-              { title: '页面', dataIndex: 'label' },
-              { title: 'PV', dataIndex: 'page_views', align: 'right' },
-              { title: '有效停留', dataIndex: 'active_seconds', align: 'right', render: (value: number) => formatActiveSeconds(value) },
-            ]} />
-            <h3>最近行为</h3>
-            <Timeline items={userDetail.recent_events.map((event) => ({
-              children: (
-                <div><strong>{event.label}</strong><span className="analytics-event-time">{formatDateTime(event.occurred_at)}</span><div className="analytics-event-context">{[event.vendor, event.chip, event.benchmark_name, event.simulator_version, event.chip_variant].filter(Boolean).join(' / ')}</div></div>
-              ),
-            }))} />
-          </div>
-        ) : <Empty description="没有用户详情数据" />}
-      </Drawer>
+      {canViewUserDetails ? <Drawer title="用户行为详情" size={760} open={detailOpen} onClose={() => setDetailOpen(false)}>
+        <ResultWatermark className="analytics-user-detail-watermark">
+          {detailLoading ? <Skeleton active /> : userDetail ? (
+            <div className="analytics-user-detail">
+              <Descriptions column={2} size="small" bordered>
+                <Descriptions.Item label="用户">{userDetail.user.display_name}（{userDetail.user.user_id}）</Descriptions.Item>
+                <Descriptions.Item label="最近活跃">{userDetail.user.last_active_at ? formatDateTime(userDetail.user.last_active_at) : '—'}</Descriptions.Item>
+                <Descriptions.Item label="活跃天数">{userDetail.user.active_days} 天</Descriptions.Item>
+                <Descriptions.Item label="有效停留">{formatActiveSeconds(userDetail.user.active_seconds)}</Descriptions.Item>
+                <Descriptions.Item label="主要关注">{userDetail.user.top_page || '—'}</Descriptions.Item>
+                <Descriptions.Item label="芯片 / Benchmark">{[userDetail.user.top_chip, userDetail.user.top_benchmark].filter(Boolean).join(' / ') || '—'}</Descriptions.Item>
+              </Descriptions>
+              <h3>页面偏好</h3>
+              <Table rowKey="page_key" size="small" pagination={false} dataSource={userDetail.pages} columns={[
+                { title: '页面', dataIndex: 'label' },
+                { title: 'PV', dataIndex: 'page_views', align: 'right' },
+                { title: '有效停留', dataIndex: 'active_seconds', align: 'right', render: (value: number) => formatActiveSeconds(value) },
+              ]} />
+              <h3>最近行为</h3>
+              <Timeline items={userDetail.recent_events.map((event) => ({
+                children: (
+                  <div><strong>{event.label}</strong><span className="analytics-event-time">{formatDateTime(event.occurred_at)}</span><div className="analytics-event-context">{[event.target_name, event.target_user_id ? `成员：${event.target_user_id}` : '', event.auth_mode ? `登录模式：${event.auth_mode === 'admin' ? '管理员' : '普通'}` : '', event.change_summary, event.vendor, event.chip, event.benchmark_name, event.simulator_version, event.chip_variant].filter(Boolean).join(' / ')}</div></div>
+                ),
+              }))} />
+            </div>
+          ) : <Empty description="没有用户详情数据" />}
+        </ResultWatermark>
+      </Drawer> : null}
     </div>
   );
 }

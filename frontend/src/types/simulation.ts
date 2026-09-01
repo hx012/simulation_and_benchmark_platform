@@ -18,6 +18,7 @@ export interface SimulatorCapability {
 }
 
 export interface SimulationCapabilitiesResponse {
+  mskpp_guide_url: string;
   simulators: SimulatorCapability[];
 }
 
@@ -121,6 +122,7 @@ export interface SimulationQueuedTaskResponse {
 export interface SimulationLogResponse {
   task_id: string;
   available: boolean;
+  file_size: number;
   offset: number;
   next_offset: number;
   eof: boolean;

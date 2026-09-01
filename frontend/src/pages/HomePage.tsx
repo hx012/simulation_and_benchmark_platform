@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRightOutlined, BarChartOutlined, ExperimentOutlined, LineChartOutlined } from '@ant-design/icons';
-import { Button, Card } from 'antd';
+import { ArrowRightOutlined, BarChartOutlined, ExperimentOutlined, LineChartOutlined, NotificationOutlined } from '@ant-design/icons';
+import { Button, Card, Drawer, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { collaborationApi, type TeamConfig } from '../api/collaboration';
+import { collaborationApi, type FeatureReleaseConfig, type TeamConfig } from '../api/collaboration';
 import { recentActivityApi } from '../api/recentActivity';
 import { PageHeading } from '../components/PageHeading';
 import type { RecentActivityList } from '../types/recentActivity';
@@ -18,10 +18,27 @@ function openConfiguredUrl(url: string, navigate: (path: string) => void) {
   else window.open(url, '_blank', 'noopener,noreferrer');
 }
 
+function releaseDateParts(value: string) {
+  const [year = '', month = '', day = ''] = value.split('-');
+  return { year, shortDate: month && day ? `${month}.${day}` : value };
+}
+
+function isNewRelease(launchedAt: string, badgeDays: number) {
+  if (badgeDays <= 0) return false;
+  const launched = new Date(`${launchedAt}T00:00:00`);
+  if (Number.isNaN(launched.getTime())) return false;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const elapsedDays = Math.floor((today.getTime() - launched.getTime()) / 86_400_000);
+  return elapsedDays >= 0 && elapsedDays < badgeDays;
+}
+
 export function HomePage() {
   const navigate = useNavigate();
   const [team, setTeam] = useState<TeamConfig | null>(null);
   const [recentWork, setRecentWork] = useState<RecentActivityList | null>(null);
+  const [featureReleases, setFeatureReleases] = useState<FeatureReleaseConfig | null>(null);
+  const [releaseHistoryOpen, setReleaseHistoryOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,12 +54,20 @@ export function HomePage() {
     void collaborationApi.getTeam().then(setTeam).catch(() => setTeam(null));
   }, []);
 
+  useEffect(() => {
+    void collaborationApi.getFeatureReleases().then(setFeatureReleases).catch(() => setFeatureReleases(null));
+  }, []);
+
   const featuredAchievements = useMemo(() => (
     (team?.achievements || [])
       .filter((item) => item.enabled && item.featured)
       .sort((a, b) => a.featured_order - b.featured_order)
       .slice(0, 5)
   ), [team]);
+
+  const homepageReleases = useMemo(() => (
+    featureReleases?.items.slice(0, featureReleases.max_items) || []
+  ), [featureReleases]);
 
   return (
     <div className="page-container platform-home-page">
@@ -86,10 +111,84 @@ export function HomePage() {
         </Card>
       </div>
 
+      {featureReleases?.enabled && homepageReleases.length ? (
+        <Card
+          className="platform-feature-release-card"
+          title={(
+            <span className="platform-feature-release-heading">
+              <span className="platform-feature-release-icon"><NotificationOutlined /></span>
+              {featureReleases.title}
+            </span>
+          )}
+          extra={(
+            <Button type="link" onClick={() => setReleaseHistoryOpen(true)}>
+              查看全部 <ArrowRightOutlined />
+            </Button>
+          )}
+        >
+          {homepageReleases.map((item) => {
+            const date = releaseDateParts(item.launched_at);
+            return (
+              <button
+                type="button"
+                className="platform-feature-release-row"
+                key={item.id}
+                disabled={!item.action_url}
+                onClick={() => item.action_url && openConfiguredUrl(item.action_url, navigate)}
+              >
+                <span className="platform-feature-release-date">
+                  <strong>{date.shortDate}</strong>
+                  <small>{date.year} 上线</small>
+                </span>
+                <span className="platform-feature-release-copy">
+                  <span className="platform-feature-release-title">
+                    <strong>{item.title}</strong>
+                    {isNewRelease(item.launched_at, featureReleases.new_badge_days) ? <Tag color="blue">NEW</Tag> : null}
+                  </span>
+                  <small>{item.description}</small>
+                </span>
+                <span className="platform-row-action">
+                  {item.action_url ? item.action_text : '暂无入口'} {item.action_url ? <ArrowRightOutlined /> : null}
+                </span>
+              </button>
+            );
+          })}
+        </Card>
+      ) : null}
+
       <Card className="platform-co-build-card">
         <div><h3>平台共建</h3><p>提交真实业务需求，由团队定期审视并反馈处理结论。</p></div>
         <Button type="primary" onClick={() => navigate('/demands')}>进入需求池</Button>
       </Card>
+
+      <Drawer
+        className="platform-feature-release-drawer"
+        title="历史上线特性"
+        open={releaseHistoryOpen}
+        width={560}
+        onClose={() => setReleaseHistoryOpen(false)}
+      >
+        <div className="platform-feature-release-history">
+          {(featureReleases?.items || []).map((item) => (
+            <button
+              type="button"
+              className="platform-feature-release-history-row"
+              key={item.id}
+              disabled={!item.action_url}
+              onClick={() => item.action_url && openConfiguredUrl(item.action_url, navigate)}
+            >
+              <time dateTime={item.launched_at}>{item.launched_at.replaceAll('-', '.')}</time>
+              <span>
+                <strong>{item.title}</strong>
+                <small>{item.description}</small>
+              </span>
+              <span className="platform-row-action">
+                {item.action_url ? item.action_text : '暂无入口'} {item.action_url ? <ArrowRightOutlined /> : null}
+              </span>
+            </button>
+          ))}
+        </div>
+      </Drawer>
     </div>
   );
 }

@@ -1,67 +1,55 @@
 export function PortalLoopDiagram() {
   return (
-    <div className="portal-loop" role="img" aria-label="负载、Benchmark、芯片、MSKPP 与性能分析形成的工程闭环">
-      <svg viewBox="0 -32 760 360" aria-hidden="true">
+    <div className="portal-loop" role="img" aria-label="业务负载依次经过 Benchmark、MSKPP 仿真器和性能分析，并形成芯片性能优化闭环">
+      <svg className="portal-loop-desktop" viewBox="0 0 1000 510" aria-hidden="true">
         <defs>
-          <marker id="loop-arrow-cyan" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#08a9b7" />
-          </marker>
-          <marker id="loop-arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#3168e8" />
-          </marker>
-          <marker id="loop-arrow-violet" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#7165d9" />
-          </marker>
-          <linearGradient id="mskpp-node" x1="0" x2="1">
-            <stop offset="0" stopColor="#3168e8" />
-            <stop offset="1" stopColor="#08a9b7" />
-          </linearGradient>
+          <pattern id="portal-grid" width="26" height="26" patternUnits="userSpaceOnUse">
+            <path d="M26 0H0V26" className="portal-loop-grid-line" />
+          </pattern>
+          <radialGradient id="portal-glow-blue"><stop offset="0" stopColor="#75a9ff" stopOpacity=".18" /><stop offset="1" stopColor="#75a9ff" stopOpacity="0" /></radialGradient>
+          <radialGradient id="portal-glow-cyan"><stop offset="0" stopColor="#54d5df" stopOpacity=".2" /><stop offset="1" stopColor="#54d5df" stopOpacity="0" /></radialGradient>
+          <radialGradient id="portal-glow-violet"><stop offset="0" stopColor="#a99dff" stopOpacity=".17" /><stop offset="1" stopColor="#a99dff" stopOpacity="0" /></radialGradient>
+          <marker id="portal-main-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#069eae" /></marker>
+          <marker id="portal-feedback-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#7165d9" /></marker>
+          <filter id="portal-node-shadow" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="9" stdDeviation="10" floodColor="#294c70" floodOpacity=".12" /></filter>
         </defs>
 
-        <g className="loop-flow loop-flow-main" markerEnd="url(#loop-arrow-cyan)">
-          <path d="M 92 158 H 155" />
-          <path d="M 290 158 H 405" />
-          <path d="M 540 158 H 655" />
-        </g>
-        <g className="loop-flow loop-flow-control" markerEnd="url(#loop-arrow-blue)">
-          <path d="M 223 110 V 49 H 425" />
-          <path d="M 472 78 V 110" />
-        </g>
-        <g className="loop-flow loop-flow-feedback" markerEnd="url(#loop-arrow-violet)">
-          <path d="M 697 110 V 49 H 520" />
-          <path d="M 697 206 V 256 H 223 V 206" />
-        </g>
+        <rect className="portal-loop-frame" x="8" y="8" width="984" height="494" rx="32" />
+        <rect x="8" y="8" width="984" height="494" rx="32" fill="url(#portal-grid)" opacity=".5" />
+        <ellipse cx="310" cy="295" rx="225" ry="175" fill="url(#portal-glow-blue)" />
+        <ellipse cx="580" cy="295" rx="225" ry="180" fill="url(#portal-glow-cyan)" />
+        <ellipse cx="850" cy="295" rx="225" ry="175" fill="url(#portal-glow-violet)" />
+        <path className="portal-loop-circuit" d="M34 82h76v36h48m-124 304h76v-38h38M966 74h-72v40h-50m122 308h-78v-38h-46M72 48v26h28m828-26v26h-28M72 462v-26h28m828 26v-26h-28" />
 
-        <g className="loop-labels">
-          <text x="112" y="143">筛选</text>
-          <text x="333" y="143">Workload</text>
-          <text x="590" y="143">日志</text>
-          <text x="286" y="38">芯片性能看护</text>
-          <text x="548" y="38">芯片需求与架构优化</text>
-          <text x="486" y="98">芯片配置</text>
-          <text x="402" y="276">Benchmark 性能优化</text>
-        </g>
+        <g className="portal-loop-main-glow"><path d="M140 295H220" /><path d="M400 295H490" /><path d="M670 295H760" /><path d="M580 156V235" /></g>
+        <g className="portal-loop-main" markerEnd="url(#portal-main-arrow)"><path d="M140 295H220" /><path d="M400 295H490" /><path d="M670 295H760" /><path d="M580 156V235" /></g>
+        <g className="portal-loop-feedback" markerEnd="url(#portal-feedback-arrow)"><path d="M310 235V115H525" /><path d="M850 235V115H635" /><path d="M850 355V430H310V355" /></g>
 
-        <g className="loop-node loop-node-load">
-          <rect x="22" y="130" width="70" height="56" rx="16" />
-          <text x="57" y="153">业务</text><text x="57" y="171">负载</text>
-        </g>
-        <g className="loop-node">
-          <rect x="155" y="110" width="135" height="96" rx="18" />
-          <text x="223" y="151">Benchmark</text><text className="loop-node-sub" x="223" y="174">典型负载与基线</text>
-        </g>
-        <g className="loop-node loop-node-mskpp">
-          <rect x="405" y="110" width="135" height="96" rx="18" />
-          <text x="472" y="150">MSKPP</text><text className="loop-node-sub" x="472" y="174">芯片仿真器</text>
-        </g>
-        <g className="loop-node loop-node-chip">
-          <rect x="425" y="20" width="95" height="58" rx="16" />
-          <text x="472" y="54">Chip</text>
-        </g>
-        <g className="loop-node">
-          <rect x="655" y="110" width="85" height="96" rx="18" />
-          <text x="697" y="149">性能</text><text x="697" y="172">分析</text>
-        </g>
+        <g className="portal-loop-label"><text x="180" y="278">负载筛选</text><text x="445" y="278">Workload</text><text x="715" y="278">运行日志</text><text x="628" y="201">芯片配置</text></g>
+        <g className="portal-loop-label portal-loop-label-feedback"><text x="418" y="100">芯片性能看护</text><text x="742" y="100">需求与架构优化</text><text x="580" y="456">Benchmark 性能优化</text></g>
+
+        <g filter="url(#portal-node-shadow)"><rect className="portal-loop-neutral" x="40" y="254" width="100" height="82" rx="24" /><text className="portal-loop-small-title" x="90" y="289"><tspan x="90">业务</tspan><tspan x="90" dy="22">负载</tspan></text></g>
+        <g filter="url(#portal-node-shadow)"><rect className="portal-loop-core portal-loop-benchmark" x="220" y="235" width="180" height="120" rx="25" /><text className="portal-loop-core-title" x="310" y="302">Benchmark</text></g>
+        <g filter="url(#portal-node-shadow)"><rect className="portal-loop-core portal-loop-simulator" x="490" y="235" width="180" height="120" rx="25" /><text className="portal-loop-core-title" x="580" y="302">MSKPP仿真器</text></g>
+        <g filter="url(#portal-node-shadow)"><rect className="portal-loop-core portal-loop-analysis" x="760" y="235" width="180" height="120" rx="25" /><text className="portal-loop-core-title" x="850" y="302">性能分析</text></g>
+        <g filter="url(#portal-node-shadow)"><rect className="portal-loop-chip" x="525" y="80" width="110" height="76" rx="22" /><text className="portal-loop-title" x="580" y="125">Chip</text></g>
+      </svg>
+
+      <svg className="portal-loop-mobile" viewBox="0 0 360 650" aria-hidden="true">
+        <defs>
+          <marker id="portal-main-arrow-mobile" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#069eae" /></marker>
+          <marker id="portal-feedback-arrow-mobile" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#7165d9" /></marker>
+        </defs>
+        <rect className="portal-loop-frame" x="6" y="6" width="348" height="638" rx="26" />
+        <g className="portal-loop-main" markerEnd="url(#portal-main-arrow-mobile)"><path d="M180 82V126" /><path d="M180 216V282" /><path d="M180 372V438" /><path d="M278 256H252V327H235" /></g>
+        <g className="portal-loop-feedback" markerEnd="url(#portal-feedback-arrow-mobile)"><path d="M235 171H328V256H308" /><path d="M235 483H334V292H308" /><path d="M125 483H28V171H125" /></g>
+        <g className="portal-loop-label"><text x="217" y="108">负载筛选</text><text x="180" y="253">Workload</text><text x="180" y="409">运行日志</text><text x="274" y="347">芯片配置</text></g>
+        <g filter="url(#portal-node-shadow)"><rect className="portal-loop-neutral" x="125" y="28" width="110" height="54" rx="18" /><text className="portal-loop-small-title" x="180" y="61">业务负载</text></g>
+        <g filter="url(#portal-node-shadow)"><rect className="portal-loop-core portal-loop-benchmark" x="125" y="126" width="110" height="90" rx="22" /><text className="portal-loop-core-title" x="180" y="178">Benchmark</text></g>
+        <g filter="url(#portal-node-shadow)"><rect className="portal-loop-chip" x="278" y="225" width="64" height="67" rx="18" /><text className="portal-loop-small-title" x="310" y="265">Chip</text></g>
+        <g filter="url(#portal-node-shadow)"><rect className="portal-loop-core portal-loop-simulator" x="125" y="282" width="110" height="90" rx="22" /><text className="portal-loop-core-title portal-loop-mobile-mskpp" x="180" y="334">MSKPP仿真器</text></g>
+        <g filter="url(#portal-node-shadow)"><rect className="portal-loop-core portal-loop-analysis" x="125" y="438" width="110" height="90" rx="22" /><text className="portal-loop-core-title" x="180" y="490">性能分析</text></g>
+        <g className="portal-loop-mobile-feedback"><text x="310" y="174">芯片性能看护</text><text x="310" y="420">需求与架构优化</text><text x="43" y="345">Benchmark 性能优化</text></g>
       </svg>
     </div>
   );

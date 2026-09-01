@@ -14,6 +14,9 @@ export interface AnalyticsEventPayload {
   target_type?: string | null;
   target_id?: string | null;
   target_name?: string | null;
+  target_user_id?: string | null;
+  auth_mode?: string;
+  change_summary?: string;
 }
 
 export interface AnalyticsSummary {
@@ -57,6 +60,22 @@ export interface AnalyticsSimulationDimensionItem {
   simulation_mode: string | null;
 }
 
+export interface AnalyticsDemandStatusItem {
+  status: string;
+  label: string;
+  count: number;
+}
+
+export interface AnalyticsDemandPipeline {
+  submitted: number;
+  accepted: number;
+  accepted_unplanned: number;
+  planned: number;
+  in_progress: number;
+  delivered: number;
+  statuses: AnalyticsDemandStatusItem[];
+}
+
 export interface AnalyticsOverview {
   start_at: string;
   end_at: string;
@@ -67,6 +86,7 @@ export interface AnalyticsOverview {
   chips: AnalyticsRankingItem[];
   benchmarks: AnalyticsRankingItem[];
   simulation_dimensions: AnalyticsSimulationDimensionItem[];
+  demand_pipeline: AnalyticsDemandPipeline;
 }
 
 export type AnalyticsUserSort =
@@ -120,5 +140,11 @@ export interface AnalyticsUserDetail {
     benchmark_name: string | null;
     simulator_version: string | null;
     chip_variant: string | null;
+    target_type: string | null;
+    target_id: string | null;
+    target_name: string | null;
+    target_user_id: string | null;
+    auth_mode: string;
+    change_summary: string;
   }>;
 }

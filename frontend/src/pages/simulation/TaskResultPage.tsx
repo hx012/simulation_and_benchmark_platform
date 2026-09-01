@@ -19,6 +19,7 @@ import { PageHeading } from '../../components/PageHeading';
 import { TaskStatusTag, TraceStatusTag } from '../../components/StatusTag';
 import { TraceViewer } from '../../components/TraceViewer';
 import { CatapultTraceViewer } from '../../components/CatapultTraceViewer';
+import { useAuth } from '../../auth/AuthContext';
 import type {
   SimulationResultResponse,
   SimulationTask,
@@ -35,6 +36,7 @@ import {
 export function TaskResultPage() {
   const { taskId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [task, setTask] = useState<SimulationTask | null>(null);
   const [result, setResult] = useState<SimulationResultResponse | null>(null);
   const [trace, setTrace] = useState<SimulationTraceResponse | null>(null);
@@ -167,6 +169,9 @@ export function TaskResultPage() {
     );
   }
 
+  const canManageTask = task.owner_id === user?.userId;
+  const isAdmin = user?.authMode === 'admin';
+
   return (
     <div className="page-container result-page">
       <PageHeading
@@ -175,8 +180,8 @@ export function TaskResultPage() {
         actions={
           <Space>
             <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/simulation/tasks/${task.task_id}`)}>返回任务详情</Button>
-            <Button icon={<InboxOutlined />} onClick={() => void archiveToggle()}>{task.archived ? '取消归档' : '归档'}</Button>
-            <Button type="primary" icon={<RedoOutlined />} onClick={() => Modal.confirm({ title: '重新运行此任务？', content: '将复用原任务 input 创建新的 FIFO 任务。', onOk: rerun })}>重新运行</Button>
+            {canManageTask ? <Button icon={<InboxOutlined />} onClick={() => void archiveToggle()}>{task.archived ? '取消归档' : '归档'}</Button> : null}
+            {canManageTask ? <Button type="primary" icon={<RedoOutlined />} onClick={() => Modal.confirm({ title: '重新运行此任务？', content: '将复用原任务 input 创建新的 FIFO 任务。', onOk: rerun })}>重新运行</Button> : null}
           </Space>
         }
       />
@@ -207,6 +212,7 @@ export function TaskResultPage() {
           <Descriptions.Item label="Simulator">{task.simulator_label || task.simulator_version.toUpperCase()}</Descriptions.Item>
           <Descriptions.Item label="Chip Variant">{task.chip_variant_label || task.chip_variant || '默认'}</Descriptions.Item>
           <Descriptions.Item label="Simulation Mode">{task.simulation_mode_label || task.simulation_mode}</Descriptions.Item>
+          {isAdmin ? <Descriptions.Item label="提交人">{task.owner_id}</Descriptions.Item> : null}
           <Descriptions.Item label="提交时间">{formatDateTime(result.submit_time)}</Descriptions.Item>
           <Descriptions.Item label="开始时间">{formatDateTime(result.start_time)}</Descriptions.Item>
           <Descriptions.Item label="完成时间">{formatDateTime(result.end_time)}</Descriptions.Item>

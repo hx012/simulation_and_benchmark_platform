@@ -16,8 +16,9 @@ export interface ProtectedResourceRecord {
   code: string;
   name: string;
   description: string;
-  access_mode: 'normal' | 'permission' | 'admin' | 'disabled';
+  access_mode: 'normal' | 'permission' | 'advanced' | 'admin' | 'disabled';
   permission_codes: PermissionCode[];
+  authorized_users: Array<{ user_id: string; display_name: string }>;
   system_managed: boolean;
 }
 
@@ -26,7 +27,10 @@ export interface AdminUserRecord {
   display_name: string;
   role: PlatformRole;
   active: boolean;
+  is_team_member: boolean;
+  is_advanced_user: boolean;
   password_configured: boolean;
+  bootstrap_admin: boolean;
   last_login_at: string | null;
 }
 
@@ -48,6 +52,8 @@ export interface PlatformUser {
   role: PlatformRole;
   accountRole: PlatformRole;
   authMode: AuthMode;
+  isTeamMember: boolean;
+  isAdvancedUser: boolean;
   permissions: PermissionCode[];
   resources: string[];
   resourcePermissions: Record<string, PermissionCode[]>;
@@ -60,6 +66,8 @@ export interface CurrentUserApiResponse {
   role: PlatformRole;
   account_role: PlatformRole;
   auth_mode: AuthMode;
+  is_team_member: boolean;
+  is_advanced_user: boolean;
   permissions: PermissionCode[];
   resources: string[];
   resource_permissions: Record<string, PermissionCode[]>;
@@ -73,6 +81,8 @@ export function mapCurrentUser(value: CurrentUserApiResponse): PlatformUser {
     role: value.role,
     accountRole: value.account_role,
     authMode: value.auth_mode,
+    isTeamMember: value.is_team_member,
+    isAdvancedUser: value.is_advanced_user,
     permissions: value.permissions,
     resources: value.resources,
     resourcePermissions: value.resource_permissions,

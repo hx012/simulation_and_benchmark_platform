@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     platform_community_jiaxian_name: str = "稼先社区"
     platform_community_jiaxian_url: str = ""
     platform_content_config: Path = BACKEND_ROOT / "config" / "platform_content.yml"
+    platform_team_avatar_dir: Path | None = None
     platform_recent_activity_config: Path = BACKEND_ROOT / "config" / "recent_activity.yml"
 
     task_root: Path = Path("./data/simulation_tasks")
@@ -66,8 +67,6 @@ class Settings(BaseSettings):
     sim_trace_viewer_timeout_seconds: float = 120.0
     sim_trace_viewer_max_output_bytes: int = 256 * 1024 * 1024
     sim_online_edit_max_bytes: int = 2 * 1024 * 1024
-    sim_sample_template_root: Path = BACKEND_ROOT / "config" / "simulation_templates"
-
     catapult_home: Path = BACKEND_ROOT.parent / "tools" / "catapult"
     catapult_python: Path | None = None
 

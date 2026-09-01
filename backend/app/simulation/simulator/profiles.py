@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlparse
 
 import yaml
 
@@ -7,6 +8,16 @@ from app.simulation.enums import SimulationMode
 
 
 DEFAULT_VARIANT_KEY = "default"
+
+
+def normalize_guide_url(value: object) -> str:
+    normalized = str(value or "").strip()
+    if normalized.startswith("/") and not normalized.startswith("//"):
+        return normalized
+    parsed = urlparse(normalized)
+    if parsed.scheme in {"http", "https"} and parsed.netloc:
+        return normalized
+    return ""
 
 
 def normalize_variant_key(chip_variant: str | None) -> str:
@@ -51,6 +62,8 @@ class SimulatorProfile:
     simulation_mode_label: str
     entry_script: str
     sst_args: list[str]
+    chip_config_template_path: Path
+    workload_template_path: Path
 
 
 @dataclass(frozen=True)
@@ -85,6 +98,15 @@ class SimulatorProfileRegistry:
         self.config_path = config_path
         self.profiles = self._load_profiles()
 
+    def _resolve_template_path(self, value: object, field_name: str) -> Path:
+        normalized = str(value or "").strip()
+        if not normalized:
+            raise ValueError(f"Simulator profile is missing {field_name}")
+        path = Path(normalized).expanduser()
+        if not path.is_absolute():
+            path = self.config_path.resolve().parent / path
+        return path.resolve()
+
     def _load_profiles(
         self,
     ) -> list[SimulatorProfile]:
@@ -93,6 +115,10 @@ class SimulatorProfileRegistry:
             encoding="utf-8",
         ) as file:
             data = yaml.safe_load(file) or {}
+
+        self.mskpp_guide_url = normalize_guide_url(
+            data.get("mskpp_guide_url")
+        )
 
         profiles: list[SimulatorProfile] = []
         seen_keys: set[tuple[str, str, SimulationMode]] = set()
@@ -134,6 +160,14 @@ class SimulatorProfileRegistry:
                     ),
                     entry_script=item["entry_script"],
                     sst_args=list(item.get("sst_args", [])),
+                    chip_config_template_path=self._resolve_template_path(
+                        item.get("chip_config_template_path"),
+                        "chip_config_template_path",
+                    ),
+                    workload_template_path=self._resolve_template_path(
+                        item.get("workload_template_path"),
+                        "workload_template_path",
+                    ),
                 )
             )
 

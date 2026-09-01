@@ -1,4 +1,4 @@
-import { apiRequest, apiResourceUrl } from './client';
+import { apiDownload, apiRequest, apiResourceUrl } from './client';
 import type {
   ApplySimulationSampleResponse,
   LocalFileEntry,
@@ -86,11 +86,11 @@ export const simulationApi = {
     );
   },
 
-  getLogs(taskId: string, offset = 0, limitBytes = 64 * 1024) {
+  getLogs(taskId: string, offset = 0, limitBytes = 64 * 1024, tail = false) {
     return apiRequest<SimulationLogResponse>(
       `${BASE}/tasks/${encodeURIComponent(taskId)}/logs`,
       {},
-      { offset, limit_bytes: limitBytes },
+      { offset, limit_bytes: limitBytes, tail: tail || undefined },
     );
   },
 
@@ -151,10 +151,14 @@ export const simulationApi = {
     );
   },
 
-  createUploadSession(ownerId: string) {
+  createUploadSession(ownerId: string, payload: {
+    simulator_version: string;
+    chip_variant: string | null;
+    simulation_mode: SimulationMode;
+  }) {
     return apiRequest<UploadSession>(`${BASE}/upload-sessions`, {
       method: 'POST',
-      body: JSON.stringify({ owner_id: ownerId }),
+      body: JSON.stringify({ owner_id: ownerId, ...payload }),
     });
   },
 
@@ -179,6 +183,18 @@ export const simulationApi = {
         body: JSON.stringify(payload),
       },
     );
+  },
+
+  downloadConfigTemplate(payload: {
+    simulator_version: string;
+    chip_variant: string | null;
+    simulation_mode: SimulationMode;
+  }) {
+    return apiDownload(`${BASE}/config-template`, {
+      simulator_version: payload.simulator_version,
+      chip_variant: payload.chip_variant,
+      simulation_mode: payload.simulation_mode,
+    });
   },
 
   uploadPackage(

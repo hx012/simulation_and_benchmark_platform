@@ -1,6 +1,4 @@
-# V310 single-chip simulator example used by the web editor.
 simulator:
-  version: v310
   mode: SINGLE_CHIP
   log_level: INFO
   max_cycles: 1000000

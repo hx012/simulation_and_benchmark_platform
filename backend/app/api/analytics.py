@@ -10,7 +10,12 @@ from app.analytics.schemas import (
     AnalyticsUserSort,
 )
 from app.analytics.service import create_event, get_overview, get_user_detail, list_users
-from app.auth.service import AuthenticatedUser, get_current_user, require_admin
+from app.auth.service import (
+    AuthenticatedUser,
+    get_current_user,
+    require_admin,
+    require_team_member_or_admin,
+)
 from app.common.database import get_db
 
 
@@ -31,8 +36,17 @@ def collect_event(
     return AnalyticsEventAccepted()
 
 
-@router.get("/admin/analytics/overview", response_model=AnalyticsOverviewResponse)
+@router.get("/analytics/overview", response_model=AnalyticsOverviewResponse)
 def analytics_overview(
+    days: int = Query(default=30, ge=1, le=366),
+    db: Session = Depends(get_db),
+    _: AuthenticatedUser = Depends(require_team_member_or_admin),
+) -> AnalyticsOverviewResponse:
+    return get_overview(db, days)
+
+
+@router.get("/admin/analytics/overview", response_model=AnalyticsOverviewResponse)
+def admin_analytics_overview(
     days: int = Query(default=30, ge=1, le=366),
     db: Session = Depends(get_db),
     _: AuthenticatedUser = Depends(require_admin),

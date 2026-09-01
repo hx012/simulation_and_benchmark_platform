@@ -1,4 +1,3 @@
-# Example device configuration for a V310 single-chip simulation.
 daw:
   device_id: 0
   chip_count: 1

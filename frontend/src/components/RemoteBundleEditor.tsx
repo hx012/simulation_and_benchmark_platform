@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { InputHTMLAttributes } from 'react';
-import { Alert, Button, Empty, Input, message, Space, Spin, Tree } from 'antd';
+import { Alert, Button, Empty, Input, message, Space, Spin, Tooltip, Tree } from 'antd';
 import {
   FileOutlined,
   FolderOpenOutlined,
@@ -24,6 +24,9 @@ interface RemoteBundleEditorProps {
   refreshToken: number;
   onUpload: (entries: LocalFileEntry[]) => Promise<void>;
   onChanged: () => void;
+  readOnly?: boolean;
+  allowUpload?: boolean;
+  preparing?: boolean;
 }
 
 type MutableTreeNode = { key: string; title: string; isLeaf?: boolean; selectable?: boolean; children?: MutableTreeNode[] };
@@ -77,6 +80,9 @@ export function RemoteBundleEditor({
   refreshToken,
   onUpload,
   onChanged,
+  readOnly = false,
+  allowUpload = !readOnly,
+  preparing = false,
 }: RemoteBundleEditorProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<UploadFileInfo[]>([]);
@@ -186,9 +192,13 @@ export function RemoteBundleEditor({
           <Button icon={<ReloadOutlined />} disabled={!uploadSessionId} onClick={() => void loadFiles()}>
             刷新
           </Button>
-          <Button icon={<FolderOpenOutlined />} loading={uploading} onClick={() => inputRef.current?.click()}>
-            重新上传
-          </Button>
+          {allowUpload ? (
+            <Tooltip title={`请选择 ${title} 目录上传，不支持单个文件或压缩包`}>
+              <Button icon={<FolderOpenOutlined />} loading={uploading} onClick={() => inputRef.current?.click()}>
+                重新上传
+              </Button>
+            </Tooltip>
+          ) : null}
           <input
             ref={inputRef}
             className="hidden-file-input"
@@ -200,7 +210,20 @@ export function RemoteBundleEditor({
         </Space>
       </div>
 
-      {!uploadSessionId || files.length === 0 ? (
+      {readOnly ? (
+        <Alert
+          className="bundle-editor-readonly-alert"
+          type="info"
+          showIcon
+          title="Chip Config 由系统模板提供，不支持修改，如需修改，请联系管理员。"
+        />
+      ) : null}
+
+      {preparing && !uploadSessionId ? (
+        <div className="bundle-editor-empty bundle-editor-preparing">
+          <Spin size="small" /><span>正在加载默认 Chip Config 模板…</span>
+        </div>
+      ) : !uploadSessionId || files.length === 0 ? (
         <div className="bundle-editor-empty">
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无配置文件" />
         </div>
@@ -234,26 +257,29 @@ export function RemoteBundleEditor({
                   <div><FileOutlined /> <strong>{fileContent.path}</strong></div>
                   <span>{formatBytes(fileContent.size_bytes)}</span>
                 </div>
-                {fileContent.editable ? (
+                {fileContent.content !== null ? (
                   <>
                     <Input.TextArea
                       className="config-editor"
                       value={content}
                       onChange={(event) => setContent(event.target.value)}
+                      readOnly={!fileContent.editable || readOnly}
                       spellCheck={false}
                     />
-                    <div className="editor-actions editor-actions-simple">
-                      <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={() => void saveContent()}>
-                        保存修改
-                      </Button>
-                    </div>
+                    {fileContent.editable && !readOnly ? (
+                      <div className="editor-actions editor-actions-simple">
+                        <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={() => void saveContent()}>
+                          保存修改
+                        </Button>
+                      </div>
+                    ) : null}
                   </>
                 ) : (
                   <Alert
                     type="info"
                     showIcon
-                    title="该文件为只读资产"
-                    description="如需调整，请重新上传对应配置目录。"
+                    title="该文件不支持在线预览"
+                    description="当前仅支持预览 YAML、JSON、文本等配置文件。"
                   />
                 )}
               </>

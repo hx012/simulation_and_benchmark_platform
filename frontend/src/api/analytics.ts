@@ -63,7 +63,7 @@ export function trackAnalyticsEventQuietly(payload: AnalyticsEventPayload) {
 
 export const analyticsApi = {
   getOverview(days: number) {
-    return apiRequest<AnalyticsOverview>('/api/admin/analytics/overview', {}, { days });
+    return apiRequest<AnalyticsOverview>('/api/analytics/overview', {}, { days });
   },
 
   listUsers(params: {

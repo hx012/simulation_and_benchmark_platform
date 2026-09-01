@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.analytics.models import AnalyticsEvent
 from app.analytics.schemas import (
+    AnalyticsDemandPipeline,
+    AnalyticsDemandStatusItem,
     AnalyticsEventCreate,
     AnalyticsOverviewResponse,
     AnalyticsRankingItem,
@@ -63,9 +65,28 @@ EVENT_LABELS = {
     "demand.create": "提交需求",
     "demand.vote": "需求投票",
     "feedback.submit": "提交反馈",
+    "team.achievement_archive_view": "查看成果档案",
+    "team.achievement_create": "新增成果",
+    "team.achievement_update": "编辑成果",
+    "team.achievement_delete": "删除成果",
+    "team.achievement_core_set": "设为核心成果",
+    "team.achievement_core_unset": "取消核心成果",
+    "team.achievement_score": "评分与评价成果",
 }
 
 FEATURE_EVENTS = set(EVENT_LABELS) - {"page_view", "page_active_time"}
+
+DEMAND_STATUS_LABELS = (
+    ("pending", "待审视"),
+    ("needs_info", "待补充"),
+    ("accepted", "已采纳"),
+    ("planned", "已规划"),
+    ("in_progress", "实现中"),
+    ("delivered", "已交付"),
+    ("deferred", "暂缓"),
+    ("rejected", "未采纳"),
+    ("withdrawn", "已撤回"),
+)
 
 
 def _as_utc(value: datetime) -> datetime:
@@ -208,6 +229,38 @@ def _simulation_dimensions(
     return sorted(results, key=lambda item: item.tasks, reverse=True)[:10]
 
 
+def _demand_pipeline(
+    db: Session, start_at: datetime, end_at: datetime
+) -> AnalyticsDemandPipeline:
+    rows = list(db.scalars(
+        select(Demand).where(
+            Demand.created_at >= start_at,
+            Demand.created_at <= end_at,
+        )
+    ).all())
+    counts = Counter(item.status for item in rows)
+    accepted_unplanned = int(counts["accepted"])
+    planned = int(counts["planned"])
+    in_progress = int(counts["in_progress"])
+    delivered = int(counts["delivered"])
+    return AnalyticsDemandPipeline(
+        submitted=len(rows),
+        accepted=accepted_unplanned + planned + in_progress + delivered,
+        accepted_unplanned=accepted_unplanned,
+        planned=planned,
+        in_progress=in_progress,
+        delivered=delivered,
+        statuses=[
+            AnalyticsDemandStatusItem(
+                status=status,
+                label=label,
+                count=int(counts[status]),
+            )
+            for status, label in DEMAND_STATUS_LABELS
+        ],
+    )
+
+
 def get_overview(db: Session, days: int) -> AnalyticsOverviewResponse:
     start_at, end_at = _range(days)
     events = _events_in_range(db, start_at, end_at)
@@ -290,6 +343,7 @@ def get_overview(db: Session, days: int) -> AnalyticsOverviewResponse:
         chips=chips,
         benchmarks=benchmarks,
         simulation_dimensions=_simulation_dimensions(db, start_at, end_at),
+        demand_pipeline=_demand_pipeline(db, start_at, end_at),
     )
 
 
@@ -425,6 +479,12 @@ def get_user_detail(db: Session, employee_id: str, days: int) -> AnalyticsUserDe
             benchmark_name=event.benchmark_name,
             simulator_version=event.simulator_version,
             chip_variant=event.chip_variant,
+            target_type=event.target_type,
+            target_id=event.target_id,
+            target_name=event.target_name,
+            target_user_id=event.target_user_id,
+            auth_mode=event.auth_mode,
+            change_summary=event.change_summary,
         )
         for event in events if event.event_name != "page_active_time"
     ][:30]

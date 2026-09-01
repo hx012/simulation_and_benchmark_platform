@@ -3,7 +3,7 @@ from urllib.parse import urlencode
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import case, select
 from sqlalchemy.orm import Session
 
 from app.auth.constants import CORE_ADMIN_RESOURCES, NORMAL_PERMISSION, SESSION_COOKIE_NAME
@@ -13,6 +13,7 @@ from app.auth.models import (
     ProtectedResource,
     ResourcePermissionSet,
     User,
+    UserPermissionGrant,
 )
 from app.auth.schemas import (
     AdminUserResponse,
@@ -29,6 +30,7 @@ from app.auth.schemas import (
     PermissionSetUpdate,
     ProtectedResourceResponse,
     ProtectedResourceUpdate,
+    ResourceAuthorizedUserResponse,
 )
 from app.auth.service import (
     AuthenticatedUser,
@@ -38,6 +40,7 @@ from app.auth.service import (
     consume_w3_login_transaction,
     create_w3_login_transaction,
     get_current_user,
+    initialize_auth_data,
     login_user,
     login_w3_user,
     logout_user,
@@ -92,12 +95,16 @@ def _catalog_item(item: PermissionSet) -> PermissionCatalogItem:
 
 
 def _admin_user_response(user: User) -> AdminUserResponse:
+    bootstrap_id = get_settings().platform_bootstrap_admin_id.strip()
     return AdminUserResponse(
         user_id=user.employee_id,
         display_name=user.display_name,
         role="admin" if user.role == "admin" else "normal",
         active=user.active,
+        is_team_member=user.is_team_member,
+        is_advanced_user=user.is_advanced_user,
         password_configured=bool(user.password_hash),
+        bootstrap_admin=user.employee_id == bootstrap_id,
         last_login_at=user.last_login_at,
     )
 
@@ -108,12 +115,30 @@ def _resource_response(db: Session, item: ProtectedResource) -> ProtectedResourc
         .where(ResourcePermissionSet.resource_code == item.code)
         .order_by(ResourcePermissionSet.permission_code)
     ).all())
+    authorized_users: list[ResourceAuthorizedUserResponse] = []
+    if permission_codes:
+        users = db.scalars(
+            select(User)
+            .join(UserPermissionGrant, UserPermissionGrant.user_id == User.id)
+            .where(
+                UserPermissionGrant.permission_code.in_(permission_codes),
+                UserPermissionGrant.active.is_(True),
+                User.active.is_(True),
+            )
+            .distinct()
+            .order_by(User.employee_id)
+        ).all()
+        authorized_users = [
+            ResourceAuthorizedUserResponse(user_id=user.employee_id, display_name=user.display_name)
+            for user in users
+        ]
     return ProtectedResourceResponse(
         code=item.code,
         name=item.name,
         description=item.description,
         access_mode=item.access_mode,
         permission_codes=permission_codes,
+        authorized_users=authorized_users,
         system_managed=item.system_managed,
     )
 
@@ -236,6 +261,8 @@ def me(
     current: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CurrentUserResponse:
+    # Reconcile newly registered modules for sessions that survived a deployment.
+    initialize_auth_data(db)
     return current_user_response(db, current)
 
 
@@ -350,7 +377,13 @@ def list_users(
     _: AuthenticatedUser = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> list[AdminUserResponse]:
-    users = db.scalars(select(User).order_by(User.employee_id)).all()
+    identity_priority = case(
+        (User.role == "admin", 0),
+        (User.is_team_member.is_(True), 1),
+        (User.is_advanced_user.is_(True), 2),
+        else_=3,
+    )
+    users = db.scalars(select(User).order_by(identity_priority, User.employee_id)).all()
     return [_admin_user_response(user) for user in users]
 
 
@@ -358,10 +391,18 @@ def list_users(
 def configure_user(
     employee_id: str,
     request: AdminUserUpdate,
-    _: AuthenticatedUser = Depends(require_admin),
+    current: AuthenticatedUser = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> AdminUserResponse:
     user = update_admin_user(
-        db, employee_id, request.role, request.display_name, request.password, request.active
+        db,
+        current,
+        employee_id,
+        request.role,
+        request.display_name,
+        request.password,
+        request.active,
+        request.is_team_member,
+        request.is_advanced_user,
     )
     return _admin_user_response(user)

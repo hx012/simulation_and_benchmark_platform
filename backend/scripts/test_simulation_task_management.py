@@ -98,6 +98,37 @@ def main() -> None:
             quota = service.get_quota(db, "smoke-user")
             assert quota.retained_count == 0
 
+            legacy_task_id = "SIM-TASK-MGMT-LEGACY"
+            canonical_workspace = task_root / legacy_task_id
+            canonical_workspace.mkdir(parents=True)
+            external_workspace = Path(temp_dir) / "legacy-external" / legacy_task_id
+            external_workspace.mkdir(parents=True)
+            external_marker = external_workspace / "must-not-delete.txt"
+            external_marker.write_text("preserve", encoding="utf-8")
+            db.add(
+                SimulationTask(
+                    queue_seq=2,
+                    task_id=legacy_task_id,
+                    task_name="Legacy Workspace Task",
+                    owner_id="smoke-user",
+                    simulator_version="mock",
+                    chip_variant=None,
+                    simulation_mode=SimulationMode.SINGLE_CHIP,
+                    status=TaskStatus.COMPLETED,
+                    workspace_path=str(external_workspace),
+                )
+            )
+            db.commit()
+
+            assert service.delete_task(
+                db,
+                owner_id="smoke-user",
+                task_id=legacy_task_id,
+            ) == [legacy_task_id]
+            assert repository.get_task(db, legacy_task_id) is None
+            assert not canonical_workspace.exists()
+            assert external_marker.read_text(encoding="utf-8") == "preserve"
+
     print("Simulation task management smoke test: PASS")
 
 

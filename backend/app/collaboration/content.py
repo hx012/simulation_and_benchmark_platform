@@ -1,10 +1,17 @@
+from datetime import date
 from pathlib import Path
 import logging
 from urllib.parse import urlparse
+from urllib.parse import quote
 
 import yaml
 
-from app.collaboration.schemas import CommunityLink, PlatformSupport, TeamConfigResponse
+from app.collaboration.schemas import (
+    CommunityLink,
+    FeatureReleaseConfigResponse,
+    PlatformSupport,
+    TeamConfigResponse,
+)
 from app.common.config import Settings
 
 
@@ -17,6 +24,14 @@ DEFAULT_TEAM = {
     "achievements": [],
     "contributions": [],
     "all_achievements_url": "",
+}
+
+DEFAULT_FEATURE_RELEASES = {
+    "enabled": True,
+    "title": "新特性上线",
+    "max_items": 3,
+    "new_badge_days": 14,
+    "items": [],
 }
 
 logger = logging.getLogger(__name__)
@@ -39,6 +54,12 @@ def load_team_config(settings: Settings) -> TeamConfigResponse:
         (member for member in result.members if member.enabled),
         key=lambda member: member.order,
     )
+    for member in result.members:
+        filename = Path(member.avatar_file).name
+        if filename == member.avatar_file and Path(filename).suffix.lower() in {".webp", ".png", ".jpg", ".jpeg"}:
+            member.avatar_url = f"/api/team/avatars/{quote(filename)}"
+        else:
+            member.avatar_url = ""
     result.achievements = [item for item in result.achievements if item.enabled]
     featured_count = sum(1 for item in result.achievements if item.featured)
     if featured_count > 5:
@@ -46,13 +67,48 @@ def load_team_config(settings: Settings) -> TeamConfigResponse:
             "platform content enables %s featured achievements; the home page shows only 5",
             featured_count,
         )
-    if len(result.members) > 8:
-        logger.warning(
-            "platform content enables %s team members; the V1.2 layout is designed for at most 8",
-            len(result.members),
-        )
-        result.members = result.members[:8]
     return result
+
+
+def load_feature_releases(
+    settings: Settings,
+    *,
+    today: date | None = None,
+) -> FeatureReleaseConfigResponse:
+    payload = _read_content(settings.platform_content_config)
+    configured = payload.get("feature_releases")
+    merged = {
+        **DEFAULT_FEATURE_RELEASES,
+        **(configured if isinstance(configured, dict) else {}),
+    }
+    result = FeatureReleaseConfigResponse.model_validate(merged)
+    if not result.enabled:
+        result.items = []
+        return result
+
+    current_date = today or date.today()
+    result.items = sorted(
+        (
+            item
+            for item in result.items
+            if item.enabled and item.launched_at <= current_date
+        ),
+        key=lambda item: (item.launched_at, item.id),
+        reverse=True,
+    )
+    for item in result.items:
+        item.action_url = _safe_content_url(item.action_url)
+    return result
+
+
+def _safe_content_url(value: str) -> str:
+    normalized = value.strip()
+    if normalized.startswith("/") and not normalized.startswith("//"):
+        return normalized
+    parsed = urlparse(normalized)
+    if parsed.scheme in {"http", "https"} and parsed.netloc:
+        return normalized
+    return ""
 
 
 def load_demand_reviews(settings: Settings) -> dict[str, dict]:
